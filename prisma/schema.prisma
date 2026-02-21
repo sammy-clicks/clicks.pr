@@ -1,0 +1,292 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  VENUE
+  ADMIN
+}
+
+enum BuddyStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum VenuePlan {
+  FREE
+  PRO
+}
+
+enum OrderStatus {
+  PLACED
+  ACCEPTED
+  PREPARING
+  READY
+  PICKED_UP
+  COMPLETED
+  CANCELLED
+}
+
+enum WalletTxnType {
+  TOPUP
+  TRANSFER_OUT
+  TRANSFER_IN
+  REFUND
+  ADJUSTMENT
+}
+
+model User {
+  id            String   @id @default(cuid())
+  role          Role     @default(USER)
+  firstName     String
+  lastName      String
+  birthdate     DateTime
+  country       String   @default("PR") // PR or US
+  email         String?  @unique
+  phone         String?  @unique
+  passwordHash  String?  // for venue/admin accounts; user can be passwordless later
+  ghostMode     Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  lastActiveAt  DateTime?
+
+  buddyRequestsSent Buddy[] @relation("BuddySender")
+  buddyRequestsRecv Buddy[] @relation("BuddyReceiver")
+
+  wallet        WalletAccount?
+  checkins      CheckIn[]
+  clicks        ClickEvent[]
+  votes         Vote[]
+  orders        Order[] @relation("UserOrders")
+}
+
+model Buddy {
+  id        String      @id @default(cuid())
+  senderId  String
+  receiverId String
+  status    BuddyStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+
+  sender    User @relation("BuddySender", fields: [senderId], references: [id])
+  receiver  User @relation("BuddyReceiver", fields: [receiverId], references: [id])
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+}
+
+model Municipality {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  // default alcohol cutoff time stored as minutes since midnight local, e.g. 120 for 2:00am
+  defaultAlcoholCutoffMins Int @default(120)
+
+  venues      Venue[]
+}
+
+model Zone {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  isEnabled    Boolean @default(true)
+  disabledReason String?
+  venues       Venue[]
+}
+
+model Venue {
+  id           String   @id @default(cuid())
+  name         String
+  type         String
+  description  String?
+  address      String
+  lat          Float
+  lng          Float
+  plan         VenuePlan @default(FREE)
+
+  municipalityId String
+  municipality   Municipality @relation(fields: [municipalityId], references: [id])
+
+  zoneId        String
+  zone          Zone @relation(fields: [zoneId], references: [id])
+
+  // nullable override. If null, use municipality.defaultAlcoholCutoffMins
+  alcoholCutoffOverrideMins Int?
+
+  createdAt     DateTime @default(now())
+
+  menuItems     MenuItem[]
+  orders        Order[] @relation("VenueOrders")
+  checkins      CheckIn[]
+  promotions    Promotion[]
+}
+
+model MenuItem {
+  id        String @id @default(cuid())
+  venueId   String
+  venue     Venue @relation(fields: [venueId], references: [id])
+
+  name      String
+  priceCents Int
+  isAlcohol Boolean @default(false)
+  isAvailable Boolean @default(true)
+
+  createdAt DateTime @default(now())
+}
+
+model CheckIn {
+  id        String   @id @default(cuid())
+  userId    String
+  venueId   String
+  user      User     @relation(fields: [userId], references: [id])
+  venue     Venue    @relation(fields: [venueId], references: [id])
+
+  startAt   DateTime @default(now())
+  endAt     DateTime?
+  endReason String?
+
+  startLat  Float
+  startLng  Float
+  lastLat   Float
+  lastLng   Float
+  lastLocationUpdateAt DateTime @default(now())
+
+  @@index([venueId, startAt])
+  @@index([userId, endAt])
+}
+
+model ClickEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  venueId   String
+  user      User     @relation(fields: [userId], references: [id])
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([venueId, createdAt])
+  @@index([userId, venueId, createdAt])
+}
+
+model WalletAccount {
+  id        String @id @default(cuid())
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id])
+
+  balanceCents Int @default(0)
+  createdAt DateTime @default(now())
+
+  txns WalletTxn[]
+}
+
+model WalletTxn {
+  id        String @id @default(cuid())
+  walletId  String
+  wallet    WalletAccount @relation(fields: [walletId], references: [id])
+
+  type      WalletTxnType
+  amountCents Int
+  memo      String?
+  createdAt DateTime @default(now())
+
+  // for transfers
+  counterpartyUserId String?
+}
+
+model Promotion {
+  id        String @id @default(cuid())
+  venueId   String
+  venue     Venue @relation(fields: [venueId], references: [id])
+
+  title     String
+  active    Boolean @default(true)
+  maxRedeemsPerNightPerUser Int @default(1)
+
+  createdAt DateTime @default(now())
+}
+
+model Redemption {
+  id          String @id @default(cuid())
+  userId      String
+  promotionId String
+  venueId     String
+  createdAt   DateTime @default(now())
+  status      String   @default("VALID")
+}
+
+model Order {
+  id        String @id @default(cuid())
+  userId    String
+  venueId   String
+  status    OrderStatus @default(PLACED)
+
+  user      User  @relation("UserOrders", fields: [userId], references: [id])
+  venue     Venue @relation("VenueOrders", fields: [venueId], references: [id])
+
+  totalCents Int
+  createdAt DateTime @default(now())
+  acceptedAt DateTime?
+  readyAt DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  items OrderItem[]
+
+  @@index([venueId, createdAt])
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  order     Order @relation(fields: [orderId], references: [id])
+  menuItemId String
+  name      String
+  priceCents Int
+  qty       Int
+  isAlcohol Boolean
+}
+
+model WeekCycle {
+  id        String @id @default(cuid())
+  year      Int
+  week      Int
+  startsAt  DateTime
+  endsAt    DateTime // Monday 4:00am
+  createdAt DateTime @default(now())
+
+  votes     Vote[]
+  picks     WeeklyPick[]
+  @@unique([year, week])
+}
+
+model Vote {
+  id        String @id @default(cuid())
+  weekId    String
+  week      WeekCycle @relation(fields: [weekId], references: [id])
+
+  userId    String
+  user      User @relation(fields: [userId], references: [id])
+
+  venueId   String
+  venue     Venue @relation(fields: [venueId], references: [id])
+
+  createdAt DateTime @default(now())
+  @@unique([weekId, userId]) // one vote per user per week
+}
+
+model WeeklyPick {
+  id        String @id @default(cuid())
+  weekId    String
+  week      WeekCycle @relation(fields: [weekId], references: [id])
+
+  venueId   String
+  venue     Venue @relation(fields: [venueId], references: [id])
+  rank      Int // 1..3
+  votes     Int
+  createdAt DateTime @default(now())
+
+  @@unique([weekId, rank])
+}

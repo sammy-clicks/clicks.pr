@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: clicks
+      POSTGRES_PASSWORD: clicks
+      POSTGRES_DB: clicks
+    ports:
+      - "5432:5432"
+    volumes:
+      - clicks_pgdata:/var/lib/postgresql/data
+volumes:
+  clicks_pgdata:
