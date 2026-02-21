@@ -1,7 +1,11 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function Nav({ role }: { role: "u" | "v" | "admin" }) {
-  const links =
+  const path = usePathname();
+
+  const links: [string, string][] =
     role === "u"
       ? [
           ["/u/zones", "Zones"],
@@ -9,6 +13,7 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
           ["/u/buddies", "Buddies"],
           ["/u/vote", "Vote"],
           ["/u/leaderboard", "Leaderboard"],
+          ["/u/summary", "Summary"],
         ]
       : role === "v"
       ? [
@@ -24,13 +29,17 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
         ];
 
   return (
-    <div className="nav">
+    <nav className="nav">
       {links.map(([href, label]) => (
-        <Link key={href} className="badge" href={href}>
+        <Link
+          key={href}
+          className={`badge${path === href || path.startsWith(href + "/") ? " active" : ""}`}
+          href={href}
+        >
           {label}
         </Link>
       ))}
-      <Link className="badge" href="/api/auth/logout">Logout</Link>
-    </div>
+      <a className="badge" href="/api/auth/logout">Logout</a>
+    </nav>
   );
 }

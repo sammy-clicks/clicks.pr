@@ -32,6 +32,7 @@ model User {
   clicks        ClickEvent[]
   votes         Vote[]
   orders        Order[] @relation("UserOrders")
+  managedVenue  Venue?  @relation("VenueManager")
 }
 
 model Buddy {
@@ -83,6 +84,9 @@ model Venue {
 
   // nullable override. If null, use municipality.defaultAlcoholCutoffMins
   alcoholCutoffOverrideMins Int?
+
+  managerId     String?  @unique
+  manager       User?    @relation("VenueManager", fields: [managerId], references: [id])
 
   createdAt     DateTime @default(now())
 
