@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import ServiceWorkerRegister from "../components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "Clicks V1",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {children}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
