@@ -26,6 +26,7 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
           ["/admin/municipalities", "Municipalities"],
           ["/admin/zones", "Zones"],
           ["/admin/venues", "Venues"],
+          ["/admin/users", "Users"],
         ];
 
   return (
