@@ -14,17 +14,19 @@ export async function GET() {
 
 const PatchSchema = z.object({
   id: z.string(),
-  defaultAlcoholCutoffMins: z.number().int().min(0).max(24*60),
+  defaultAlcoholCutoffMins: z.number().int().min(0).max(24*60).optional(),
+  monCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  tueCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  thuCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  friCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  satCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
 });
 
 export async function PATCH(req: Request) {
   const auth = await requireRole(["ADMIN"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const body = PatchSchema.parse(await req.json());
-  await prisma.municipality.update({
-    where: { id: body.id },
-    data: { defaultAlcoholCutoffMins: body.defaultAlcoholCutoffMins },
-  });
+  const { id, ...data } = PatchSchema.parse(await req.json());
+  await prisma.municipality.update({ where: { id }, data });
   return NextResponse.json({ ok: true });
 }

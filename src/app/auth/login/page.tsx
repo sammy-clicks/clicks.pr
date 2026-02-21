@@ -25,6 +25,7 @@ export default function Login() {
 
   return (
     <div className="container">
+      <a href="/role" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 16, opacity: 0.7, fontSize: 14 }}>← Back</a>
       <h2>Log in</h2>
       <div className="card">
         <label>Email or username</label>
@@ -47,7 +48,7 @@ export default function Login() {
           <button className="btn" onClick={submit} disabled={loading}>
             {loading ? "Logging in…" : "Log in"}
           </button>
-          <a href="/auth/signup" className="btn secondary">Sign up</a>
+          <a href="/auth/signup" className="btn secondary">Create account</a>
         </div>
         {msg && <p className="muted" style={{ color: "var(--error,#f66)" }}>{msg}</p>}
       </div>

@@ -59,6 +59,12 @@ model Municipality {
   name        String   @unique
   // default alcohol cutoff time stored as minutes since midnight local, e.g. 120 for 2:00am
   defaultAlcoholCutoffMins Int @default(120)
+  // per-day overrides (Mon/Tue/Thu/Fri/Sat) — null means use defaultAlcoholCutoffMins
+  monCutoffMins Int? // Monday
+  tueCutoffMins Int? // Tuesday
+  thuCutoffMins Int? // Thursday
+  friCutoffMins Int? // Friday
+  satCutoffMins Int? // Saturday
 
   venues      Venue[]
 }

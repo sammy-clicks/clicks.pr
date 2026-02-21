@@ -34,6 +34,7 @@ export default function Signup() {
 
   return (
     <div className="container">
+      <a href="/auth/login" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 16, opacity: 0.7, fontSize: 14 }}>← Back to login</a>
       <h2>Create Account</h2>
       <div className="card">
         <div className="row">

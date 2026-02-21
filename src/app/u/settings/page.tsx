@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 
 export default function Settings() {
@@ -13,6 +13,7 @@ export default function Settings() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [saving, setSaving] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const r = await fetch("/api/me");
@@ -39,6 +40,32 @@ export default function Settings() {
     if (!r.ok) { setMsg2(j.error || "Failed", false); return; }
     setMsg2("Profile saved.");
     load();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const src = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const SIZE = 200;
+        const canvas = document.createElement("canvas");
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext("2d")!;
+        // crop square from center
+        const min = Math.min(img.width, img.height);
+        const cx = (img.width - min) / 2;
+        const cy = (img.height - min) / 2;
+        ctx.drawImage(img, cx, cy, min, min, 0, 0, SIZE, SIZE);
+        setAvatarUrl(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+    // reset so same file can be re-selected
+    e.target.value = "";
   }
 
   async function changePassword() {
@@ -101,23 +128,44 @@ export default function Settings() {
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 12px" }}>Profile</h3>
         <div className="row" style={{ alignItems: "center", gap: 16, marginBottom: 16 }}>
-          <Avatar size={64} />
+          {/* Avatar with camera overlay */}
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <Avatar size={72} />
+            <button
+              onClick={() => fileRef.current?.click()}
+              title="Change photo"
+              style={{
+                position: "absolute", bottom: 0, right: 0,
+                width: 26, height: 26, borderRadius: "50%",
+                background: "rgba(0,0,0,0.7)", border: "2px solid rgba(255,255,255,0.3)",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, padding: 0,
+              }}
+            >📷</button>
+            {/* Hidden file input — accept="image/*" lets mobile show camera/gallery */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+          </div>
           <div>
             <div><strong>@{user.username}</strong></div>
             <div className="muted">{user.firstName} {user.lastName}</div>
             <div className="muted" style={{ fontSize: 11 }}>Member since {new Date(user.createdAt).toLocaleDateString()}</div>
+            <button
+              className="btn sm secondary"
+              style={{ marginTop: 6, fontSize: 12 }}
+              onClick={() => fileRef.current?.click()}
+            >Change photo</button>
           </div>
         </div>
-        <label>Profile picture URL</label>
-        <input
-          value={avatarUrl}
-          onChange={e => setAvatarUrl(e.target.value)}
-          placeholder="https://example.com/photo.jpg"
-        />
-        <p className="muted" style={{ fontSize: 11, marginBottom: 0 }}>
-          Paste any public image URL. Leave empty for initial avatar.
-        </p>
-        <button className="btn" style={{ marginTop: 10 }} onClick={saveProfile} disabled={saving}>
+        {avatarUrl && avatarUrl !== (user.avatarUrl ?? "") && (
+          <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>New photo selected — save to apply.</p>
+        )}
+        <button className="btn" onClick={saveProfile} disabled={saving}>
           Save profile
         </button>
       </div>

@@ -2,12 +2,68 @@
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 
+type Zone = {
+  id: string; name: string; isEnabled: boolean; disabledReason?: string;
+  venues: { id: string; name: string }[];
+  _count: { venues: number };
+};
+
+function DeleteModal({ zone, onCancel, onDeleted }: { zone: Zone; onCancel: () => void; onDeleted: () => void }) {
+  const [confirm, setConfirm] = useState("");
+  const [err, setErr] = useState("");
+  const required = `CONFIRM delete ${zone.name}`;
+
+  async function doDelete() {
+    setErr("");
+    const r = await fetch(`/api/admin/zones?id=${zone.id}`, { method: "DELETE" });
+    const j = await r.json();
+    if (!r.ok) { setErr(j.error + (j.venues ? `: ${j.venues.join(", ")}` : "")); return; }
+    onDeleted();
+  }
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex",
+      alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16,
+    }}>
+      <div style={{ background: "var(--surface,#1a1a2e)", borderRadius: 14, padding: 28, maxWidth: 460, width: "100%" }}>
+        <h3 style={{ margin: "0 0 8px", color: "#f66" }}>Delete zone "{zone.name}"?</h3>
+        {zone.venues.length > 0 ? (
+          <>
+            <p className="muted">This zone contains <strong>{zone.venues.length}</strong> venue(s). Move them to another zone before deleting:</p>
+            <ul style={{ margin: "8px 0 16px", paddingLeft: 20 }}>
+              {zone.venues.map(v => <li key={v.id} className="muted">{v.name}</li>)}
+            </ul>
+          </>
+        ) : (
+          <p className="muted" style={{ marginBottom: 16 }}>This zone is empty. This action is permanent.</p>
+        )}
+        <p className="muted" style={{ fontSize: 13 }}>Type <strong>{required}</strong> to confirm:</p>
+        <input value={confirm} onChange={e => setConfirm(e.target.value)} style={{ marginTop: 6 }} autoFocus />
+        {err && <p style={{ color: "#f66", fontSize: 13, marginTop: 6 }}>{err}</p>}
+        <div className="row" style={{ marginTop: 14, gap: 8 }}>
+          <button
+            className="btn"
+            style={{ background: "#c0392b" }}
+            onClick={doDelete}
+            disabled={confirm !== required}
+          >Delete</button>
+          <button className="btn secondary" onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ZonesAdmin() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<{ items: Zone[] } | null>(null);
   const [newName, setNewName] = useState("");
   const [reason, setReason] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Zone | null>(null);
 
   async function load() {
     const r = await fetch("/api/admin/zones");
@@ -17,8 +73,7 @@ export default function ZonesAdmin() {
 
   async function create() {
     if (!newName.trim()) return;
-    setCreating(true);
-    setMsg("");
+    setCreating(true); setMsg("");
     const r = await fetch("/api/admin/zones", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -27,8 +82,7 @@ export default function ZonesAdmin() {
     const j = await r.json();
     setCreating(false);
     if (!r.ok) { setMsg(j.error || "Failed"); return; }
-    setNewName("");
-    await load();
+    setNewName(""); await load();
   }
 
   async function toggle(id: string, isEnabled: boolean, disabledReason?: string) {
@@ -40,13 +94,36 @@ export default function ZonesAdmin() {
     await load();
   }
 
+  async function rename(id: string) {
+    if (!editName.trim()) return;
+    setMsg("");
+    const r = await fetch("/api/admin/zones", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, name: editName.trim() }),
+    });
+    const j = await r.json();
+    if (!r.ok) { setMsg(j.error || "Failed"); return; }
+    setEditingId(null); setEditName(""); await load();
+  }
+
+  function startEdit(z: Zone) { setEditingId(z.id); setEditName(z.name); }
+
   if (!data) return <div className="container"><Nav role="admin" /><p className="muted">Loading…</p></div>;
 
-  const enabled = data.items.filter((z: any) => z.isEnabled);
-  const disabled = data.items.filter((z: any) => !z.isEnabled);
+  const enabled = data.items.filter(z => z.isEnabled);
+  const disabled = data.items.filter(z => !z.isEnabled);
 
   return (
     <div className="container">
+      {deleteTarget && (
+        <DeleteModal
+          zone={deleteTarget}
+          onCancel={() => setDeleteTarget(null)}
+          onDeleted={() => { setDeleteTarget(null); load(); }}
+        />
+      )}
+
       <h2>Zones ({data.items.length})</h2>
       <Nav role="admin" />
 
@@ -75,15 +152,27 @@ export default function ZonesAdmin() {
       <table>
         <thead><tr><th>Zone</th><th>Venues</th><th>Action</th><th>Disable reason</th></tr></thead>
         <tbody>
-          {enabled.map((z: any) => (
+          {enabled.map(z => (
             <tr key={z.id}>
-              <td><strong>{z.name}</strong></td>
+              <td>
+                {editingId === z.id ? (
+                  <div className="row" style={{ gap: 6 }}>
+                    <input value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 1, minWidth: 160 }}
+                      onKeyDown={e => e.key === "Enter" && rename(z.id)} autoFocus />
+                    <button className="btn sm" onClick={() => rename(z.id)}>Save</button>
+                    <button className="btn sm secondary" onClick={() => setEditingId(null)}>✕</button>
+                  </div>
+                ) : (
+                  <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                    <strong>{z.name}</strong>
+                    <button className="btn sm secondary" style={{ padding: "2px 8px", fontSize: 11 }} onClick={() => startEdit(z)}>Edit</button>
+                    <button className="btn sm" style={{ padding: "2px 8px", fontSize: 11, background: "#c0392b" }} onClick={() => setDeleteTarget(z)}>Delete</button>
+                  </div>
+                )}
+              </td>
               <td>{z._count?.venues ?? "—"}</td>
               <td>
-                <button className="btn secondary"
-                  onClick={() => toggle(z.id, false, reason[z.id] || undefined)}>
-                  Disable
-                </button>
+                <button className="btn secondary" onClick={() => toggle(z.id, false, reason[z.id] || undefined)}>Disable</button>
               </td>
               <td>
                 <input
@@ -103,11 +192,27 @@ export default function ZonesAdmin() {
         <>
           <h3 style={{ marginTop: 24 }}>Disabled ({disabled.length})</h3>
           <table>
-            <thead><tr><th>Zone</th><th>Reason</th><th>Action</th></tr></thead>
+            <thead><tr><th>Zone</th><th>Venues</th><th>Reason</th><th>Action</th></tr></thead>
             <tbody>
-              {disabled.map((z: any) => (
+              {disabled.map(z => (
                 <tr key={z.id}>
-                  <td>{z.name}</td>
+                  <td>
+                    {editingId === z.id ? (
+                      <div className="row" style={{ gap: 6 }}>
+                        <input value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 1, minWidth: 160 }}
+                          onKeyDown={e => e.key === "Enter" && rename(z.id)} autoFocus />
+                        <button className="btn sm" onClick={() => rename(z.id)}>Save</button>
+                        <button className="btn sm secondary" onClick={() => setEditingId(null)}>✕</button>
+                      </div>
+                    ) : (
+                      <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                        {z.name}
+                        <button className="btn sm secondary" style={{ padding: "2px 8px", fontSize: 11 }} onClick={() => startEdit(z)}>Edit</button>
+                        <button className="btn sm" style={{ padding: "2px 8px", fontSize: 11, background: "#c0392b" }} onClick={() => setDeleteTarget(z)}>Delete</button>
+                      </div>
+                    )}
+                  </td>
+                  <td>{z._count?.venues ?? "—"}</td>
                   <td className="muted">{z.disabledReason || "—"}</td>
                   <td><button className="btn" onClick={() => toggle(z.id, true)}>Enable</button></td>
                 </tr>
