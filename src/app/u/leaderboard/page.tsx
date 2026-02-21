@@ -46,7 +46,7 @@ export default function Leaderboard() {
           {data.topClickers.length === 0 && <p className="muted">No clicks recorded yet this week.</p>}
           <table>
             <thead>
-              <tr><th>#</th><th>Name</th><th>Clicks</th></tr>
+              <tr><th>#</th><th>Player</th><th>Clicks</th></tr>
             </thead>
             <tbody>
               {data.topClickers.map((u: any) => (

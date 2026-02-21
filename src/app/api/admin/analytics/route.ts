@@ -3,35 +3,57 @@ import { prisma, requireRole } from "@/app/api/_utils";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+// Build UTC midnight boundaries for last N days
+function buildDayBuckets(days: number) {
+  const buckets: { label: string; start: Date; end: Date }[] = [];
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setUTCHours(0, 0, 0, 0);
+    d.setUTCDate(d.getUTCDate() - i);
+    const start = new Date(d);
+    const end = new Date(d);
+    end.setUTCDate(end.getUTCDate() + 1);
+    const label = `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+    buckets.push({ label, start, end });
+  }
+  return buckets;
+}
+
+export async function GET(req: Request) {
   const auth = await requireRole(["ADMIN"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const now = new Date();
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const { searchParams } = new URL(req.url);
+  const days = Math.min(Math.max(parseInt(searchParams.get("days") ?? "7"), 1), 30);
+
+  const rangeStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const since = new Date(Date.now() - 120 * 60 * 1000); // last 2h for crowd
+  const since = new Date(Date.now() - 120 * 60 * 1000);
+  const buckets = buildDayBuckets(days);
 
   const [
     totalUsers,
     totalVenues,
-    signupsLastWeek,
-    checkinsLastWeek,
-    checkinsToday,
-    clicksLastWeek,
-    clicksToday,
+    totalOrders,
     activeNow,
+    allSignups,
+    allCheckins,
+    allClicks,
+    allOrders,
     weeklyVotes,
     zoneActivity,
+    topClickUsers,
   ] = await Promise.all([
     prisma.user.count({ where: { role: "USER" } }),
     prisma.venue.count(),
-    prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
-    prisma.checkIn.count({ where: { startAt: { gte: weekAgo } } }),
-    prisma.checkIn.count({ where: { startAt: { gte: dayAgo } } }),
-    prisma.clickEvent.count({ where: { createdAt: { gte: weekAgo } } }),
-    prisma.clickEvent.count({ where: { createdAt: { gte: dayAgo } } }),
+    prisma.order.count(),
     prisma.checkIn.count({ where: { endAt: null, startAt: { gte: since } } }),
+    // Raw events for daily breakdown
+    prisma.user.findMany({ where: { createdAt: { gte: rangeStart }, role: "USER" }, select: { createdAt: true } }),
+    prisma.checkIn.findMany({ where: { startAt: { gte: rangeStart } }, select: { startAt: true } }),
+    prisma.clickEvent.findMany({ where: { createdAt: { gte: rangeStart } }, select: { createdAt: true } }),
+    prisma.order.findMany({ where: { createdAt: { gte: rangeStart } }, select: { createdAt: true, totalCents: true } }),
     prisma.vote.groupBy({
       by: ["venueId"],
       _count: { _all: true },
@@ -39,16 +61,39 @@ export async function GET() {
       take: 5,
     }),
     prisma.zone.findMany({
-      select: {
-        id: true,
-        name: true,
-        isEnabled: true,
-        venues: { select: { id: true } },
-      },
+      select: { id: true, name: true, isEnabled: true, venues: { select: { id: true, _count: { select: { checkins: true } } } } },
+    }),
+    prisma.clickEvent.groupBy({
+      by: ["userId"],
+      where: { createdAt: { gte: rangeStart } },
+      _count: { _all: true },
+      orderBy: { _count: { userId: "desc" } },
+      take: 10,
     }),
   ]);
 
-  // Enrich weekly votes with venue names
+  // Daily bucketing helper
+  function bucket<T>(rows: T[], getDate: (r: T) => Date) {
+    return buckets.map(b => ({
+      label: b.label,
+      count: rows.filter(r => { const d = getDate(r); return d >= b.start && d < b.end; }).length,
+    }));
+  }
+
+  const daily = {
+    signups:  bucket(allSignups,  r => r.createdAt),
+    checkins: bucket(allCheckins, r => r.startAt),
+    clicks:   bucket(allClicks,   r => r.createdAt),
+    orders:   bucket(allOrders,   r => r.createdAt),
+  };
+
+  // Revenue
+  const revenueTotal = allOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0);
+  const revenueToday = allOrders
+    .filter(o => o.createdAt >= dayAgo)
+    .reduce((s, o) => s + (o.totalCents ?? 0), 0);
+
+  // Enrich weekly votes
   const topVenueIds = weeklyVotes.map(v => v.venueId);
   const topVenueRows = await prisma.venue.findMany({
     where: { id: { in: topVenueIds } },
@@ -61,7 +106,18 @@ export async function GET() {
     votes: v._count._all,
   }));
 
-  // Active users per zone (last 2h)
+  // Top clickers with username
+  const topClickUserIds = topClickUsers.map(u => u.userId);
+  const topClickUserRows = await prisma.user.findMany({
+    where: { id: { in: topClickUserIds }, ghostMode: false },
+    select: { id: true, username: true },
+  });
+  const userMap = new Map(topClickUserRows.map(u => [u.id, u.username]));
+  const topClickers = topClickUsers
+    .filter(u => userMap.has(u.userId))
+    .map((u, i) => ({ rank: i + 1, username: userMap.get(u.userId)!, clicks: u._count._all }));
+
+  // Zone activity
   const zoneVenueMap = new Map(zoneActivity.map(z => [z.id, z.venues.map(v => v.id)]));
   const activeByCounts = await prisma.checkIn.groupBy({
     by: ["venueId"],
@@ -72,14 +128,17 @@ export async function GET() {
   const zones = zoneActivity.map(z => ({
     name: z.name,
     isEnabled: z.isEnabled,
+    venueCount: z.venues.length,
     active: (zoneVenueMap.get(z.id) || []).reduce((s, vid) => s + (activeByVenue.get(vid) || 0), 0),
   }));
 
   return NextResponse.json({
-    totals: { users: totalUsers, venues: totalVenues, activeNow },
-    week: { signups: signupsLastWeek, checkins: checkinsLastWeek, clicks: clicksLastWeek },
-    today: { checkins: checkinsToday, clicks: clicksToday },
+    days,
+    totals: { users: totalUsers, venues: totalVenues, orders: totalOrders, activeNow },
+    revenue: { totalCents: revenueTotal, todayCents: revenueToday },
+    daily,
     topVotes,
+    topClickers,
     zones,
   });
 }

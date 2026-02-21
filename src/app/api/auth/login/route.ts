@@ -7,16 +7,29 @@ import { signToken, type TokenPayload } from "@/lib/auth";
 export const dynamic = 'force-dynamic';
 
 const Schema = z.object({
-  email: z.string().email(),
+  identifier: z.string().min(1), // email or username
   password: z.string().min(1),
 });
 
 export async function POST(req: Request) {
-  const body = Schema.parse(await req.json());
-  const user = await prisma.user.findUnique({ where: { email: body.email }});
-  if (!user || !user.passwordHash) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+  let body: z.infer<typeof Schema>;
+  try { body = Schema.parse(await req.json()); }
+  catch { return NextResponse.json({ error: "Invalid credentials" }, { status: 401 }); }
 
-  const ok = await bcrypt.compare(body.password, user.passwordHash);
+  const { identifier, password } = body;
+
+  // Determine lookup: email contains @, username does not (strip leading @ if typed)
+  const cleaned = identifier.startsWith("@") ? identifier.slice(1) : identifier;
+  const isEmail = cleaned.includes("@");
+
+  const user = isEmail
+    ? await prisma.user.findUnique({ where: { email: cleaned.toLowerCase() } })
+    : await prisma.user.findUnique({ where: { username: cleaned.toLowerCase() } });
+
+  if (!user || !user.passwordHash)
+    return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+
+  const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 
   const token = await signToken({ sub: user.id, role: user.role as TokenPayload["role"] });
