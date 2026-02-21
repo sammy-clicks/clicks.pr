@@ -2,9 +2,15 @@
   "name": "clicks-v1",
   "private": true,
   "version": "0.1.0",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "prebuild": "node scripts/predeploy_check.js",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
+    "render:build": "npm run db:generate && npm run build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
