@@ -45,15 +45,24 @@ export async function GET() {
   return NextResponse.json({ buddies, requests });
 }
 
-const SendSchema = z.object({ email: z.string().email() });
+const SendSchema = z.object({
+  username: z.string().optional(),
+  email: z.string().email().optional(),
+});
 
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session || session.role !== "USER")
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { email } = SendSchema.parse(await req.json());
-  const target = await prisma.user.findUnique({ where: { email } });
+  const body = SendSchema.parse(await req.json());
+  if (!body.email && !body.username)
+    return NextResponse.json({ error: "Provide email or username." }, { status: 400 });
+
+  const target = body.email
+    ? await prisma.user.findUnique({ where: { email: body.email } })
+    : await prisma.user.findUnique({ where: { username: body.username!.replace(/^@/, "").toLowerCase() } });
+
   if (!target) return NextResponse.json({ error: "User not found." }, { status: 404 });
   if (target.id === session.sub) return NextResponse.json({ error: "Cannot add yourself." }, { status: 400 });
 

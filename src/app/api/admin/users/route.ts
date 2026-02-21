@@ -20,6 +20,8 @@ export async function GET() {
       country: true,
       createdAt: true,
       ghostMode: true,
+      bannedUntil: true,
+      banReason: true,
       managedVenue: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },

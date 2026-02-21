@@ -53,9 +53,14 @@ export default function VenueOrders() {
         {open.map((o: any) => (
           <div key={o.id} className="card" style={{ flex: "1 1 300px" }}>
             <div className="header">
-              <strong>{o.user.firstName} {o.user.lastName[0]}.</strong>
+              <strong>@{o.user.username}</strong>
               <span className={`badge st-${o.status}`}>{o.status}</span>
             </div>
+            {o.orderCode && (
+              <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 4, margin: "6px 0", color: "var(--accent)" }}>
+                #{o.orderCode}
+              </div>
+            )}
             <p className="muted">{o.items.map((i: any) => `${i.qty}× ${i.name}`).join(", ")}</p>
             <p className="muted">${(o.totalCents / 100).toFixed(2)}</p>
             <div className="row" style={{ marginTop: 8 }}>

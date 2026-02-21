@@ -16,7 +16,7 @@ export async function GET() {
     where: { venueId: venue.id },
     include: {
       items: true,
-      user: { select: { firstName: true, lastName: true } },
+      user: { select: { username: true, avatarUrl: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 50,

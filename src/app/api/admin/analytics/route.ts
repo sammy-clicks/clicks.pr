@@ -20,17 +20,33 @@ function buildDayBuckets(days: number) {
   return buckets;
 }
 
+// Build monthly buckets for last N months (for all-time view)
+function buildMonthBuckets(months: number) {
+  const buckets: { label: string; start: Date; end: Date }[] = [];
+  const now = new Date();
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const start = new Date(d);
+    const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+    const label = `${d.getUTCMonth() + 1}/${String(d.getUTCFullYear()).slice(2)}`;
+    buckets.push({ label, start, end });
+  }
+  return buckets;
+}
+
 export async function GET(req: Request) {
   const auth = await requireRole(["ADMIN"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { searchParams } = new URL(req.url);
-  const days = Math.min(Math.max(parseInt(searchParams.get("days") ?? "7"), 1), 30);
+  const daysParam = parseInt(searchParams.get("days") ?? "7");
+  const allTime = daysParam === 0;
+  const days = allTime ? 90 : Math.min(Math.max(daysParam, 1), 90);
 
-  const rangeStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const rangeStart = allTime ? new Date("2020-01-01") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const since = new Date(Date.now() - 120 * 60 * 1000);
-  const buckets = buildDayBuckets(days);
+  const buckets = allTime ? buildMonthBuckets(12) : buildDayBuckets(days);
 
   const [
     totalUsers,
@@ -133,7 +149,8 @@ export async function GET(req: Request) {
   }));
 
   return NextResponse.json({
-    days,
+    days: allTime ? 0 : days,
+    allTime,
     totals: { users: totalUsers, venues: totalVenues, orders: totalOrders, activeNow },
     revenue: { totalCents: revenueTotal, todayCents: revenueToday },
     daily,

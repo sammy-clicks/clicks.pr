@@ -32,6 +32,12 @@ export async function POST(req: Request) {
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 
+  // Ban check
+  if (user.bannedUntil && user.bannedUntil > new Date()) {
+    const until = user.bannedUntil.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return NextResponse.json({ error: `Account suspended until ${until}. Reason: ${user.banReason ?? "violation"}` }, { status: 403 });
+  }
+
   const token = await signToken({ sub: user.id, role: user.role as TokenPayload["role"] });
   const res = NextResponse.json({ ok: true, role: user.role });
   res.cookies.set("clicks_token", token, { httpOnly: true, sameSite: "lax", path: "/" });

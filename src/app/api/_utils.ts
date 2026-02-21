@@ -7,6 +7,12 @@ export async function getSession() {
   if (!token) return null;
   try {
     const payload = await verifyToken(token);
+    // Check live ban status
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { bannedUntil: true },
+    });
+    if (user?.bannedUntil && user.bannedUntil > new Date()) return null;
     return payload;
   } catch {
     return null;

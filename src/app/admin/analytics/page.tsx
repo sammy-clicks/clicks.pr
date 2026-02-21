@@ -67,10 +67,10 @@ export default function AdminAnalytics() {
       <div className="header">
         <h2>Analytics</h2>
         <div className="row" style={{ gap: 6 }}>
-          {[7, 14, 30].map(d => (
+          {[7, 14, 30, 90, 0].map(d => (
             <button key={d} className={`btn${days === d ? "" : " secondary"}`}
               onClick={() => changeRange(d)} disabled={loading}>
-              {d}d
+              {d === 0 ? "All" : `${d}d`}
             </button>
           ))}
           <button className="btn secondary" onClick={() => load(days)} disabled={loading}>↺</button>
@@ -97,7 +97,7 @@ export default function AdminAnalytics() {
           </div>
 
           {/* ── Daily charts ───────────────────────────────────────────── */}
-          <h3>Last {days} days</h3>
+          <h3>Last {days === 0 ? "12 months" : `${days} days`}</h3>
           <div className="row" style={{ flexWrap: "wrap", gap: 16 }}>
 
             <div className="card" style={{ flex: "1 1 260px" }}>
@@ -133,7 +133,7 @@ export default function AdminAnalytics() {
           {/* ── Top clickers ───────────────────────────────────────────── */}
           {data.topClickers.length > 0 && (
             <>
-              <h3>Top Clickers ({days}d)</h3>
+              <h3>Top Clickers ({days === 0 ? "all-time" : `${days}d`})</h3>
               <table>
                 <thead><tr><th>#</th><th>Username</th><th>Clicks</th><th>Bar</th></tr></thead>
                 <tbody>

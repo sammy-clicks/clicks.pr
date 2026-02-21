@@ -52,8 +52,12 @@ model User {
   country       String   @default("PR") // PR or US
   email         String?  @unique
   phone         String?  @unique
-  passwordHash  String?  // for venue/admin accounts; user can be passwordless later
+  passwordHash  String?  // for venue/admin accounts
   ghostMode     Boolean  @default(false)
+  avatarUrl     String?
+  pausedAt      DateTime?
+  bannedUntil   DateTime?
+  banReason     String?
 
   createdAt     DateTime @default(now())
   lastActiveAt  DateTime?
@@ -227,6 +231,7 @@ model Redemption {
 
 model Order {
   id        String @id @default(cuid())
+  orderCode String?
   userId    String
   venueId   String
   status    OrderStatus @default(PLACED)

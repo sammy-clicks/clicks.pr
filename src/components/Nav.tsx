@@ -14,6 +14,7 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
           ["/u/vote", "Vote"],
           ["/u/leaderboard", "Leaderboard"],
           ["/u/summary", "Summary"],
+          ["/u/settings", "Settings"],
         ]
       : role === "v"
       ? [

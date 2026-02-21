@@ -98,9 +98,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Insufficient wallet balance." }, { status: 402 });
 
   // Atomic transaction: create order, deduct wallet
+  const orderCode = String(Math.floor(100000 + Math.random() * 900000));
+
   const [order] = await prisma.$transaction([
     prisma.order.create({
       data: {
+        orderCode,
         userId: session.sub,
         venueId: body.venueId,
         totalCents,
@@ -121,5 +124,5 @@ export async function POST(req: Request) {
     }),
   ]);
 
-  return NextResponse.json({ ok: true, orderId: order.id });
+  return NextResponse.json({ ok: true, orderId: order.id, orderCode, venueName: venue.name });
 }
