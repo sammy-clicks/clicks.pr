@@ -1,3 +1,7 @@
+// Load .env so DATABASE_URL is available when running locally
+import { config } from "dotenv";
+config();
+
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

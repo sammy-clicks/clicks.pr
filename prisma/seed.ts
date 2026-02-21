@@ -1,6 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+// Default admin credentials — change password after first login via /admin/users
+const ADMIN_EMAIL    = "admin@clicks.pr";
+const ADMIN_PASSWORD = "ClicksAdmin1!";
 
 async function main() {
   // municipalities (default cutoff 2:00am = 120 mins) — admin can edit later
@@ -62,6 +67,23 @@ async function main() {
       ],
     });
   }
+
+  // ── Admin user (always ensure one exists) ────────────────────────────────
+  const adminHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+  await prisma.user.upsert({
+    where: { email: ADMIN_EMAIL },
+    create: {
+      role: "ADMIN",
+      firstName: "Admin",
+      lastName: "Clicks",
+      birthdate: new Date("1990-01-01"),
+      country: "PR",
+      email: ADMIN_EMAIL,
+      passwordHash: adminHash,
+    },
+    update: { role: "ADMIN" }, // don't overwrite password if manually changed
+  });
+  console.log(`[seed] Admin ready  →  ${ADMIN_EMAIL}  /  ${ADMIN_PASSWORD}`);
 
   // Create current week cycle (Week N) ending Monday 4:00am
   const now = new Date();

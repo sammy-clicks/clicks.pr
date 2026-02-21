@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
 
@@ -9,18 +10,27 @@ const Schema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   birthdate: z.string(),
-  email: z.string().email().optional().or(z.literal("")),
+  email: z.string().email(),
+  password: z.string().min(8),
   country: z.enum(["PR","US"]).default("PR"),
 });
 
 export async function POST(req: Request) {
-  const body = Schema.parse(await req.json());
+  let body: z.infer<typeof Schema>;
+  try { body = Schema.parse(await req.json()); }
+  catch { return NextResponse.json({ error: "Invalid input. Email and password (min 8 chars) are required." }, { status: 400 }); }
+
   const birthdate = new Date(body.birthdate);
 
   // Simple age gate: PR 18, US 21 (default)
   const age = Math.floor((Date.now() - birthdate.getTime()) / (365.25*24*3600*1000));
   const minAge = body.country === "PR" ? 18 : 21;
   if (age < minAge) return NextResponse.json({ error: "Age restricted" }, { status: 403 });
+
+  const existing = await prisma.user.findUnique({ where: { email: body.email } });
+  if (existing) return NextResponse.json({ error: "Email already registered." }, { status: 409 });
+
+  const passwordHash = await bcrypt.hash(body.password, 10);
 
   const user = await prisma.user.create({
     data: {
@@ -29,7 +39,8 @@ export async function POST(req: Request) {
       lastName: body.lastName,
       birthdate,
       country: body.country,
-      email: body.email || null,
+      email: body.email,
+      passwordHash,
       wallet: { create: {} },
     },
   });

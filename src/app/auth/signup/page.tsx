@@ -6,24 +6,32 @@ export default function Signup() {
   const [lastName, setLast] = useState("");
   const [birthdate, setBirthdate] = useState("2000-01-01");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [country, setCountry] = useState("PR");
   const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function submit() {
     setMsg("");
+    if (!email) { setMsg("Email is required."); return; }
+    if (password.length < 8) { setMsg("Password must be at least 8 characters."); return; }
+    if (password !== confirm) { setMsg("Passwords do not match."); return; }
+    setLoading(true);
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ firstName, lastName, birthdate, email, country }),
+      body: JSON.stringify({ firstName, lastName, birthdate, email, password, country }),
     });
     const data = await res.json();
+    setLoading(false);
     if (!res.ok) { setMsg(data.error || "Failed"); return; }
     window.location.href = "/u/zones";
   }
 
   return (
     <div className="container">
-      <h2>Signup (User)</h2>
+      <h2>Create Account</h2>
       <div className="card">
         <div className="row">
           <div style={{flex:1}}><label>First name</label><input value={firstName} onChange={e=>setFirst(e.target.value)} /></div>
@@ -36,12 +44,16 @@ export default function Signup() {
           <option value="PR">Puerto Rico</option>
           <option value="US">USA</option>
         </select>
-        <label>Email (optional)</label>
-        <input value={email} onChange={e=>setEmail(e.target.value)} />
+        <label>Email</label>
+        <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
+        <label>Password</label>
+        <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Min 8 characters" />
+        <label>Confirm password</label>
+        <input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Repeat password" />
         <div className="row" style={{marginTop:12}}>
-          <button className="btn" onClick={submit}>Create account</button>
+          <button className="btn" onClick={submit} disabled={loading}>{loading ? "Creating…" : "Create account"}</button>
         </div>
-        {msg && <p className="muted">{msg}</p>}
+        {msg && <p className="muted" style={{color:"var(--error,#f66)"}}>{msg}</p>}
       </div>
     </div>
   );
