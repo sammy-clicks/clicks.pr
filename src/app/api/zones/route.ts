@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const zones = await prisma.zone.findMany({ orderBy: { name: "asc" }});
   // Active users per zone: count of checkins without endAt within last 120 mins

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/app/api/_utils";
 
+export const dynamic = 'force-dynamic';
+
 const Schema = z.object({ venueId: z.string() });
 const COOLDOWN_MS = 15_000;
 

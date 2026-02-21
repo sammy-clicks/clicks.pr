@@ -60,7 +60,6 @@ async function main() {
         { venueId: "seed-venue-placita-1", name: "Medalla", priceCents: 100, isAlcohol: true, isAvailable: true },
         { venueId: "seed-venue-placita-1", name: "Water", priceCents: 200, isAlcohol: false, isAvailable: true },
       ],
-      skipDuplicates: true,
     });
   }
 

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/app/api/_utils";
 
+export const dynamic = 'force-dynamic';
+
 const Schema = z.object({ dollars: z.number().int().min(10) });
 
 export async function POST(req: Request) {

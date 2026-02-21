@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const zone = await prisma.zone.findUnique({ where: { id: params.id }});
   if (!zone) return NextResponse.json({ error: "Not found" }, { status: 404 });

@@ -23,13 +23,13 @@ jobs:
         run: npm ci
 
       - name: Prisma generate
-        run: npx prisma generate
+        run: npx prisma@5.22.0 generate
 
       - name: Run migrations (if DATABASE_URL secret is set)
         if: ${{ secrets.DATABASE_URL != '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npx prisma migrate deploy
+        run: npx prisma@5.22.0 migrate deploy
 
       - name: Lint
         run: npm run lint --if-present

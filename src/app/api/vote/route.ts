@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/app/api/_utils";
 
+export const dynamic = 'force-dynamic';
+
 const PostSchema = z.object({ venueId: z.string().min(1) });
 
 export async function GET() {

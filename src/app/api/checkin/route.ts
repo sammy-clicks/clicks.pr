@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/app/api/_utils";
 import { haversineMiles } from "@/lib/geo";
 
+export const dynamic = 'force-dynamic';
+
 const Schema = z.object({
   venueId: z.string(),
   lat: z.number().nullable(),

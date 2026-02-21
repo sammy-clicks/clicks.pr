@@ -8,19 +8,19 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/predeploy_check.js",
-    "build": "prisma generate && next build",
-    "postinstall": "prisma generate",
+    "build": "npx prisma@5.22.0 generate && next build",
+    "postinstall": "node scripts/postinstall.js",
     "render:build": "npm run db:generate && npm run build",
     "start": "next start",
     "lint": "next lint",
-    "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev --name init",
+    "db:generate": "npx prisma@5.22.0 generate",
+    "db:migrate": "npx prisma@5.22.0 migrate dev --name init",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "npm run db:generate && npm run db:migrate && npm run db:seed",
     "create:admin": "tsx scripts/create_admin.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.20.0",
+    "@prisma/client": "5.22.0",
     "bcryptjs": "^2.4.3",
     "jose": "^5.9.3",
     "next": "^14.2.13",
@@ -35,7 +35,7 @@
     "@types/react-dom": "^18.3.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.13",
-    "prisma": "^5.20.0",
+    "prisma": "5.22.0",
     "tsx": "^4.19.1",
     "typescript": "^5.5.4"
   }

@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { signToken } from "@/lib/auth";
+import { signToken, type TokenPayload } from "@/lib/auth";
+
+export const dynamic = 'force-dynamic';
 
 const Schema = z.object({
   email: z.string().email(),
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
   const ok = await bcrypt.compare(body.password, user.passwordHash);
   if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 
-  const token = await signToken({ sub: user.id, role: user.role });
+  const token = await signToken({ sub: user.id, role: user.role as TokenPayload["role"] });
   const res = NextResponse.json({ ok: true, role: user.role });
   res.cookies.set("clicks_token", token, { httpOnly: true, sameSite: "lax", path: "/" });
   return res;

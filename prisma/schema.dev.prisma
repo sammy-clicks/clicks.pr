@@ -3,48 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
-enum Role {
-  USER
-  VENUE
-  ADMIN
-}
-
-enum BuddyStatus {
-  PENDING
-  ACCEPTED
-  BLOCKED
-}
-
-enum VenuePlan {
-  FREE
-  PRO
-}
-
-enum OrderStatus {
-  PLACED
-  ACCEPTED
-  PREPARING
-  READY
-  PICKED_UP
-  COMPLETED
-  CANCELLED
-}
-
-enum WalletTxnType {
-  TOPUP
-  TRANSFER_OUT
-  TRANSFER_IN
-  REFUND
-  ADJUSTMENT
-}
+// For local dev (SQLite) the schema uses string-backed fields instead of enums.
 
 model User {
   id            String   @id @default(cuid())
-  role          Role     @default(USER)
+  role          String   @default("USER")
   firstName     String
   lastName      String
   birthdate     DateTime
@@ -71,7 +38,7 @@ model Buddy {
   id        String      @id @default(cuid())
   senderId  String
   receiverId String
-  status    BuddyStatus @default(PENDING)
+  status    String @default("PENDING")
   createdAt DateTime    @default(now())
 
   sender    User @relation("BuddySender", fields: [senderId], references: [id])
@@ -106,7 +73,7 @@ model Venue {
   address      String
   lat          Float
   lng          Float
-  plan         VenuePlan @default(FREE)
+  plan         String @default("FREE")
 
   municipalityId String
   municipality   Municipality @relation(fields: [municipalityId], references: [id])
@@ -190,7 +157,7 @@ model WalletTxn {
   walletId  String
   wallet    WalletAccount @relation(fields: [walletId], references: [id])
 
-  type      WalletTxnType
+  type      String
   amountCents Int
   memo      String?
   createdAt DateTime @default(now())
@@ -224,7 +191,7 @@ model Order {
   id        String @id @default(cuid())
   userId    String
   venueId   String
-  status    OrderStatus @default(PLACED)
+  status    String @default("PLACED")
 
   user      User  @relation("UserOrders", fields: [userId], references: [id])
   venue     Venue @relation("VenueOrders", fields: [venueId], references: [id])

@@ -3,6 +3,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
 
+export const dynamic = 'force-dynamic';
+
 const Schema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
