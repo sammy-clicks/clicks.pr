@@ -41,14 +41,14 @@ export async function GET() {
   const userIds = clickCounts.map(c => c.userId);
   const userRows = await prisma.user.findMany({
     where: { id: { in: userIds }, ghostMode: false },
-    select: { id: true, firstName: true, lastName: true },
+    select: { id: true, username: true },
   });
   const userMap = new Map(userRows.map(u => [u.id, u]));
   const topClickers = clickCounts
     .filter(c => userMap.has(c.userId))
     .map((c, i) => {
       const u = userMap.get(c.userId)!;
-      return { rank: i + 1, name: `${u.firstName} ${u.lastName[0]}.`, clicks: c._count._all };
+      return { rank: i + 1, name: u.username, clicks: c._count._all };
     });
 
   return NextResponse.json({ topVenues, topClickers });

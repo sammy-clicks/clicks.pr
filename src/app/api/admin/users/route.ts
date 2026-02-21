@@ -13,6 +13,7 @@ export async function GET() {
     select: {
       id: true,
       role: true,
+      username: true,
       firstName: true,
       lastName: true,
       email: true,
@@ -29,6 +30,7 @@ export async function GET() {
 }
 
 const CreateSchema = z.object({
+  username: z.string().regex(/^[a-zA-Z0-9_]{3,20}$/),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   email: z.string().email(),
@@ -48,6 +50,7 @@ export async function POST(req: Request) {
   const user = await prisma.user.create({
     data: {
       role: body.role as any,
+      username: body.username.toLowerCase(),
       firstName: body.firstName,
       lastName: body.lastName,
       email: body.email,

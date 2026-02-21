@@ -8,7 +8,7 @@ export default function AdminUsers() {
   const [data, setData] = useState<any>(null);
   const [msg, setMsg] = useState("");
   const [filter, setFilter] = useState("");
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", role: "VENUE" });
+  const [form, setForm] = useState({ username: "", firstName: "", lastName: "", email: "", password: "", role: "VENUE" });
 
   async function load() {
     const r = await fetch("/api/admin/users");
@@ -28,13 +28,14 @@ export default function AdminUsers() {
     const j = await r.json();
     if (!r.ok) { setMsg(j.error || "Failed"); return; }
     setMsg(`User created (ID: ${j.userId}).`);
-    setForm({ firstName: "", lastName: "", email: "", password: "", role: "VENUE" });
+    setForm({ username: "", firstName: "", lastName: "", email: "", password: "", role: "VENUE" });
     load();
   }
 
   const filtered = data?.users?.filter((u: any) => {
     const q = filter.toLowerCase();
     return !q ||
+      (u.username || "").toLowerCase().includes(q) ||
       u.firstName.toLowerCase().includes(q) ||
       u.lastName.toLowerCase().includes(q) ||
       (u.email || "").toLowerCase().includes(q) ||
@@ -48,6 +49,8 @@ export default function AdminUsers() {
 
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 12px" }}>Create user</h3>
+        <label>Username</label>
+        <input value={form.username} onChange={e => setF("username", e.target.value)} placeholder="venue_bar (3-20 chars)" />
         <div className="row">
           <div style={{ flex: 1 }}><label>First name</label><input value={form.firstName} onChange={e => setF("firstName", e.target.value)} /></div>
           <div style={{ flex: 1 }}><label>Last name</label><input value={form.lastName} onChange={e => setF("lastName", e.target.value)} /></div>
@@ -80,11 +83,12 @@ export default function AdminUsers() {
 
       <table>
         <thead>
-          <tr><th>Name</th><th>Email</th><th>Role</th><th>Venue</th><th>Ghost</th><th>Joined</th></tr>
+          <tr><th>Username</th><th>Name</th><th>Email</th><th>Role</th><th>Venue</th><th>Ghost</th><th>Joined</th></tr>
         </thead>
         <tbody>
           {filtered.map((u: any) => (
             <tr key={u.id}>
+              <td><code style={{fontSize:12}}>@{u.username}</code></td>
               <td>{u.firstName} {u.lastName}</td>
               <td>{u.email || <span className="muted">—</span>}</td>
               <td><span className={`badge${u.role === "ADMIN" ? " active" : ""}`}>{u.role}</span></td>

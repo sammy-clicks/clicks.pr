@@ -2,6 +2,7 @@
 import { useState } from "react";
 
 export default function Signup() {
+  const [username, setUsername] = useState("");
   const [firstName, setFirst] = useState("");
   const [lastName, setLast] = useState("");
   const [birthdate, setBirthdate] = useState("2000-01-01");
@@ -14,6 +15,8 @@ export default function Signup() {
 
   async function submit() {
     setMsg("");
+    if (!username.trim()) { setMsg("Username is required."); return; }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) { setMsg("Username: 3-20 chars, letters/numbers/underscore only."); return; }
     if (!email) { setMsg("Email is required."); return; }
     if (password.length < 8) { setMsg("Password must be at least 8 characters."); return; }
     if (password !== confirm) { setMsg("Passwords do not match."); return; }
@@ -21,7 +24,7 @@ export default function Signup() {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ firstName, lastName, birthdate, email, password, country }),
+      body: JSON.stringify({ username: username.trim().toLowerCase(), firstName, lastName, birthdate, email, password, country }),
     });
     const data = await res.json();
     setLoading(false);
@@ -44,6 +47,8 @@ export default function Signup() {
           <option value="PR">Puerto Rico</option>
           <option value="US">USA</option>
         </select>
+        <label>Username <span className="muted" style={{fontWeight:400}}>(public — shown on leaderboard)</span></label>
+        <input value={username} onChange={e=>setUsername(e.target.value)} placeholder="e.g. nightrider_pr" maxLength={20} />
         <label>Email</label>
         <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" />
         <label>Password</label>

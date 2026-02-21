@@ -13,6 +13,7 @@
     "render:build": "npm run db:generate && npm run build",
     "start": "next start",
     "deploy:start": "npx prisma@5.22.0 db push --accept-data-loss && npx tsx prisma/seed.ts && next start",
+    "deploy:reset": "npx prisma@5.22.0 db push --force-reset && npx tsx prisma/seed.ts && next start",
     "lint": "next lint",
     "db:generate": "npx prisma@5.22.0 generate",
     "db:migrate": "npx prisma@5.22.0 migrate dev --name init",

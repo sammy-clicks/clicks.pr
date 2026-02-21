@@ -74,6 +74,7 @@ async function main() {
     where: { email: ADMIN_EMAIL },
     create: {
       role: "ADMIN",
+      username: "admin",
       firstName: "Admin",
       lastName: "Clicks",
       birthdate: new Date("1990-01-01"),

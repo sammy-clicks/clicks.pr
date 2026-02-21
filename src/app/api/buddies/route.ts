@@ -20,26 +20,26 @@ export async function GET() {
         ],
       },
       include: {
-        sender: { select: { id: true, firstName: true, lastName: true, ghostMode: true } },
-        receiver: { select: { id: true, firstName: true, lastName: true, ghostMode: true } },
+        sender: { select: { id: true, username: true, ghostMode: true } },
+        receiver: { select: { id: true, username: true, ghostMode: true } },
       },
     }),
     // Pending requests received by me
     prisma.buddy.findMany({
       where: { receiverId: session.sub, status: "PENDING" },
-      include: { sender: { select: { id: true, firstName: true, lastName: true } } },
+      include: { sender: { select: { id: true, username: true } } },
     }),
   ]);
 
   const buddies = accepted.map(b => {
     const friend = b.senderId === session.sub ? b.receiver : b.sender;
-    return { buddyId: b.id, friendId: friend.id, name: `${friend.firstName} ${friend.lastName}`, ghostMode: friend.ghostMode };
+    return { buddyId: b.id, friendId: friend.id, name: friend.username, ghostMode: friend.ghostMode };
   });
 
   const requests = pending.map(b => ({
     buddyId: b.id,
     fromId: b.sender.id,
-    name: `${b.sender.firstName} ${b.sender.lastName}`,
+    name: b.sender.username,
   }));
 
   return NextResponse.json({ buddies, requests });

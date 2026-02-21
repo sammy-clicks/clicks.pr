@@ -7,6 +7,7 @@ import { signToken } from "@/lib/auth";
 export const dynamic = 'force-dynamic';
 
 const Schema = z.object({
+  username: z.string().regex(/^[a-zA-Z0-9_]{3,20}$/),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   birthdate: z.string(),
@@ -18,7 +19,7 @@ const Schema = z.object({
 export async function POST(req: Request) {
   let body: z.infer<typeof Schema>;
   try { body = Schema.parse(await req.json()); }
-  catch { return NextResponse.json({ error: "Invalid input. Email and password (min 8 chars) are required." }, { status: 400 }); }
+  catch { return NextResponse.json({ error: "Invalid input. Username (3-20 alphanumeric/_), email, and password (min 8) are required." }, { status: 400 }); }
 
   const birthdate = new Date(body.birthdate);
 
@@ -27,14 +28,19 @@ export async function POST(req: Request) {
   const minAge = body.country === "PR" ? 18 : 21;
   if (age < minAge) return NextResponse.json({ error: "Age restricted" }, { status: 403 });
 
-  const existing = await prisma.user.findUnique({ where: { email: body.email } });
-  if (existing) return NextResponse.json({ error: "Email already registered." }, { status: 409 });
+  const [existingEmail, existingUsername] = await Promise.all([
+    prisma.user.findUnique({ where: { email: body.email } }),
+    prisma.user.findUnique({ where: { username: body.username.toLowerCase() } }),
+  ]);
+  if (existingEmail) return NextResponse.json({ error: "Email already registered." }, { status: 409 });
+  if (existingUsername) return NextResponse.json({ error: "Username already taken." }, { status: 409 });
 
   const passwordHash = await bcrypt.hash(body.password, 10);
 
   const user = await prisma.user.create({
     data: {
       role: "USER",
+      username: body.username.toLowerCase(),
       firstName: body.firstName,
       lastName: body.lastName,
       birthdate,

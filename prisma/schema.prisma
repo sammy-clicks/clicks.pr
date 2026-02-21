@@ -45,6 +45,7 @@ enum WalletTxnType {
 model User {
   id            String   @id @default(cuid())
   role          Role     @default(USER)
+  username      String   @unique
   firstName     String
   lastName      String
   birthdate     DateTime
