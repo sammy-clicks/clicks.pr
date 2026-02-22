@@ -10,6 +10,7 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [country, setCountry] = useState("PR");
+  const [agreed, setAgreed] = useState(false);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -21,6 +22,7 @@ export default function Signup() {
     if (!email) { setMsg("Email is required."); return; }
     if (password.length < 8) { setMsg("Password must be at least 8 characters."); return; }
     if (password !== confirm) { setMsg("Passwords do not match."); return; }
+    if (!agreed) { setMsg("You must agree to the Terms of Service and Privacy Policy."); return; }
     setLoading(true);
     const res = await fetch("/api/auth/signup", {
       method: "POST",
@@ -131,7 +133,23 @@ export default function Signup() {
               autoComplete="new-password"
             />
 
-            <button type="submit" className="auth-submit-btn" disabled={loading}>
+            <div className="auth-terms">
+              <input
+                type="checkbox"
+                id="su-agree"
+                checked={agreed}
+                onChange={e => setAgreed(e.target.checked)}
+              />
+              <label htmlFor="su-agree" className="auth-terms-label">
+                I have read and agree to the{" "}
+                <a href="/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                {" "}and{" "}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+                By creating an account you confirm you are 18 years of age or older.
+              </label>
+            </div>
+
+            <button type="submit" className="auth-submit-btn" disabled={loading || !agreed}>
               {loading ? "Creating…" : "Create account"}
             </button>
             {msg && <p className="auth-error">{msg}</p>}
