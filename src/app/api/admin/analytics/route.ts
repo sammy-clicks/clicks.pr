@@ -60,6 +60,10 @@ export async function GET(req: Request) {
     weeklyVotes,
     zoneActivity,
     topClickUsers,
+    completedOrders,
+    paidRedemptions,
+    subscriptionPayments,
+    activePromotions,
   ] = await Promise.all([
     prisma.user.count({ where: { role: "USER" } }),
     prisma.venue.count(),
@@ -86,6 +90,37 @@ export async function GET(req: Request) {
       orderBy: { _count: { userId: "desc" } },
       take: 10,
     }),
+    // For revenue commission calculations (all-time totals)
+    prisma.order.findMany({
+      where: { status: "COMPLETED" },
+      select: { totalCents: true, completedAt: true },
+    }),
+    prisma.redemption.findMany({
+      where: { paidCents: { gt: 0 } },
+      select: { paidCents: true, createdAt: true },
+    }),
+    prisma.subscriptionPayment.findMany({
+      where: { status: "PAID" },
+      select: { amountCents: true, paidAt: true },
+    }),
+    // Active promotions for admin overview
+    prisma.promotion.findMany({
+      where: { active: true, isDraft: false, OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] },
+      select: {
+        id: true,
+        title: true,
+        priceCents: true,
+        expiresAt: true,
+        _count: { select: { redemptions: true } },
+        venue: {
+          select: {
+            name: true,
+            zone: { select: { name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   // Daily bucketing helper
@@ -103,11 +138,34 @@ export async function GET(req: Request) {
     orders:   bucket(allOrders,   r => r.createdAt),
   };
 
-  // Revenue
+  // Revenue (window-based, for chart reference)
   const revenueTotal = allOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0);
   const revenueToday = allOrders
     .filter(o => o.createdAt >= dayAgo)
     .reduce((s, o) => s + (o.totalCents ?? 0), 0);
+
+  // Commission revenue breakdown (all-time, Clicks' earnings)
+  const orderCommissionCents    = Math.round(completedOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0) * 0.15);
+  const promoCommissionCents    = Math.round(paidRedemptions.reduce((s, r) => s + r.paidCents, 0) * 0.15);
+  const subscriptionRevenueCents = subscriptionPayments.reduce((s, p) => s + p.amountCents, 0);
+  const totalRevenueCents       = orderCommissionCents + promoCommissionCents + subscriptionRevenueCents;
+
+  const todayStart = new Date(); todayStart.setUTCHours(0, 0, 0, 0);
+  const orderCommToday   = Math.round(completedOrders.filter(o => o.completedAt && o.completedAt >= todayStart).reduce((s, o) => s + (o.totalCents ?? 0), 0) * 0.15);
+  const promoCommToday   = Math.round(paidRedemptions.filter(r => r.createdAt >= todayStart).reduce((s, r) => s + r.paidCents, 0) * 0.15);
+  const subRevToday      = subscriptionPayments.filter(p => p.paidAt >= todayStart).reduce((s, p) => s + p.amountCents, 0);
+  const todayRevenueCents = orderCommToday + promoCommToday + subRevToday;
+
+  // Shape active promotions
+  const activePromos = activePromotions.map(p => ({
+    id: p.id,
+    title: p.title,
+    venueName: p.venue.name,
+    zoneName: p.venue.zone?.name ?? "—",
+    priceCents: p.priceCents,
+    expiresAt: p.expiresAt,
+    redeemsCount: p._count.redemptions,
+  }));
 
   // Enrich weekly votes
   const topVenueIds = weeklyVotes.map(v => v.venueId);
@@ -152,10 +210,21 @@ export async function GET(req: Request) {
     days: allTime ? 0 : days,
     allTime,
     totals: { users: totalUsers, venues: totalVenues, orders: totalOrders, activeNow },
-    revenue: { totalCents: revenueTotal, todayCents: revenueToday },
+    revenue: {
+      // Window-based gross (for backward compat)
+      totalCents: revenueTotal,
+      todayCents: revenueToday,
+      // Clicks' actual earnings (commissions + subscriptions)
+      orderCommissionCents,
+      promoCommissionCents,
+      subscriptionRevenueCents,
+      totalRevenueCents,
+      todayRevenueCents,
+    },
     daily,
     topVotes,
     topClickers,
     zones,
+    activePromotions: activePromos,
   });
 }

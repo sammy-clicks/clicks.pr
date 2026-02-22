@@ -90,14 +90,25 @@ model Buddy {
 model Municipality {
   id          String   @id @default(cuid())
   name        String   @unique
-  // default alcohol cutoff time stored as minutes since midnight local, e.g. 120 for 2:00am
-  defaultAlcoholCutoffMins Int @default(120)
-  // per-day overrides (Mon/Tue/Thu/Fri/Sat) — null means use defaultAlcoholCutoffMins
-  monCutoffMins Int? // Monday
-  tueCutoffMins Int? // Tuesday
-  thuCutoffMins Int? // Thursday
-  friCutoffMins Int? // Friday
-  satCutoffMins Int? // Saturday
+  // default alcohol service window stored as minutes since midnight local
+  // e.g. startMins=1140 (19:00 = 7pm), cutoffMins=120 (2:00am = next day)
+  defaultAlcoholStartMins  Int  @default(1140) // 7:00pm default start
+  defaultAlcoholCutoffMins Int  @default(120)  // 2:00am default cutoff
+  // per-day overrides — null means use default above
+  monStartMins  Int? // Monday start
+  monCutoffMins Int? // Monday cutoff
+  tueStartMins  Int? // Tuesday start
+  tueCutoffMins Int? // Tuesday cutoff
+  wedStartMins  Int? // Wednesday start
+  wedCutoffMins Int? // Wednesday cutoff
+  thuStartMins  Int? // Thursday start
+  thuCutoffMins Int? // Thursday cutoff
+  friStartMins  Int? // Friday start
+  friCutoffMins Int? // Friday cutoff
+  satStartMins  Int? // Saturday start
+  satCutoffMins Int? // Saturday cutoff
+  sunStartMins  Int? // Sunday start
+  sunCutoffMins Int? // Sunday cutoff
 
   venues      Venue[]
 }
@@ -118,7 +129,10 @@ model Venue {
   address      String
   lat          Float
   lng          Float
+  // Subscription
   plan         VenuePlan @default(FREE)
+  subscriptionStartedAt DateTime?
+  subscriptionEndsAt    DateTime?
 
   municipalityId String
   municipality   Municipality @relation(fields: [municipalityId], references: [id])
@@ -145,6 +159,7 @@ model Venue {
   clicks        ClickEvent[]
   votes         Vote[]
   weeklyPicks   WeeklyPick[]
+  subscriptionPayments SubscriptionPayment[]
 }
 
 model MenuItem {
@@ -223,11 +238,17 @@ model Promotion {
   venueId   String
   venue     Venue @relation(fields: [venueId], references: [id])
 
-  title     String
-  active    Boolean @default(true)
+  title       String
+  description String?          // what the promo is
+  priceCents  Int   @default(0) // 0 = free, > 0 = paid promo
+  imageUrl    String?          // optional promo image
+  active      Boolean @default(true)
+  isDraft     Boolean @default(false) // saved draft, not yet published
+  expiresAt   DateTime?        // set to municipality cutoff time of that night
   maxRedeemsPerNightPerUser Int @default(1)
 
   createdAt DateTime @default(now())
+  redemptions Redemption[]
 }
 
 model Redemption {
@@ -235,8 +256,10 @@ model Redemption {
   userId      String
   promotionId String
   venueId     String
+  promotion   Promotion @relation(fields: [promotionId], references: [id])
   createdAt   DateTime @default(now())
   status      String   @default("VALID")
+  paidCents   Int      @default(0)  // amount user paid for this promo
 }
 
 model Order {
@@ -312,4 +335,18 @@ model WeeklyPick {
   createdAt DateTime @default(now())
 
   @@unique([weekId, rank])
+}
+
+model SubscriptionPayment {
+  id          String   @id @default(cuid())
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id])
+  amountCents Int      @default(4900) // $49.00
+  paidAt      DateTime @default(now())
+  periodStart DateTime
+  periodEnd   DateTime
+  stripeId    String?  // Stripe invoice or subscription ID
+  status      String   @default("PAID") // PAID | FAILED | REFUNDED
+
+  @@index([venueId, paidAt])
 }

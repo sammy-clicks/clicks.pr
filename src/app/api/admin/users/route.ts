@@ -44,7 +44,14 @@ export async function POST(req: Request) {
   const auth = await requireRole(["ADMIN"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const body = CreateSchema.parse(await req.json());
+  let body: z.infer<typeof CreateSchema>;
+  try {
+    body = CreateSchema.parse(await req.json());
+  } catch (e: any) {
+    const msg = e?.errors?.[0]?.message ?? "Invalid input.";
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
+
   const existing = await prisma.user.findUnique({ where: { email: body.email } });
   if (existing) return NextResponse.json({ error: "Email already in use." }, { status: 409 });
 

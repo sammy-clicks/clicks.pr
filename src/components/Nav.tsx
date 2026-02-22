@@ -21,6 +21,8 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
           ["/v/dashboard", "Dashboard"],
           ["/v/menu", "Menu"],
           ["/v/orders", "Orders"],
+          ["/v/promotions", "Promotions"],
+          ["/v/plan", "Plan"],
           ["/v/account", "Account"],
         ]
       : [

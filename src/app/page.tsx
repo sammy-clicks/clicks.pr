@@ -1,18 +1,19 @@
-import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { jwtVerify } from "jose";
 
-export default function Page() {
-  return (
-    <div className="container">
-      <div className="header">
-        <h1>Clicks V1</h1>
-        <span className="badge">PWA starter</span>
-      </div>
-      <p className="muted">Role gate → auth → user/venue/admin surfaces.</p>
-      <div className="row">
-        <Link className="btn" href="/role">Open</Link>
-        <Link className="btn secondary" href="/auth/login">Login</Link>
-        <Link className="btn secondary" href="/auth/signup">Signup</Link>
-      </div>
-    </div>
-  );
+const secret = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret");
+
+export default async function Home() {
+  const token = cookies().get("clicks_token")?.value;
+  if (token) {
+    try {
+      const { payload } = await jwtVerify(token, secret);
+      const role = (payload as any).role as string | undefined;
+      if (role === "ADMIN") redirect("/admin/analytics");
+      else if (role === "VENUE") redirect("/v/dashboard");
+      else redirect("/u/zones");
+    } catch { /* invalid token — fall through to /role */ }
+  }
+  redirect("/role");
 }

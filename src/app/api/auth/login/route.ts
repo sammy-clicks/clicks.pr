@@ -34,8 +34,11 @@ export async function POST(req: Request) {
 
   // Ban check
   if (user.bannedUntil && user.bannedUntil > new Date()) {
-    const until = user.bannedUntil.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    return NextResponse.json({ error: `Account suspended until ${until}. Reason: ${user.banReason ?? "violation"}` }, { status: 403 });
+    return NextResponse.json({
+      error: "BANNED",
+      bannedUntil: user.bannedUntil.toISOString(),
+      banReason: user.banReason ?? "Violation of Terms of Service",
+    }, { status: 403 });
   }
 
   const token = await signToken({ sub: user.id, role: user.role as TokenPayload["role"] });

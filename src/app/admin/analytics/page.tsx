@@ -90,10 +90,18 @@ export default function AdminAnalytics() {
             <Stat label="Active now"     value={data.totals.activeNow} sub="checked-in last 2h" />
           </div>
 
-          <h3>Revenue ({days}d window)</h3>
+          <h3>Revenue ({days === 0 ? "all-time" : `${days}d`} window)</h3>
           <div className="row">
-            <Stat label="Total revenue"  value={$$(data.revenue.totalCents)} />
+            <Stat label="Gross orders revenue"  value={$$(data.revenue.totalCents)} />
             <Stat label="Revenue today"  value={$$(data.revenue.todayCents)} />
+          </div>
+
+          <h3>Clicks Earnings (all-time commissions)</h3>
+          <div className="row">
+            <Stat label="Order commission (15%)"  value={$$(data.revenue.orderCommissionCents)}   sub="15% of completed orders" />
+            <Stat label="Promo commission (15%)"  value={$$(data.revenue.promoCommissionCents)}   sub="15% of paid promos" />
+            <Stat label="Subscriptions (100%)"    value={$$(data.revenue.subscriptionRevenueCents)} sub="$49/mo PRO plans" />
+            <Stat label="Total Clicks revenue"    value={$$(data.revenue.totalRevenueCents)}       sub={`Today: ${$$(data.revenue.todayRevenueCents)}`} />
           </div>
 
           {/* ── Daily charts ───────────────────────────────────────────── */}
@@ -195,6 +203,40 @@ export default function AdminAnalytics() {
               ))}
             </tbody>
           </table>
+
+          {/* ── Active promotions ──────────────────────────────────────── */}
+          <h3>Active Promotions ({data.activePromotions?.length ?? 0})</h3>
+          {data.activePromotions?.length === 0
+            ? <p className="muted">No active promotions right now.</p>
+            : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Promo</th>
+                    <th>Venue</th>
+                    <th>Zone</th>
+                    <th>Price</th>
+                    <th>Redeems</th>
+                    <th>Expires</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.activePromotions?.map((p: any) => (
+                    <tr key={p.id}>
+                      <td>{p.title}</td>
+                      <td className="muted">{p.venueName}</td>
+                      <td className="muted">{p.zoneName}</td>
+                      <td>{p.priceCents > 0 ? $$(p.priceCents) : <span className="muted">Free</span>}</td>
+                      <td>{p.redeemsCount}</td>
+                      <td className="muted" style={{ fontSize: 11 }}>
+                        {p.expiresAt ? new Date(p.expiresAt).toLocaleString("en-US", { timeZone: "America/Puerto_Rico", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          }
         </>
       )}
     </div>

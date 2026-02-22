@@ -60,6 +60,7 @@ export default function AdminUsers() {
   const [filter, setFilter] = useState("");
   const [form, setForm] = useState({ username: "", firstName: "", lastName: "", email: "", password: "", role: "VENUE" });
   const [banFormId, setBanFormId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   async function load() {
     const r = await fetch("/api/admin/users");
@@ -71,16 +72,28 @@ export default function AdminUsers() {
 
   async function create() {
     setMsg("");
-    const r = await fetch("/api/admin/users", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    const j = await r.json();
-    if (!r.ok) { setMsg(j.error || "Failed"); return; }
-    setMsg(`User created (ID: ${j.userId}).`);
-    setForm({ username: "", firstName: "", lastName: "", email: "", password: "", role: "VENUE" });
-    load();
+    if (!form.username.trim()) { setMsg("Username is required."); return; }
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(form.username)) { setMsg("Username: 3-20 chars, letters/numbers/underscore only."); return; }
+    if (!form.firstName.trim() || !form.lastName.trim()) { setMsg("First and last name are required."); return; }
+    if (!form.email.trim()) { setMsg("Email is required."); return; }
+    if (form.password.length < 8) { setMsg("Password must be at least 8 characters."); return; }
+    setCreating(true);
+    try {
+      const r = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const j = await r.json();
+      if (!r.ok) { setMsg(j.error || "Failed to create user."); return; }
+      setMsg(`✓ User created (ID: ${j.userId}).`);
+      setForm({ username: "", firstName: "", lastName: "", email: "", password: "", role: "VENUE" });
+      load();
+    } catch {
+      setMsg("Network error — please try again.");
+    } finally {
+      setCreating(false);
+    }
   }
 
   async function unban(id: string) {
@@ -129,7 +142,9 @@ export default function AdminUsers() {
         </div>
         <label>Password (min 8 chars)</label>
         <input type="password" value={form.password} onChange={e => setF("password", e.target.value)} autoComplete="new-password" />
-        <button className="btn" style={{ marginTop: 12 }} onClick={create}>Create</button>
+        <button className="btn" style={{ marginTop: 12 }} onClick={create} disabled={creating}>
+          {creating ? "Creating…" : "Create user"}
+        </button>
       </div>
 
       <div style={{ marginBottom: 12 }}>

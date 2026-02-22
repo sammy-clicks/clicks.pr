@@ -14,12 +14,22 @@ export async function GET() {
 
 const PatchSchema = z.object({
   id: z.string(),
+  defaultAlcoholStartMins:  z.number().int().min(0).max(24*60).optional(),
   defaultAlcoholCutoffMins: z.number().int().min(0).max(24*60).optional(),
+  monStartMins:  z.number().int().min(0).max(24*60).nullable().optional(),
   monCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  tueStartMins:  z.number().int().min(0).max(24*60).nullable().optional(),
   tueCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  wedStartMins:  z.number().int().min(0).max(24*60).nullable().optional(),
+  wedCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  thuStartMins:  z.number().int().min(0).max(24*60).nullable().optional(),
   thuCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  friStartMins:  z.number().int().min(0).max(24*60).nullable().optional(),
   friCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  satStartMins:  z.number().int().min(0).max(24*60).nullable().optional(),
   satCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
+  sunStartMins:  z.number().int().min(0).max(24*60).nullable().optional(),
+  sunCutoffMins: z.number().int().min(0).max(24*60).nullable().optional(),
 });
 
 export async function PATCH(req: Request) {
