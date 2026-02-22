@@ -92,17 +92,17 @@ export async function GET(req: Request) {
       orderBy: { _count: { userId: "desc" } },
       take: 10,
     }),
-    // For revenue commission calculations (all-time totals)
+    // For revenue commission calculations (filtered to selected time window)
     prisma.order.findMany({
-      where: { status: "COMPLETED" },
+      where: { status: "COMPLETED", completedAt: { gte: rangeStart } },
       select: { totalCents: true, completedAt: true },
     }),
     prisma.redemption.findMany({
-      where: { paidCents: { gt: 0 } },
+      where: { paidCents: { gt: 0 }, createdAt: { gte: rangeStart } },
       select: { paidCents: true, createdAt: true },
     }),
     prisma.subscriptionPayment.findMany({
-      where: { status: "PAID" },
+      where: { status: "PAID", paidAt: { gte: rangeStart } },
       select: { amountCents: true, paidAt: true },
     }),
     // Active promotions for admin overview

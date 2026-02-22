@@ -282,8 +282,11 @@ export default function VenuesAdmin() {
                 <div className="row" style={{ marginTop: 8 }}>
                   <button className="btn sm secondary" onClick={() => startEdit(v)}>Edit</button>
                   <button className="btn sm secondary" onClick={() => setPlan(v.id, v.plan === "FREE" ? "PRO" : "FREE")}>
-                    {v.plan === "FREE" ? "→ PRO" : "→ FREE"}
+                    {v.plan === "FREE" ? "-> PRO" : "-> FREE"}
                   </button>
+                  <a href={`/admin/venues/${v.id}`}>
+                    <button className="btn sm secondary">Finances</button>
+                  </a>
                 </div>
               </>
             )}

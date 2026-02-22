@@ -24,7 +24,7 @@ function timeToMins(t: string): number | null {
   return h * 60 + m;
 }
 function fmt(t: string) {
-  if (!t) return "â€”";
+  if (!t) return "--";
   const [h, m] = t.split(":").map(Number);
   const suffix = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 || 12;
@@ -32,11 +32,11 @@ function fmt(t: string) {
 }
 
 export default function Municipalities() {
-  const [data, setData]       = useState<any>(null);
-  const [msg, setMsg]         = useState("");
-  const [editing, setEditing] = useState<Record<string, Record<string, string>>>({});
+  const [data, setData]         = useState<any>(null);
+  const [msg, setMsg]           = useState("");
+  const [editing, setEditing]   = useState<Record<string, Record<string, string>>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [search, setSearch]   = useState("");
+  const [search, setSearch]     = useState("");
 
   async function load() {
     const r = await fetch("/api/admin/municipalities");
@@ -72,7 +72,7 @@ export default function Municipalities() {
     });
     const j = await r.json();
     if (!r.ok) { setMsg(j.error || "Failed"); return; }
-    setMsg(`âœ“ Saved ${name}.`);
+    setMsg(`Saved ${name}.`);
     setEditing(p => { const c = { ...p }; delete c[id]; return c; });
     load();
   }
@@ -81,20 +81,20 @@ export default function Municipalities() {
     !search || m.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  if (!data) return <div className="container"><Nav role="admin" /><p className="muted">Loadingâ€¦</p></div>;
+  if (!data) return <div className="container"><Nav role="admin" /><p className="muted">Loading...</p></div>;
 
   return (
     <div className="container">
       <div className="header">
         <h2>Municipalities ({data.items.length})</h2>
-        {msg && <span className="muted" style={{ color: msg.startsWith("âœ“") ? "#6f6" : "#f66" }}>{msg}</span>}
+        {msg && <span className="muted" style={{ color: msg.startsWith("Saved") ? "#6f6" : "#f66" }}>{msg}</span>}
       </div>
       <Nav role="admin" />
 
       <input
         value={search}
         onChange={e => setSearch(e.target.value)}
-        placeholder="Filter municipalitiesâ€¦"
+        placeholder="Filter municipalities..."
         style={{ maxWidth: 300, marginBottom: 16 }}
       />
 
@@ -107,13 +107,12 @@ export default function Municipalities() {
 
           return (
             <div key={m.id} className="card" style={{ padding: "14px 16px" }}>
-              {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+              {/* Header */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <strong style={{ flex: 1, minWidth: 160, fontSize: 15 }}>{m.name}</strong>
 
-                {/* Default window badge */}
                 <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
-                  Default: {fmt(defStart)} â†’ {fmt(defCutoff)}
+                  Default: {fmt(defStart)} {""} {fmt(defCutoff)}
                 </span>
 
                 <button
@@ -121,7 +120,7 @@ export default function Municipalities() {
                   style={{ fontSize: 11 }}
                   onClick={() => setExpanded(e => ({ ...e, [m.id]: !e[m.id] }))}
                 >
-                  {open ? "â–² Close" : "â–¼ Edit"}
+                  {open ? "Close" : "Edit"}
                 </button>
 
                 {dirty && (
@@ -131,7 +130,7 @@ export default function Municipalities() {
                 )}
               </div>
 
-              {/* â”€â”€ Expanded editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+              {/* Expanded editor */}
               {open && (
                 <div style={{ marginTop: 16 }}>
                   {/* Default row */}
@@ -149,14 +148,14 @@ export default function Municipalities() {
                         <span style={{ fontSize: 11, opacity: 0.6 }}>Start serving</span>
                         <input type="time" value={defStart} style={{ width: 110 }}
                           onChange={e => setField(m.id, "defaultAlcoholStartMins", e.target.value)} />
-                        <div style={{ display: "flex", gap: 4 }}>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                           {["06:00","07:00","08:00","18:00","19:00","20:00","21:00"].map(t => (
                             <button key={t} className="btn sm secondary" style={{ fontSize: 10, padding: "2px 5px" }}
                               onClick={() => setField(m.id, "defaultAlcoholStartMins", t)}>{t.slice(0,2)}h</button>
                           ))}
                         </div>
                       </div>
-                      <span style={{ fontSize: 18, opacity: 0.3, alignSelf: "center", marginTop: 12 }}>â†’</span>
+                      <span style={{ fontSize: 18, opacity: 0.3, alignSelf: "center", marginTop: 12 }}>{">"}</span>
                       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                         <span style={{ fontSize: 11, opacity: 0.6 }}>Alcohol cutoff</span>
                         <input type="time" value={defCutoff} style={{ width: 110 }}
@@ -171,10 +170,10 @@ export default function Municipalities() {
                     </div>
                   </div>
 
-                  {/* Per-day grid */}
+                  {/* Per-day overrides */}
                   <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, opacity: 0.7 }}>
                     PER-DAY OVERRIDES
-                    <span style={{ fontWeight: 400, marginLeft: 6 }}>â€” leave blank to use default</span>
+                    <span style={{ fontWeight: 400, marginLeft: 6 }}>- leave blank to use default</span>
                   </div>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 460 }}>
@@ -195,13 +194,13 @@ export default function Municipalities() {
                             <tr key={label} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                               <td style={{ padding: "6px 8px", fontWeight: 600 }}>{label}</td>
                               <td style={{ padding: "4px 8px" }}>
-                                <input type="time" value={sv} placeholder="â€”"
+                                <input type="time" value={sv}
                                   style={{ width: 110 }}
                                   onChange={e => setField(m.id, startKey, e.target.value)} />
                               </td>
-                              <td style={{ textAlign: "center", opacity: 0.3 }}>â†’</td>
+                              <td style={{ textAlign: "center", opacity: 0.3 }}>{">"}</td>
                               <td style={{ padding: "4px 8px" }}>
-                                <input type="time" value={cv} placeholder="â€”"
+                                <input type="time" value={cv}
                                   style={{ width: 110 }}
                                   onChange={e => setField(m.id, cutoffKey, e.target.value)} />
                               </td>
