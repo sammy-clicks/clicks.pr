@@ -100,7 +100,7 @@ export default function Municipalities() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {filtered.map((m: any) => {
-          const defStart  = get(m.id, "defaultAlcoholStartMins",  m.defaultAlcoholStartMins,  1140);
+          const defStart  = get(m.id, "defaultAlcoholStartMins",  m.defaultAlcoholStartMins,  360);
           const defCutoff = get(m.id, "defaultAlcoholCutoffMins", m.defaultAlcoholCutoffMins, 120);
           const dirty = isDirty(m.id);
           const open  = expanded[m.id];
@@ -150,7 +150,7 @@ export default function Municipalities() {
                         <input type="time" value={defStart} style={{ width: 110 }}
                           onChange={e => setField(m.id, "defaultAlcoholStartMins", e.target.value)} />
                         <div style={{ display: "flex", gap: 4 }}>
-                          {["18:00","19:00","20:00","21:00"].map(t => (
+                          {["06:00","07:00","08:00","18:00","19:00","20:00","21:00"].map(t => (
                             <button key={t} className="btn sm secondary" style={{ fontSize: 10, padding: "2px 5px" }}
                               onClick={() => setField(m.id, "defaultAlcoholStartMins", t)}>{t.slice(0,2)}h</button>
                           ))}

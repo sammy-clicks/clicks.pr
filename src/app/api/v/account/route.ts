@@ -19,6 +19,7 @@ export async function GET() {
         select: {
           id: true, name: true, type: true, description: true, address: true,
           venueImageUrl: true, isEnabled: true, pausedAt: true, plan: true,
+          subscriptionStartedAt: true, subscriptionEndsAt: true, boostActiveUntil: true,
         },
       },
     },

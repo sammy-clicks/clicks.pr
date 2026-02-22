@@ -23,7 +23,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   const since = new Date(Date.now() - 120 * 60 * 1000);
   const active = await prisma.checkIn.count({ where: { venueId: venue.id, startAt: { gte: since }, endAt: null } });
-  const crowdLevel = Math.min(10, Math.max(0, Math.ceil(active / 2)));
+  const boostBonus = venue.boostActiveUntil && venue.boostActiveUntil > new Date() ? 2 : 0;
+  const crowdLevel = Math.min(10, Math.max(0, Math.ceil(active / 2) + boostBonus));
+  const boostActive = boostBonus > 0;
 
   return NextResponse.json({
     venue: {
@@ -39,6 +41,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     alcoholCutoffMins: cutoff,
     alcoholBlocked,
     crowdLevel,
+    boostActive,
     menu: venue.menuItems.map(m => ({
       id: m.id,
       name: m.name,

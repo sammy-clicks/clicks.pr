@@ -51,6 +51,7 @@ export async function GET(req: Request) {
   const [
     totalUsers,
     totalVenues,
+    proVenues,
     totalOrders,
     activeNow,
     allSignups,
@@ -67,6 +68,7 @@ export async function GET(req: Request) {
   ] = await Promise.all([
     prisma.user.count({ where: { role: "USER" } }),
     prisma.venue.count(),
+    prisma.venue.count({ where: { plan: "PRO" } }),
     prisma.order.count(),
     prisma.checkIn.count({ where: { endAt: null, startAt: { gte: since } } }),
     // Raw events for daily breakdown
@@ -209,7 +211,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     days: allTime ? 0 : days,
     allTime,
-    totals: { users: totalUsers, venues: totalVenues, orders: totalOrders, activeNow },
+    totals: { users: totalUsers, venues: totalVenues, proVenues, orders: totalOrders, activeNow },
     revenue: {
       // Window-based gross (for backward compat)
       totalCents: revenueTotal,

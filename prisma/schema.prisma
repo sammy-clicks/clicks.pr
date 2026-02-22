@@ -92,7 +92,7 @@ model Municipality {
   name        String   @unique
   // default alcohol service window stored as minutes since midnight local
   // e.g. startMins=1140 (19:00 = 7pm), cutoffMins=120 (2:00am = next day)
-  defaultAlcoholStartMins  Int  @default(1140) // 7:00pm default start
+  defaultAlcoholStartMins  Int  @default(360)  // 6:00am default start
   defaultAlcoholCutoffMins Int  @default(120)  // 2:00am default cutoff
   // per-day overrides — null means use default above
   monStartMins  Int? // Monday start
@@ -133,6 +133,7 @@ model Venue {
   plan         VenuePlan @default(FREE)
   subscriptionStartedAt DateTime?
   subscriptionEndsAt    DateTime?
+  boostActiveUntil      DateTime?  // set to now+1h when Boost Hour activated
 
   municipalityId String
   municipality   Municipality @relation(fields: [municipalityId], references: [id])

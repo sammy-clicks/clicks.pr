@@ -86,6 +86,7 @@ export default function AdminAnalytics() {
           <div className="row">
             <Stat label="Total users"    value={data.totals.users} />
             <Stat label="Venues"         value={data.totals.venues} />
+            <Stat label="PRO venues"     value={data.totals.proVenues} sub="active subscriptions" />
             <Stat label="Total orders"   value={data.totals.orders} />
             <Stat label="Active now"     value={data.totals.activeNow} sub="checked-in last 2h" />
           </div>

@@ -81,7 +81,7 @@ export async function POST(req: Request) {
           stripeId: "dev_sim_" + Date.now(),
         },
       });
-      return NextResponse.json({ ok: true, simulated: true, redirectUrl: "/v/plan?upgraded=1" });
+      return NextResponse.json({ ok: true, simulated: true, redirectUrl: "/v/account?upgraded=1" });
     }
 
     const checkoutSession = await stripe.checkout.sessions.create({
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       payment_method_types: ["card"],
       customer_email: user.email ?? undefined,
       line_items: [{ price: PRO_MONTHLY_PRICE_ID, quantity: 1 }],
-      success_url: `${appUrl}/v/plan?upgraded=1`,
+      success_url: `${appUrl}/v/account?upgraded=1`,
       cancel_url: `${appUrl}/v/plan?cancelled=1`,
       metadata: { venueId: venue.id },
     });

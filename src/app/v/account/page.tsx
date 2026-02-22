@@ -28,6 +28,10 @@ export default function VenueAccount() {
   const [showDelete, setShowDelete]     = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
 
+  // Boost + Welcome modals
+  const [showBoostConfirm, setShowBoostConfirm] = useState(false);
+  const [showWelcome, setShowWelcome]           = useState(false);
+
   async function load() {
     const r = await fetch("/api/v/account");
     const j = await r.json();
@@ -41,6 +45,20 @@ export default function VenueAccount() {
     }
   }
   useEffect(() => { load(); }, []);
+
+  // Show welcome popup if arrived from upgrade flow
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgraded") === "1" && !sessionStorage.getItem("welcome_dismissed")) {
+      setShowWelcome(true);
+    }
+  }, []);
+
+  function dismissWelcome() {
+    sessionStorage.setItem("welcome_dismissed", "1");
+    setShowWelcome(false);
+    window.history.replaceState({}, "", "/v/account");
+  }
 
   function setMsg2(text: string, ok = true) { setMsg({ text, ok }); }
 
@@ -153,6 +171,45 @@ export default function VenueAccount() {
     const r = await fetch("/api/v/account", { method: "DELETE" });
     if (r.ok) window.location.href = "/auth/login";
     else { const j = await r.json(); setMsg2(j.error || "Failed", false); }
+  }
+
+  // ── Upgrade to PRO ────────────────────────────────────────────
+  async function handleUpgrade() {
+    setSaving(true); setMsg2("");
+    const r = await fetch("/api/v/plan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "checkout" }),
+    });
+    const j = await r.json();
+    setSaving(false);
+    if (!r.ok) { setMsg2(j.error || "Checkout failed.", false); return; }
+    if (j.simulated)   window.location.href = j.redirectUrl ?? "/v/account?upgraded=1";
+    else if (j.checkoutUrl) window.location.href = j.checkoutUrl;
+  }
+
+  // ── Manage subscription (Stripe portal) ──────────────────────
+  async function handlePortal() {
+    setSaving(true); setMsg2("");
+    const r = await fetch("/api/v/plan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "portal" }),
+    });
+    const j = await r.json();
+    setSaving(false);
+    if (!r.ok) { setMsg2(j.error || "Failed to open billing portal.", false); return; }
+    if (j.portalUrl) window.location.href = j.portalUrl;
+  }
+
+  // ── Activate Boost Hour ───────────────────────────────────────
+  async function activateBoost() {
+    setSaving(true); setMsg2("");
+    const r = await fetch("/api/v/boost", { method: "POST" });
+    const j = await r.json();
+    setSaving(false);
+    setShowBoostConfirm(false);
+    if (!r.ok) { setMsg2(j.error || "Failed to activate Boost Hour.", false); return; }
+    setMsg2("Boost Hour activated. Your venue will receive increased visibility for the next 60 minutes.");
+    load();
   }
 
   if (!user) return <div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>;
@@ -343,6 +400,42 @@ export default function VenueAccount() {
               </button>
               <button className="btn secondary" onClick={() => setShowPauseModal(false)}>Cancel</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── Boost confirm modal ──────────────────────────────── */}
+      {showBoostConfirm && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1002, padding: 16,
+        }}>
+          <div style={{ background: "var(--surface,#1a1a2e)", borderRadius: 14, padding: 28, maxWidth: 420, width: "100%" }}>
+            <h3 style={{ margin: "0 0 12px" }}>Activate Boost Hour?</h3>
+            <p className="muted" style={{ marginBottom: 20, lineHeight: 1.6 }}>
+              While Boost Hour is active, your venue receives higher attention and visibility within
+              the app for <strong>60 minutes</strong>. You can activate this once per session.
+            </p>
+            <div className="row" style={{ gap: 10 }}>
+              <button className="btn" onClick={activateBoost} disabled={saving}>Activate</button>
+              <button className="btn secondary" onClick={() => setShowBoostConfirm(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Welcome to PRO modal ─────────────────────────────── */}
+      {showWelcome && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1001, padding: 16,
+        }}>
+          <div style={{ background: "var(--surface,#1a1a2e)", borderRadius: 14, padding: 32, maxWidth: 400, width: "100%", textAlign: "center" }}>
+            <h2 style={{ margin: "0 0 12px" }}>Welcome to PRO</h2>
+            <p style={{ lineHeight: 1.7, marginBottom: 24 }}>
+              Your venue has been upgraded. You can now create promotions, activate Boost Hour,
+              and access all PRO features from your account.
+            </p>
+            <button className="btn" onClick={dismissWelcome}>Get started</button>
           </div>
         </div>
       )}
