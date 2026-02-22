@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "node scripts/predeploy_check.js",
-    "build": "npx prisma@5.22.0 generate && next build",
+    "build": "npm ci && npx prisma@5.22.0 generate && next build",
     "postinstall": "node scripts/postinstall.js",
     "render:build": "npm run db:generate && npm run build",
     "start": "next start",
