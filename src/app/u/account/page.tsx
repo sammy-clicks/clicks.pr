@@ -13,18 +13,28 @@ export default function AccountPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [saving, setSaving] = useState(false);
+  const [ghost, setGhost] = useState<boolean | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
-    const r = await fetch("/api/me");
-    const j = await r.json();
-    if (j.user) {
-      setUser(j.user);
-      setAvatarUrl(j.user.avatarUrl ?? "");
-      setPaused(!!j.user.pausedAt);
+    const [meR, ghostR] = await Promise.all([
+      fetch("/api/me").then(r => r.json()),
+      fetch("/api/me/ghost").then(r => r.json()),
+    ]);
+    if (meR.user) {
+      setUser(meR.user);
+      setAvatarUrl(meR.user.avatarUrl ?? "");
+      setPaused(!!meR.user.pausedAt);
     }
+    setGhost(ghostR.ghostMode ?? false);
   }
   useEffect(() => { load(); }, []);
+
+  async function toggleGhost() {
+    const r = await fetch("/api/me/ghost", { method: "POST" });
+    const j = await r.json();
+    if (r.ok) setGhost(j.ghostMode);
+  }
 
   function setMsg2(text: string, ok = true) { setMsg({ text, ok }); }
 
@@ -103,9 +113,9 @@ export default function AccountPage() {
       ? <img src={user.avatarUrl} alt="avatar" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }} />
       : <div style={{
           width: size, height: size, borderRadius: "50%",
-          background: "var(--accent, #9b5de5)", display: "flex",
+          background: "var(--brand)", display: "flex",
           alignItems: "center", justifyContent: "center",
-          fontSize: size * 0.4, fontWeight: 700, color: "#fff",
+          fontSize: size * 0.4, fontWeight: 700, color: "var(--ink)",
         }}>
           {user.username[0].toUpperCase()}
         </div>
@@ -117,7 +127,7 @@ export default function AccountPage() {
       <Nav role="u" />
 
       {msg.text && (
-        <p className="muted" style={{ color: msg.ok ? "var(--green, #0f0)" : "var(--error, #f66)", marginBottom: 12 }}>
+        <p className="muted" style={{ color: msg.ok ? "var(--success, #059669)" : "var(--danger, #dc2626)", marginBottom: 12 }}>
           {msg.text}
         </p>
       )}
@@ -147,6 +157,7 @@ export default function AccountPage() {
               onChange={handleFileChange}
             />
           </div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
           <div>
             <div><strong>@{user.username}</strong></div>
             <div className="muted">{user.firstName} {user.lastName}</div>
@@ -157,6 +168,19 @@ export default function AccountPage() {
               onClick={() => fileRef.current?.click()}
             >Change photo</button>
           </div>
+          {/* Ghost mode toggle */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, paddingTop: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink-soft)" }}>Ghost mode</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <label className="toggle-switch" title={ghost ? "Ghost ON — you are hidden" : "Ghost OFF — you are visible"}>
+                <input type="checkbox" checked={!!ghost} onChange={toggleGhost} disabled={ghost === null} />
+                <span className="toggle-track" />
+              </label>
+              <span className="muted" style={{ fontSize: 12 }}>{ghost ? "ON" : "OFF"}</span>
+            </div>
+            <span className="muted" style={{ fontSize: 11, maxWidth: 160 }}>Hides you from leaderboard & buddy radar.</span>
+          </div>
+        </div>
         </div>
         {avatarUrl && avatarUrl !== (user.avatarUrl ?? "") && (
           <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>New photo selected — save to apply.</p>
@@ -194,8 +218,8 @@ export default function AccountPage() {
       </div>
 
       {/* ── Danger zone ─────────────────────────────────────── */}
-      <div className="card" style={{ border: "1px solid var(--error, #f66)", marginBottom: 20 }}>
-        <h3 style={{ margin: "0 0 8px", color: "var(--error, #f66)" }}>Danger zone</h3>
+      <div className="card" style={{ border: "1px solid var(--danger, #dc2626)", marginBottom: 20 }}>
+        <h3 style={{ margin: "0 0 8px", color: "var(--danger, #dc2626)" }}>Danger zone</h3>
         {!showDelete ? (
           <button className="btn danger" onClick={() => setShowDelete(true)}>Delete account</button>
         ) : (

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Nav({ role }: { role: "u" | "v" | "admin" }) {
   const path = usePathname();
@@ -33,7 +34,7 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
         ];
 
   return (
-    <nav className="nav">
+    <nav className="nav" style={{ alignItems: "center" }}>
       {links.map(([href, label]) => (
         <Link
           key={href}
@@ -44,6 +45,9 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
         </Link>
       ))}
       {role === "admin" && <a className="badge" href="/api/auth/logout">Logout</a>}
+      <span style={{ marginLeft: "auto" }}>
+        <ThemeToggle />
+      </span>
     </nav>
   );
 }

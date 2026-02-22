@@ -10,16 +10,11 @@ export default function Wallet() {
   const [toEmail, setToEmail] = useState("");
   const [sendAmt, setSendAmt] = useState("10.00");
   const [sendMemo, setSendMemo] = useState("");
-  const [ghost, setGhost] = useState<boolean | null>(null);
   const [msg, setMsg] = useState("");
 
   async function load() {
-    const [walletR, ghostR] = await Promise.all([
-      fetch("/api/wallet").then(r => r.json()),
-      fetch("/api/me/ghost").then(r => r.json()),
-    ]);
+    const walletR = await fetch("/api/wallet").then(r => r.json());
     setData(walletR);
-    setGhost(ghostR.ghostMode ?? false);
   }
 
   useEffect(() => { load(); }, []);
@@ -51,12 +46,6 @@ export default function Wallet() {
     setMsg("Sent!");
     setToEmail(""); setSendMemo("");
     load();
-  }
-
-  async function toggleGhost() {
-    const r = await fetch("/api/me/ghost", { method: "POST" });
-    const j = await r.json();
-    if (r.ok) setGhost(j.ghostMode);
   }
 
   if (!data) return <div className="container"><Nav role="u" /><p className="muted">Loading…</p></div>;
@@ -100,19 +89,6 @@ export default function Wallet() {
           <button className="btn" style={{ marginTop: 10 }} onClick={transfer}>Send</button>
         </div>
 
-        {/* Ghost mode */}
-        <div className="card" style={{ flex: "1 1 200px" }}>
-          <h3 style={{ margin: "0 0 10px" }}>Privacy</h3>
-          <p className="muted">Ghost mode hides you from the leaderboard and buddy location.</p>
-          <button
-            className={`btn ${ghost ? "" : "secondary"}`}
-            style={{ marginTop: 10 }}
-            onClick={toggleGhost}
-            disabled={ghost === null}
-          >
-            {ghost ? "👻 Ghost ON" : "Ghost OFF"}
-          </button>
-        </div>
       </div>
 
       <h3 style={{ marginTop: 20 }}>Transactions</h3>
