@@ -1,14 +1,25 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-function isAlcoholBlocked(cutoffMins: number): boolean {
-  // PR is UTC-4 (no DST)
+const DAY_PREFIXES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+function prMinutes(): number {
   const prMs = Date.now() - 4 * 60 * 60 * 1000;
-  const prDate = new Date(prMs);
-  const mins = prDate.getUTCHours() * 60 + prDate.getUTCMinutes();
-  return mins >= cutoffMins && mins < 720; // blocked from cutoff until noon
+  const d = new Date(prMs);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+}
+
+function prDayOfWeek(): number {
+  const prMs = Date.now() - 4 * 60 * 60 * 1000;
+  return new Date(prMs).getUTCDay();
+}
+
+function isAlcoholAllowed(startMins: number, cutoffMins: number): boolean {
+  const mins = prMinutes();
+  if (startMins <= cutoffMins) return mins >= startMins && mins < cutoffMins;
+  return mins >= startMins || mins < cutoffMins;
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
@@ -18,8 +29,14 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   });
   if (!venue) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const cutoff = venue.alcoholCutoffOverrideMins ?? venue.municipality.defaultAlcoholCutoffMins;
-  const alcoholBlocked = isAlcoholBlocked(cutoff);
+  // Resolve today's serving window using per-day overrides
+  const dow = prDayOfWeek();
+  const prefix = DAY_PREFIXES[dow];
+  const muni = venue.municipality as any;
+  const startMins  = muni[`${prefix}StartMins`]  ?? muni.defaultAlcoholStartMins;
+  const muniCutoff = muni[`${prefix}CutoffMins`] ?? muni.defaultAlcoholCutoffMins;
+  const cutoffMins = venue.alcoholCutoffOverrideMins ?? muniCutoff;
+  const alcoholBlocked = !isAlcoholAllowed(startMins, cutoffMins);
 
   const since = new Date(Date.now() - 120 * 60 * 1000);
   const active = await prisma.checkIn.count({ where: { venueId: venue.id, startAt: { gte: since }, endAt: null } });
@@ -38,7 +55,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       lng: venue.lng,
       plan: venue.plan,
     },
-    alcoholCutoffMins: cutoff,
+    alcoholStartMins: startMins,
+    alcoholCutoffMins: cutoffMins,
     alcoholBlocked,
     crowdLevel,
     boostActive,

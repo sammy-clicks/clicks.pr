@@ -7,11 +7,41 @@ export const dynamic = 'force-dynamic';
 
 const SEND_LIMIT_CENTS = 50000; // $500/day
 
-function isAlcoholBlocked(cutoffMins: number): boolean {
+// Returns current time in PR (UTC-4) as minutes since midnight
+function prMinutes(): number {
   const prMs = Date.now() - 4 * 60 * 60 * 1000;
   const prDate = new Date(prMs);
-  const mins = prDate.getUTCHours() * 60 + prDate.getUTCMinutes();
-  return mins >= cutoffMins && mins < 720;
+  return prDate.getUTCHours() * 60 + prDate.getUTCMinutes();
+}
+
+// Returns current day of week in PR time (0=Sun .. 6=Sat)
+function prDayOfWeek(): number {
+  const prMs = Date.now() - 4 * 60 * 60 * 1000;
+  return new Date(prMs).getUTCDay();
+}
+
+const DAY_PREFIXES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
+
+// Get effective start/cutoff mins for today from municipality row
+function getDayWindow(muni: Record<string, unknown>, dayOfWeek: number) {
+  const prefix = DAY_PREFIXES[dayOfWeek];
+  const startMins  = (muni[`${prefix}StartMins`]  as number | null) ?? (muni.defaultAlcoholStartMins  as number);
+  const cutoffMins = (muni[`${prefix}CutoffMins`] as number | null) ?? (muni.defaultAlcoholCutoffMins as number);
+  return { startMins, cutoffMins };
+}
+
+// Returns true when alcohol service is currently available.
+// Handles overnight windows (startMins > cutoffMins means window crosses midnight).
+function isAlcoholAllowed(startMins: number, cutoffMins: number): boolean {
+  const mins = prMinutes();
+  if (startMins <= cutoffMins) {
+    // Same-day window e.g. 10:00 to 17:00
+    return mins >= startMins && mins < cutoffMins;
+  } else {
+    // Overnight window e.g. 18:00 → 02:00 (start=1080, cutoff=120)
+    // Also handles daytime-start windows like 06:00 → 02:00 that cover most of the day
+    return mins >= startMins || mins < cutoffMins;
+  }
 }
 
 export async function GET() {
@@ -54,7 +84,11 @@ export async function POST(req: Request) {
     include: { municipality: true },
   });
   if (!venue) return NextResponse.json({ error: "Venue not found" }, { status: 404 });
-  const cutoffMins = venue.alcoholCutoffOverrideMins ?? venue.municipality.defaultAlcoholCutoffMins;
+
+  // Resolve serving window for today (per-day override takes priority over municipality default)
+  const { startMins, cutoffMins: muniCutoff } = getDayWindow(venue.municipality as any, prDayOfWeek());
+  // Venue can override the cutoff but not the start (start is always from municipality)
+  const cutoffMins = venue.alcoholCutoffOverrideMins ?? muniCutoff;
 
   // Resolve menu items
   const menuItemIds = body.items.map(i => i.menuItemId);
@@ -64,10 +98,10 @@ export async function POST(req: Request) {
   if (menuItems.length !== menuItemIds.length)
     return NextResponse.json({ error: "One or more items are unavailable." }, { status: 400 });
 
-  // Alcohol cutoff check
+  // Alcohol window check — block if ordered outside the municipality's serving window
   const wantsAlcohol = menuItems.some(m => m.isAlcohol && body.items.find(i => i.menuItemId === m.id));
-  if (wantsAlcohol && isAlcoholBlocked(cutoffMins))
-    return NextResponse.json({ error: "Alcohol service has ended for this venue." }, { status: 403 });
+  if (wantsAlcohol && !isAlcoholAllowed(startMins, cutoffMins))
+    return NextResponse.json({ error: "Alcohol service is not available at this time." }, { status: 403 });
 
   // Compute total
   const itemMap = new Map(menuItems.map(m => [m.id, m]));
