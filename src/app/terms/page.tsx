@@ -1,4 +1,4 @@
-export default function Terms() {
+﻿export default function Terms() {
   return (
     <div className="auth-bg" style={{ justifyContent: "flex-start", alignItems: "center" }}>
       <div style={{
@@ -13,7 +13,7 @@ export default function Terms() {
 
         <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, margin: "0 0 6px" }}>Terms of Service</h1>
         <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: "0 0 40px" }}>
-          Effective date: February 22, 2026 · Clicks PR LLC
+          Effective date: February 22, 2026 Â· Clicks PR LLC
         </p>
 
         {[
@@ -27,7 +27,7 @@ export default function Terms() {
           },
           {
             title: "3. User Accounts",
-            body: `You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. You agree to notify us immediately at support@clickspr.com of any unauthorized use.`,
+            body: `You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. You agree to notify us immediately at nightclickspr@gmail.com of any unauthorized use.`,
           },
           {
             title: "4. Wallet & Transactions",
@@ -43,7 +43,7 @@ export default function Terms() {
           },
           {
             title: "7. Suspension & Termination",
-            body: `Clicks PR reserves the right to suspend or permanently terminate your account at its sole discretion for violations of these Terms, without prior notice. Suspended users may contact support@clickspr.com to appeal.`,
+            body: `Clicks PR reserves the right to suspend or permanently terminate your account at its sole discretion for violations of these Terms, without prior notice. Suspended users may contact nightclickspr@gmail.com to appeal.`,
           },
           {
             title: "8. Disclaimers",
@@ -63,7 +63,7 @@ export default function Terms() {
           },
           {
             title: "12. Contact",
-            body: `Questions about these Terms? Contact us at support@clickspr.com.`,
+            body: `Questions about these Terms? Contact us at nightclickspr@gmail.com.`,
           },
         ].map(s => (
           <div key={s.title} style={{ marginBottom: 28 }}>
@@ -73,7 +73,7 @@ export default function Terms() {
         ))}
 
         <p style={{ marginTop: 48, fontSize: 12, color: "rgba(255,255,255,0.18)", textAlign: "center" }}>
-          © 2026 Clicks PR LLC — All rights reserved.
+          Â© 2026 Clicks PR LLC â€” All rights reserved.
         </p>
       </div>
     </div>

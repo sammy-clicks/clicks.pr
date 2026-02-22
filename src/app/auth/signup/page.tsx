@@ -1,23 +1,23 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 
-/* ── Legal content ───────────────────────────────────────────────── */
+/* â”€â”€ Legal content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const TERMS_SECTIONS = [
   {
     title: "1. Acceptance of Terms",
     body: `By checking the agreement box and creating an account on Clicks ("Platform", "Service"), you acknowledge that you have read, understood, and agree to be legally bound by these Terms of Service. If you do not agree, you may not use the Service. These Terms constitute a binding agreement between you and Clicks PR LLC under the laws of the Commonwealth of Puerto Rico and applicable U.S. federal law.`,
   },
   {
-    title: "2. Age Requirement — 18+ Only",
+    title: "2. Age Requirement â€” 18+ Only",
     body: `You must be at least 18 years of age to register or use the Service. In accordance with Puerto Rico law, the legal adult age is 18. By creating an account you represent and warrant that you are 18 years of age or older. Accounts found to belong to minors will be permanently terminated immediately and any wallet balance forfeited pending legal review. Providing false age information constitutes fraud.`,
   },
   {
     title: "3. User Accounts & Responsibility",
-    body: `You are solely responsible for maintaining the confidentiality of your login credentials and for all activity conducted under your account. You agree to notify Clicks PR immediately at support@clickspr.com upon discovering any unauthorized use. Clicks PR is not liable for losses arising from unauthorized access due to your failure to safeguard credentials.`,
+    body: `You are solely responsible for maintaining the confidentiality of your login credentials and for all activity conducted under your account. You agree to notify Clicks PR immediately at nightclickspr@gmail.com upon discovering any unauthorized use. Clicks PR is not liable for losses arising from unauthorized access due to your failure to safeguard credentials.`,
   },
   {
-    title: "4. Intellectual Property — All Rights Reserved",
-    body: `All content, features, functionality, branding, design, source code, graphics, logos, text, and trade names associated with the Clicks platform — including but not limited to the name "Clicks", the Clicks logo, application design, and any original content — are the exclusive intellectual property of Clicks PR LLC and are protected under U.S. copyright law, Puerto Rico law, and applicable international treaties.\n\nYou may NOT copy, reproduce, distribute, modify, create derivative works from, publicly display, transmit, sell, license, or otherwise exploit any part of the Service or its content without express prior written permission from Clicks PR LLC. Unauthorized use constitutes copyright infringement and may result in civil and criminal penalties under 17 U.S.C. § 101 et seq. and P.R. Law No. 55 of 2012.`,
+    title: "4. Intellectual Property â€” All Rights Reserved",
+    body: `All content, features, functionality, branding, design, source code, graphics, logos, text, and trade names associated with the Clicks platform â€” including but not limited to the name "Clicks", the Clicks logo, application design, and any original content â€” are the exclusive intellectual property of Clicks PR LLC and are protected under U.S. copyright law, Puerto Rico law, and applicable international treaties.\n\nYou may NOT copy, reproduce, distribute, modify, create derivative works from, publicly display, transmit, sell, license, or otherwise exploit any part of the Service or its content without express prior written permission from Clicks PR LLC. Unauthorized use constitutes copyright infringement and may result in civil and criminal penalties under 17 U.S.C. Â§ 101 et seq. and P.R. Law No. 55 of 2012.`,
   },
   {
     title: "5. Prohibited Conduct",
@@ -28,7 +28,7 @@ const TERMS_SECTIONS = [
     body: `The in-app wallet is used exclusively for ordering at participating Clicks venues. Clicks PR is not a licensed financial institution or bank. Wallet funds are non-refundable except for verified order cancellations per our refund policy. Fraudulent chargebacks or abuse of the refund system will result in immediate account termination and may be reported to relevant authorities.`,
   },
   {
-    title: "7. Safety — Disclaimer & Monitoring",
+    title: "7. Safety â€” Disclaimer & Monitoring",
     body: `Clicks PR is NOT a public safety company, emergency services provider, or law enforcement agency. We do not guarantee the physical safety of any user at any venue or event. Your personal safety is entirely your own responsibility.\n\nHowever, Clicks PR actively monitors the platform for patterns and content that may indicate: attempted suicide or self-harm; drug or alcohol intoxication or intoxication facilitation; threats of murder, violence, or physical assault; sexual abuse, rape, or non-consensual activity facilitation; domestic abuse or human trafficking indicators.\n\nWhen such patterns are identified, Clicks PR reserves the right to take immediate action including: permanent account suspension, cooperation with the Puerto Rico Police (PRPD), U.S. federal authorities (FBI, DEA), and local emergency services (911). We are legally obligated to report credible threats of harm under Puerto Rico Law No. 246 of 2014 and applicable U.S. law. By using the Service you expressly consent to this monitoring.`,
   },
   {
@@ -37,7 +37,7 @@ const TERMS_SECTIONS = [
   },
   {
     title: "9. Account Suspension & Termination",
-    body: `Clicks PR reserves the right to suspend or permanently terminate any account at its sole discretion, with or without notice, for violation of these Terms or for conduct deemed harmful to users, venues, or the platform. Accounts terminated for safety or intellectual property violations are not eligible for reinstatement. Appeals may be submitted to support@clickspr.com.`,
+    body: `Clicks PR reserves the right to suspend or permanently terminate any account at its sole discretion, with or without notice, for violation of these Terms or for conduct deemed harmful to users, venues, or the platform. Accounts terminated for safety or intellectual property violations are not eligible for reinstatement. Appeals may be submitted to nightclickspr@gmail.com.`,
   },
   {
     title: "10. Disclaimers",
@@ -57,14 +57,14 @@ const TERMS_SECTIONS = [
   },
   {
     title: "14. Contact",
-    body: `Clicks PR LLC · Puerto Rico · support@clickspr.com`,
+    body: `Clicks PR LLC Â· Puerto Rico Â· nightclickspr@gmail.com`,
   },
 ];
 
 const PRIVACY_SECTIONS = [
   {
     title: "1. Information We Collect",
-    body: `We collect: (a) information you provide — name, username, email, birthdate, country, and a securely hashed password; (b) activity data — check-ins, orders, clicks, votes, wallet transactions, messages, and leaderboard entries; (c) technical data — IP addresses, device type, browser, timestamps, and session identifiers for security and fraud prevention.`,
+    body: `We collect: (a) information you provide — name, username, email address, birthdate, country, and a bcrypt hash of your password (we never store your actual password — it cannot be recovered from the hash); (b) activity data — check-ins, orders, clicks, votes, wallet transactions, messages, and leaderboard entries. We do not independently collect or store device type, browser fingerprints, or IP addresses in our database. Our hosting infrastructure (Render) may log standard HTTP request data — including IP addresses and timestamps — as part of normal server operations, outside of Clicks' direct control.`,
   },
   {
     title: "2. How We Use Your Information",
@@ -88,15 +88,15 @@ const PRIVACY_SECTIONS = [
   },
   {
     title: "7. Wallet & Financial Data",
-    body: `Wallet balances and transaction records are stored securely. We do not store payment card numbers — any top-up integrations use PCI-compliant processors. Financial records may be retained for legal and audit compliance.`,
+    body: `Wallet balances and transaction records are stored securely. We do not store payment card numbers â€” any top-up integrations use PCI-compliant processors. Financial records may be retained for legal and audit compliance.`,
   },
   {
     title: "8. Cookies & Local Storage",
     body: `We use one authentication cookie (clicks_token) to maintain your session. We use browser localStorage to persist your active order tracker across page navigations. No third-party advertising or tracking cookies are used.`,
   },
   {
-    title: "9. Children's Privacy — 18+ Only",
-    body: `The Service is strictly prohibited for individuals under 18 years of age. We do not knowingly collect personal data from minors. If we discover a minor has registered, the account will be permanently terminated and the data deleted. To report a minor's account, contact support@clickspr.com immediately.`,
+    title: "9. Children's Privacy â€” 18+ Only",
+    body: `The Service is strictly prohibited for individuals under 18 years of age. We do not knowingly collect personal data from minors. If we discover a minor has registered, the account will be permanently terminated and the data deleted. To report a minor's account, contact nightclickspr@gmail.com immediately.`,
   },
   {
     title: "10. Data Security",
@@ -104,7 +104,7 @@ const PRIVACY_SECTIONS = [
   },
   {
     title: "11. Your Rights",
-    body: `You have the right to access, correct, or request deletion of your personal data. Email support@clickspr.com and we will respond within 30 days. Note: data related to pending legal or law enforcement matters cannot be deleted until those matters are fully resolved.`,
+    body: `You have the right to access, correct, or request deletion of your personal data. Email nightclickspr@gmail.com and we will respond within 30 days. Note: data related to pending legal or law enforcement matters cannot be deleted until those matters are fully resolved.`,
   },
   {
     title: "12. Data Retention",
@@ -116,11 +116,11 @@ const PRIVACY_SECTIONS = [
   },
   {
     title: "14. Contact",
-    body: `Data inquiries: support@clickspr.com · Clicks PR LLC · Puerto Rico`,
+    body: `Data inquiries: nightclickspr@gmail.com Â· Clicks PR LLC Â· Puerto Rico`,
   },
 ];
 
-/* ── Legal Modal ─────────────────────────────────────────────────── */
+/* â”€â”€ Legal Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function LegalModal({
   title,
   sections,
@@ -135,11 +135,11 @@ function LegalModal({
       <div className="legal-sheet" onClick={e => e.stopPropagation()}>
         <div className="legal-sheet-header">
           <p className="legal-sheet-title">{title}</p>
-          <button className="legal-sheet-close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="legal-sheet-close" onClick={onClose} aria-label="Close">âœ•</button>
         </div>
         <div className="legal-sheet-body">
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", margin: "0 0 20px" }}>
-            Effective February 22, 2026 · Clicks PR LLC · Puerto Rico
+            Effective February 22, 2026 Â· Clicks PR LLC Â· Puerto Rico
           </p>
           {sections.map(s => (
             <div className="legal-section" key={s.title}>
@@ -153,7 +153,7 @@ function LegalModal({
   );
 }
 
-/* ── Signup Page ─────────────────────────────────────────────────── */
+/* â”€â”€ Signup Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function Signup() {
   const [username, setUsername] = useState("");
   const [firstName, setFirst] = useState("");
@@ -207,7 +207,7 @@ export default function Signup() {
 
         <div className="auth-card">
           <p className="auth-card-title">Create account</p>
-          <p className="auth-card-sub">Join Clicks — Puerto Rico&apos;s nightlife radar</p>
+          <p className="auth-card-sub">Join Clicks â€” Puerto Rico&apos;s nightlife radar</p>
 
           <form onSubmit={submit} autoComplete="on" noValidate>
             <div style={{ display: "flex", gap: 12 }}>
@@ -218,7 +218,7 @@ export default function Signup() {
                   name="given-name"
                   value={firstName}
                   onChange={e => setFirst(e.target.value)}
-                  placeholder="Carlos"
+                  placeholder=""
                   autoComplete="given-name"
                 />
               </div>
@@ -229,7 +229,7 @@ export default function Signup() {
                   name="family-name"
                   value={lastName}
                   onChange={e => setLast(e.target.value)}
-                  placeholder="Mendoza"
+                  placeholder=""
                   autoComplete="family-name"
                 />
               </div>
@@ -255,7 +255,7 @@ export default function Signup() {
               name="username"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              placeholder="nightrider_pr"
+              placeholder=""
               maxLength={20}
               autoComplete="username"
               autoCapitalize="none"
@@ -269,7 +269,7 @@ export default function Signup() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="carlos@example.com"
+              placeholder=""
               autoComplete="email"
             />
 
@@ -321,19 +321,19 @@ export default function Signup() {
               </div>
 
             <button type="submit" className="auth-submit-btn" disabled={loading || !agreed}>
-              {loading ? "Creating…" : "Create account"}
+              {loading ? "Creatingâ€¦" : "Create account"}
             </button>
             {msg && <p className="auth-error">{msg}</p>}
           </form>
 
           <div className="auth-card-footer" style={{ marginTop: 18 }}>
             Already have an account?{" "}
-            <a href="/auth/login">Log in →</a>
+            <a href="/auth/login">Log in â†’</a>
           </div>
         </div>
 
         {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/copyright.png" alt="© Clicks" className="auth-copyright" />
+          <img src="/copyright.png" alt="Â© Clicks" className="auth-copyright" />
         </div>
       </div>
     </>

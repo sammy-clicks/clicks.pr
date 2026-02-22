@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 
 interface BanInfo { until: string; reason: string; isPermanent: boolean; }
@@ -37,7 +37,7 @@ function BanModal({ info, onClose }: { info: BanInfo; onClose: () => void }) {
           boxShadow: "0 12px 48px rgba(0,0,0,0.7)",
         }}
       >
-        <div style={{ fontSize: 42, lineHeight: 1, marginBottom: 12 }}>🚫</div>
+        <div style={{ fontSize: 42, lineHeight: 1, marginBottom: 12 }}>ðŸš«</div>
         <h2 style={{ color: "#f66", margin: "0 0 10px", fontSize: 20 }}>
           Account Suspended
         </h2>
@@ -69,11 +69,11 @@ function BanModal({ info, onClose }: { info: BanInfo; onClose: () => void }) {
 
         <p style={{ fontSize: 11, opacity: 0.40, marginBottom: 18, lineHeight: 1.6 }}>
           If you believe this was made in error, please contact{" "}
-          <a href="mailto:support@clickspr.com" style={{ color: "inherit", textDecoration: "underline" }}>
-            support@clickspr.com
+          <a href="mailto:nightclickspr@gmail.com" style={{ color: "inherit", textDecoration: "underline" }}>
+            nightclickspr@gmail.com
           </a>
           <br />
-          © Clicks PR 2026 — All rights reserved.
+          Â© Clicks PR 2026 â€” All rights reserved.
         </p>
 
         <button
@@ -142,7 +142,7 @@ export default function Login() {
                 name="username"
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
-                placeholder="you@example.com or @nightrider_pr"
+                placeholder=""
                 autoCapitalize="none"
                 autoCorrect="off"
                 autoComplete="username"
@@ -155,22 +155,22 @@ export default function Login() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 autoComplete="current-password"
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
               />
               <button type="submit" className="auth-submit-btn" disabled={loading}>
-                {loading ? "Logging in…" : "Log in"}
+                {loading ? "Logging inâ€¦" : "Log in"}
               </button>
               {msg && <p className="auth-error">{msg}</p>}
             </form>
 
             <div className="auth-card-footer" style={{ marginTop: 18 }}>
               No account yet?{" "}
-              <a href="/auth/signup">Create one →</a>
+              <a href="/auth/signup">Create one â†’</a>
             </div>
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/copyright.png" alt="© Clicks" className="auth-copyright" />
+          <img src="/copyright.png" alt="Â© Clicks" className="auth-copyright" />
         </div>
       </div>
     </>
