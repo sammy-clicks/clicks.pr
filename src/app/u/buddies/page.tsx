@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { Nav } from "@/components/Nav";
+import { GuestPageBlock } from "@/components/GuestModeProvider";
 
 function Avatar({ username, avatarUrl, size = 36 }: { username: string; avatarUrl?: string | null; size?: number }) {
   return avatarUrl ? (
@@ -72,6 +73,7 @@ export default function Buddies() {
     <div className="container">
       <h2>Buddies</h2>
       <Nav role="u" />
+      <GuestPageBlock />
 
       {/* Search */}
       <div className="card" style={{ marginBottom: 16 }}>

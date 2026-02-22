@@ -169,6 +169,25 @@ export default function Login() {
             </div>
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              document.cookie = "clicks_guest=1; path=/; max-age=86400";
+              window.location.href = "/u/zones";
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "rgba(255,255,255,0.38)",
+              fontSize: 13,
+              marginTop: 18,
+              padding: "4px 0",
+            }}
+          >
+            Continue as guest
+          </button>
+
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/copyright.png" alt="© Clicks" className="auth-copyright" />
         </div>

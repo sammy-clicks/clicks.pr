@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { useOrderTracker } from "@/components/OrderTrackerContext";
+import { useGuestMode } from "@/components/GuestModeProvider";
 
 type MenuItem = { id: string; name: string; priceCents: number; isAlcohol: boolean; isAvailable: boolean };
 
@@ -12,6 +13,7 @@ export default function Venue({ params }: { params: { id: string } }) {
   const [lng, setLng] = useState<number | null>(null);
   const [cart, setCart] = useState<Record<string, number>>({});
   const { setActiveOrder } = useOrderTracker();
+  const { isGuest, prompt } = useGuestMode();
 
   const reload = () => fetch(`/api/venues/${params.id}`).then(r => r.json()).then(setData);
 
@@ -97,8 +99,8 @@ export default function Venue({ params }: { params: { id: string } }) {
       )}
 
       <div className="row" style={{ marginBottom: 16 }}>
-        <button className="btn" onClick={checkIn}>Check in</button>
-        <button className="btn secondary" onClick={clickIt}>Click</button>
+        <button className="btn" onClick={isGuest ? prompt : checkIn}>Check in</button>
+        <button className="btn secondary" onClick={isGuest ? prompt : clickIt}>Click</button>
         <a className="btn secondary" href={`https://www.google.com/maps?q=${data.venue.lat},${data.venue.lng}`} target="_blank">Maps</a>
       </div>
       {msg && <p className="muted">{msg}</p>}
@@ -133,7 +135,7 @@ export default function Venue({ params }: { params: { id: string } }) {
         <div className="card" style={{ marginTop: 16 }}>
           <div className="header">
             <strong>Order total: ${(cartTotal / 100).toFixed(2)}</strong>
-            <button className="btn" onClick={placeOrder}>Place Order</button>
+            <button className="btn" onClick={isGuest ? prompt : placeOrder}>Place Order</button>
           </div>
           <p className="muted">Wallet will be debited. Must be checked in to order.</p>
         </div>

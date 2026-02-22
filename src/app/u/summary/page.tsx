@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Nav } from "@/components/Nav";
+import { GuestPageBlock } from "@/components/GuestModeProvider";
 
 function fmtTime(d: string | Date) {
   return new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
@@ -74,6 +75,7 @@ export default function Summary() {
     return (
       <div className="container">
         <Nav role="u" />
+        <GuestPageBlock />
         <div className="header" style={{ marginBottom: 8 }}>
           <button className="btn sm secondary" onClick={() => { setBuddy(null); setBuddySection(null); }}>{"<"} Back</button>
           <h3 style={{ margin: 0 }}>@{buddy.username}</h3>

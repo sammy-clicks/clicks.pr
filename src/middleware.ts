@@ -18,13 +18,25 @@ async function getRole(req: NextRequest): Promise<string | null> {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const role = await getRole(req);
+  const isGuest = req.cookies.get("clicks_guest")?.value === "1";
 
-  // Unauthenticated → login
-  if (!role) {
+  // Unauthenticated and not a guest → login
+  if (!role && !isGuest) {
     const login = req.nextUrl.clone();
     login.pathname = "/auth/login";
     return NextResponse.redirect(login);
   }
+
+  // Guests may only browse /u/* — block /v/* and /admin/*
+  if (isGuest && !role) {
+    if (pathname.startsWith("/v/") || pathname.startsWith("/admin/")) {
+      return NextResponse.redirect(new URL("/auth/login", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Type guard: role is non-null beyond this point
+  if (!role) return NextResponse.next();
 
   // /u/* requires USER (ADMIN may also browse)
   if (pathname.startsWith("/u/") && role !== "USER" && role !== "ADMIN") {

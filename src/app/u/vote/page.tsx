@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
+import { useGuestMode } from "@/components/GuestModeProvider";
 
 export default function Vote() {
   const [data, setData] = useState<any>(null);
   const [venueId, setVenueId] = useState("");
   const [msg, setMsg] = useState("");
+  const { isGuest, prompt } = useGuestMode();
 
   async function load() {
     const r = await fetch("/api/vote");
@@ -37,7 +39,7 @@ export default function Vote() {
           <option value="">Select…</option>
           {data.venues.map((v:any)=>(<option key={v.id} value={v.id}>{v.name}</option>))}
         </select>
-        <button className="btn" style={{marginTop:10}} onClick={submit}>Vote</button>
+        <button className="btn" style={{marginTop:10}} onClick={isGuest ? prompt : submit}>Vote</button>
         {msg && <p className="muted">{msg}</p>}
       </div>
 

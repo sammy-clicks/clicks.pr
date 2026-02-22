@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
+import { GuestPageBlock } from "@/components/GuestModeProvider";
 
 export default function AccountPage() {
   const [user, setUser] = useState<any>(null);
@@ -125,6 +126,7 @@ export default function AccountPage() {
     <div className="container">
       <h2>Account</h2>
       <Nav role="u" />
+      <GuestPageBlock />
 
       {msg.text && (
         <p className="muted" style={{ color: msg.ok ? "var(--success, #059669)" : "var(--danger, #dc2626)", marginBottom: 12 }}>
