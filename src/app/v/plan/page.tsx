@@ -1,11 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Nav } from "@/components/Nav";
 
 function $$(n: number) { return `$${(n / 100).toFixed(2)}`; }
 
 export default function VenuePlanPage() {
+  return (
+    <Suspense fallback={<div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>}>
+      <PlanContent />
+    </Suspense>
+  );
+}
+
+function PlanContent() {
   const router = useRouter();
   const params = useSearchParams();
   const upgraded = params.get("upgraded") === "1";
