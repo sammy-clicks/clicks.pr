@@ -597,6 +597,93 @@ tr:hover td { background: var(--bg); }
 .auth-role-note a { color: rgba(8, 218, 244, 0.65); text-decoration: none; }
 .auth-role-note a:hover { color: #08daf4; }
 
+/* Legal modal */
+.legal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.18s ease;
+}
+@media (min-width: 540px) {
+  .legal-overlay { align-items: center; padding: 24px 20px; }
+}
+.legal-sheet {
+  background: #0e1520;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  max-width: 620px;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -12px 60px rgba(0, 0, 0, 0.6);
+}
+@media (min-width: 540px) {
+  .legal-sheet { border-radius: 22px; max-height: 82dvh; }
+}
+.legal-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+.legal-sheet-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+}
+.legal-sheet-close {
+  background: rgba(255, 255, 255, 0.07);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.legal-sheet-close:hover { background: rgba(255, 255, 255, 0.13); color: #fff; }
+.legal-sheet-body {
+  overflow-y: auto;
+  padding: 22px 22px 30px;
+  -webkit-overflow-scrolling: touch;
+}
+.legal-sheet-body::-webkit-scrollbar { width: 4px; }
+.legal-sheet-body::-webkit-scrollbar-track { background: transparent; }
+.legal-sheet-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+.legal-section { margin-bottom: 22px; }
+.legal-section h3 {
+  color: #08daf4;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.legal-section p {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13.5px;
+  line-height: 1.72;
+  margin: 0;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
 .auth-submit-btn {
   width: 100%;
   padding: 14px;
