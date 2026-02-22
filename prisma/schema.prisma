@@ -71,6 +71,10 @@ model User {
   votes         Vote[]
   orders        Order[] @relation("UserOrders")
   managedVenue  Venue?  @relation("VenueManager")
+  supportCases  SupportCase[]  @relation("UserCases")
+  conversations1 Conversation[] @relation("ConvUser1")
+  conversations2 Conversation[] @relation("ConvUser2")
+  sentMessages  DirectMessage[] @relation("DmSender")
 }
 
 model Buddy {
@@ -264,11 +268,12 @@ model Redemption {
 }
 
 model Order {
-  id        String @id @default(cuid())
-  orderCode String?
-  userId    String
-  venueId   String
-  status    OrderStatus @default(PLACED)
+  id          String @id @default(cuid())
+  orderNumber String? @unique  // CLK-XXXX — human-readable reference shown to all parties
+  orderCode   String?          // 6-digit secret code — user shows to venue for validation
+  userId      String
+  venueId     String
+  status      OrderStatus @default(PLACED)
 
   user      User  @relation("UserOrders", fields: [userId], references: [id])
   venue     Venue @relation("VenueOrders", fields: [venueId], references: [id])
@@ -280,7 +285,8 @@ model Order {
   completedAt DateTime?
   cancelledAt DateTime?
 
-  items OrderItem[]
+  items        OrderItem[]
+  supportCases SupportCase[] @relation("OrderCase")
 
   @@index([venueId, createdAt])
 }
@@ -350,4 +356,67 @@ model SubscriptionPayment {
   status      String   @default("PAID") // PAID | FAILED | REFUNDED
 
   @@index([venueId, paidAt])
+}
+
+// ─── Support Cases ──────────────────────────────────────────────────────────
+
+model SupportCase {
+  id          String   @id @default(cuid())
+  caseNumber  String   @unique       // CASE-0001
+  userId      String
+  user        User     @relation("UserCases", fields: [userId], references: [id])
+  orderId     String?
+  order       Order?   @relation("OrderCase", fields: [orderId], references: [id])
+  description String
+  status      String   @default("OPEN") // OPEN | REVIEWING | RESOLVED | CLOSED
+  adminNotes  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages    CaseMessage[]
+
+  @@index([status, createdAt])
+}
+
+model CaseMessage {
+  id        String      @id @default(cuid())
+  caseId    String
+  case      SupportCase @relation(fields: [caseId], references: [id])
+  fromRole  String      // USER | ADMIN
+  senderId  String
+  body      String
+  createdAt DateTime    @default(now())
+
+  @@index([caseId, createdAt])
+}
+
+// ─── Direct Messages (buddies only) ─────────────────────────────────────────
+
+model Conversation {
+  id        String   @id @default(cuid())
+  user1Id   String   // always min(userId, buddyId) lexicographically
+  user2Id   String   // always max()
+  createdAt DateTime @default(now())
+  lastAt    DateTime @default(now())
+
+  user1    User          @relation("ConvUser1", fields: [user1Id], references: [id])
+  user2    User          @relation("ConvUser2", fields: [user2Id], references: [id])
+  messages DirectMessage[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id, lastAt])
+  @@index([user2Id, lastAt])
+}
+
+model DirectMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation("DmSender", fields: [senderId], references: [id])
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
 }

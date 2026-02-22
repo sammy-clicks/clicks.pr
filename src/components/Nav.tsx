@@ -12,6 +12,7 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
           ["/u/zones", "Zones"],
           ["/u/wallet", "Wallet"],
           ["/u/buddies", "Buddies"],
+          ["/u/inbox", "Inbox"],
           ["/u/vote", "Vote"],
           ["/u/leaderboard", "Leaderboard"],
           ["/u/summary", "Summary"],
@@ -31,6 +32,7 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
           ["/admin/zones", "Zones"],
           ["/admin/venues", "Venues"],
           ["/admin/users", "Users"],
+          ["/admin/cases", "Cases"],
         ];
 
   return (

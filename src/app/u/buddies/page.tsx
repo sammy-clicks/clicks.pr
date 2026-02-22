@@ -144,7 +144,19 @@ export default function Buddies() {
                 {b.realName && <div className="muted" style={{ fontSize: 12 }}>{b.realName}</div>}
               </div>
             </div>
-            {b.ghostMode && <p className="muted" style={{ margin: 0, fontSize: 12 }}>👻 Ghost mode</p>}
+            {b.ghostMode && <p className="muted" style={{ margin: 0, fontSize: 12 }}>Ghost mode</p>}
+            <button
+              className="btn sm secondary"
+              style={{ marginTop: 8, width: "100%" }}
+              onClick={async () => {
+                const r = await fetch("/api/messages", {
+                  method: "POST",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({ buddyId: b.friendId }),
+                });
+                if (r.ok) window.location.href = "/u/inbox";
+              }}
+            >Message</button>
           </div>
         ))}
       </div>

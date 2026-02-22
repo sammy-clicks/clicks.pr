@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import ServiceWorkerRegister from "../components/ServiceWorkerRegister";
+import { OrderTrackerProvider } from "../components/OrderTrackerProvider";
 
 export const metadata: Metadata = {
   title: "Clicks V1",
@@ -20,7 +21,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        {children}
+        <OrderTrackerProvider>
+          {children}
+        </OrderTrackerProvider>
         <ServiceWorkerRegister />
       </body>
     </html>

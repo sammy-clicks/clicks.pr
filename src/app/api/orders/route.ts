@@ -134,10 +134,15 @@ export async function POST(req: Request) {
   // Atomic transaction: create order, deduct wallet
   const orderCode = String(Math.floor(100000 + Math.random() * 900000));
 
+  // Generate sequential order number (CLK-XXXX)
+  const orderCount = await prisma.order.count();
+  const orderNumber = `CLK-${String(orderCount + 1).padStart(4, "0")}`;
+
   const [order] = await prisma.$transaction([
     prisma.order.create({
       data: {
         orderCode,
+        orderNumber,
         userId: session.sub,
         venueId: body.venueId,
         totalCents,
@@ -158,5 +163,5 @@ export async function POST(req: Request) {
     }),
   ]);
 
-  return NextResponse.json({ ok: true, orderId: order.id, orderCode, venueName: venue.name });
+  return NextResponse.json({ ok: true, orderId: order.id, orderCode, orderNumber, venueName: venue.name, totalCents });
 }
