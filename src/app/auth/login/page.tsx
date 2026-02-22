@@ -37,7 +37,7 @@ function BanModal({ info, onClose }: { info: BanInfo; onClose: () => void }) {
           boxShadow: "0 12px 48px rgba(0,0,0,0.7)",
         }}
       >
-        <div style={{ fontSize: 42, lineHeight: 1, marginBottom: 12 }}>ðŸš«</div>
+        <div style={{ fontSize: 42, lineHeight: 1, marginBottom: 12 }}>🚫</div>
         <h2 style={{ color: "#f66", margin: "0 0 10px", fontSize: 20 }}>
           Account Suspended
         </h2>
@@ -73,7 +73,7 @@ function BanModal({ info, onClose }: { info: BanInfo; onClose: () => void }) {
             nightclickspr@gmail.com
           </a>
           <br />
-          Â© Clicks PR 2026 â€” All rights reserved.
+           Clicks PR 2026 &mdash; All rights reserved.
         </p>
 
         <button
@@ -155,22 +155,22 @@ export default function Login() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 autoComplete="current-password"
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder=""
               />
               <button type="submit" className="auth-submit-btn" disabled={loading}>
-                {loading ? "Logging inâ€¦" : "Log in"}
+                {loading ? "Logging in…" : "Log in"}
               </button>
               {msg && <p className="auth-error">{msg}</p>}
             </form>
 
             <div className="auth-card-footer" style={{ marginTop: 18 }}>
               No account yet?{" "}
-              <a href="/auth/signup">Create one â†’</a>
+              <a href="/auth/signup">Create one →</a>
             </div>
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/copyright.png" alt="Â© Clicks" className="auth-copyright" />
+          <img src="/copyright.png" alt="© Clicks" className="auth-copyright" />
         </div>
       </div>
     </>

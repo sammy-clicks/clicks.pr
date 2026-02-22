@@ -13,7 +13,7 @@
 
         <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, margin: "0 0 6px" }}>Terms of Service</h1>
         <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: "0 0 40px" }}>
-          Effective date: February 22, 2026 Â· Clicks PR LLC
+          Effective date: February 22, 2026 · Clicks PR LLC
         </p>
 
         {[
@@ -73,7 +73,7 @@
         ))}
 
         <p style={{ marginTop: 48, fontSize: 12, color: "rgba(255,255,255,0.18)", textAlign: "center" }}>
-          Â© 2026 Clicks PR LLC â€” All rights reserved.
+          © 2026 Clicks PR LLC · All rights reserved.
         </p>
       </div>
     </div>

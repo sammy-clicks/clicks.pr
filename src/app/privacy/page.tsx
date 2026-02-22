@@ -13,7 +13,7 @@
 
         <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, margin: "0 0 6px" }}>Privacy Policy</h1>
         <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, margin: "0 0 40px" }}>
-          Effective date: February 22, 2026 Â· Clicks PR LLC
+          Effective date: February 22, 2026 · Clicks PR LLC
         </p>
 
         {[
@@ -23,7 +23,7 @@
           },
           {
             title: "2. How We Use Your Information",
-            body: `We use your information to: (a) operate and improve the Service; (b) process orders and wallet transactions; (c) display public leaderboard data (username only â€” no full name or email is ever shown publicly); (d) send security-related communications; (e) enforce our Terms of Service.`,
+            body: `We use your information to: (a) operate and improve the Service; (b) process orders and wallet transactions; (c) display public leaderboard data (username only — no full name or email is ever shown publicly); (d) send security-related communications; (e) enforce our Terms of Service.`,
           },
           {
             title: "3. Sharing of Information",
@@ -31,7 +31,7 @@
           },
           {
             title: "4. Wallet & Financial Data",
-            body: `Wallet balances and transaction records are stored securely and never shared with third parties except as required for fraud prevention or legal compliance. We do not store full payment card numbers â€” top-up integrations are handled by PCI-compliant processors.`,
+            body: `Wallet balances and transaction records are stored securely and never shared with third parties except as required for fraud prevention or legal compliance. We do not store full payment card numbers — top-up integrations are handled by PCI-compliant processors.`,
           },
           {
             title: "5. Location Data",
@@ -63,7 +63,7 @@
           },
           {
             title: "12. Contact",
-            body: `For privacy inquiries, contact: nightclickspr@gmail.com Â· Clicks PR LLC Â· Puerto Rico`,
+            body: `For privacy inquiries, contact: nightclickspr@gmail.com · Clicks PR LLC · Puerto Rico`,
           },
         ].map(s => (
           <div key={s.title} style={{ marginBottom: 28 }}>
@@ -73,7 +73,7 @@
         ))}
 
         <p style={{ marginTop: 48, fontSize: 12, color: "rgba(255,255,255,0.18)", textAlign: "center" }}>
-          Â© 2026 Clicks PR LLC â€” All rights reserved.
+          © 2026 Clicks PR LLC · All rights reserved.
         </p>
       </div>
     </div>
