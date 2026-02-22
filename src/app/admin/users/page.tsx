@@ -113,13 +113,13 @@ export default function AdminUsers() {
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 12px" }}>Create user</h3>
         <label>Username</label>
-        <input value={form.username} onChange={e => setF("username", e.target.value)} placeholder="venue_bar (3-20 chars)" />
+        <input value={form.username} onChange={e => setF("username", e.target.value)} placeholder="venue_bar (3-20 chars)" autoComplete="off" />
         <div className="row">
-          <div style={{ flex: 1 }}><label>First name</label><input value={form.firstName} onChange={e => setF("firstName", e.target.value)} /></div>
-          <div style={{ flex: 1 }}><label>Last name</label><input value={form.lastName} onChange={e => setF("lastName", e.target.value)} /></div>
+          <div style={{ flex: 1 }}><label>First name</label><input value={form.firstName} onChange={e => setF("firstName", e.target.value)} autoComplete="off" /></div>
+          <div style={{ flex: 1 }}><label>Last name</label><input value={form.lastName} onChange={e => setF("lastName", e.target.value)} autoComplete="off" /></div>
         </div>
         <div className="row">
-          <div style={{ flex: 2 }}><label>Email</label><input value={form.email} onChange={e => setF("email", e.target.value)} /></div>
+          <div style={{ flex: 2 }}><label>Email</label><input value={form.email} onChange={e => setF("email", e.target.value)} autoComplete="off" /></div>
           <div style={{ flex: 1 }}>
             <label>Role</label>
             <select value={form.role} onChange={e => setF("role", e.target.value)}>
@@ -128,7 +128,7 @@ export default function AdminUsers() {
           </div>
         </div>
         <label>Password (min 8 chars)</label>
-        <input type="password" value={form.password} onChange={e => setF("password", e.target.value)} />
+        <input type="password" value={form.password} onChange={e => setF("password", e.target.value)} autoComplete="new-password" />
         <button className="btn" style={{ marginTop: 12 }} onClick={create}>Create</button>
       </div>
 

@@ -96,6 +96,10 @@ model Venue {
   // nullable override. If null, use municipality.defaultAlcoholCutoffMins
   alcoholCutoffOverrideMins Int?
 
+  venueImageUrl String?               // public-facing photo shown in the app
+  isEnabled     Boolean  @default(true) // false = paused/disabled
+  pausedAt      DateTime?              // set when venue is paused
+
   managerId     String?  @unique
   manager       User?    @relation("VenueManager", fields: [managerId], references: [id])
 

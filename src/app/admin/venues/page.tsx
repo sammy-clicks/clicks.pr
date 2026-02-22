@@ -210,6 +210,7 @@ export default function VenuesAdmin() {
         onChange={e => setSearch(e.target.value)}
         placeholder="Search by name, type, address, zone, municipality, manager…"
         style={{ marginBottom: 16, maxWidth: 480 }}
+        autoComplete="off"
       />
 
       <div className="row">

@@ -14,13 +14,14 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
           ["/u/vote", "Vote"],
           ["/u/leaderboard", "Leaderboard"],
           ["/u/summary", "Summary"],
-          ["/u/settings", "Settings"],
+          ["/u/account", "Account"],
         ]
       : role === "v"
       ? [
           ["/v/dashboard", "Dashboard"],
           ["/v/menu", "Menu"],
           ["/v/orders", "Orders"],
+          ["/v/account", "Account"],
         ]
       : [
           ["/admin/analytics", "Analytics"],
@@ -41,7 +42,7 @@ export function Nav({ role }: { role: "u" | "v" | "admin" }) {
           {label}
         </Link>
       ))}
-      <a className="badge" href="/api/auth/logout">Logout</a>
+      {role === "admin" && <a className="badge" href="/api/auth/logout">Logout</a>}
     </nav>
   );
 }

@@ -143,7 +143,7 @@ export default function Municipalities() {
                     Leave a day unchanged to use the default cutoff above.
                   </p>
                   {DAYS.map(({ key, label }) => {
-                    const val = getEditing(m.id, key, m[key]);
+                    const val = editing[m.id]?.[key] ?? (m[key] != null ? minsToTime(m[key]) : defaultTime);
                     return (
                       <div key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ width: 80, fontSize: 13 }}>{label}</span>
