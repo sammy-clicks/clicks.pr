@@ -124,38 +124,54 @@ export default function Login() {
   return (
     <>
       {banned && <BanModal info={banned} onClose={() => setBanned(null)} />}
-      <div className="container">
-        <a href="/role" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 16, opacity: 0.7, fontSize: 14 }}>← Back</a>
-        <h2>Log in</h2>
-        <form className="card" onSubmit={submit} autoComplete="on" noValidate>
-          <label htmlFor="login-id">Email or username</label>
-          <input
-            id="login-id"
-            name="username"
-            value={identifier}
-            onChange={e => setIdentifier(e.target.value)}
-            placeholder="you@example.com or @nightrider_pr"
-            autoCapitalize="none"
-            autoCorrect="off"
-            autoComplete="username"
-          />
-          <label htmlFor="login-pw">Password</label>
-          <input
-            id="login-pw"
-            name="password"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-          <div className="row" style={{ marginTop: 12 }}>
-            <button type="submit" className="btn" disabled={loading}>
-              {loading ? "Logging in…" : "Log in"}
-            </button>
-            <a href="/auth/signup" className="btn secondary">Create account</a>
+      <div className="auth-bg">
+        <div className="auth-inner">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Clicks" className="auth-logo-sm" />
+
+          <a href="/role" className="auth-back">&#8592; Back</a>
+
+          <div className="auth-card">
+            <p className="auth-card-title">Welcome back</p>
+            <p className="auth-card-sub">Log in to your Clicks account</p>
+
+            <form onSubmit={submit} autoComplete="on" noValidate>
+              <label htmlFor="login-id">Email or username</label>
+              <input
+                id="login-id"
+                name="username"
+                value={identifier}
+                onChange={e => setIdentifier(e.target.value)}
+                placeholder="you@example.com or @nightrider_pr"
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="username"
+              />
+              <label htmlFor="login-pw">Password</label>
+              <input
+                id="login-pw"
+                name="password"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••"
+              />
+              <button type="submit" className="auth-submit-btn" disabled={loading}>
+                {loading ? "Logging in…" : "Log in"}
+              </button>
+              {msg && <p className="auth-error">{msg}</p>}
+            </form>
+
+            <div className="auth-card-footer" style={{ marginTop: 18 }}>
+              No account yet?{" "}
+              <a href="/auth/signup">Create one →</a>
+            </div>
           </div>
-          {msg && <p className="muted" style={{ color: "var(--error,#f66)" }}>{msg}</p>}
-        </form>
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/copyright.png" alt="© Clicks" className="auth-copyright" />
+        </div>
       </div>
     </>
   );

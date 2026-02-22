@@ -19,16 +19,32 @@ export default async function RoleGate() {
   }
 
   return (
-    <div className="container">
-      <h2>Welcome to Clicks</h2>
-      <p className="muted" style={{ marginBottom: 24 }}>What brings you here tonight?</p>
-      <div className="row">
-        <Link className="btn" href="/auth/signup">Create account</Link>
-        <Link className="btn secondary" href="/auth/login">I already have an account</Link>
+    <div className="auth-bg">
+      <div className="auth-inner">
+        {/* Logo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Clicks" className="auth-logo" />
+        <p className="auth-tagline">Puerto Rico&apos;s nightlife radar</p>
+
+        {/* CTAs */}
+        <div className="auth-btn-group">
+          <Link href="/auth/signup" className="auth-btn-primary">
+            Create account
+          </Link>
+          <Link href="/auth/login" className="auth-btn-secondary">
+            I already have an account
+          </Link>
+        </div>
+
+        <p className="auth-role-note">
+          Venue or admin access?{" "}
+          <Link href="/auth/login">Log in</Link>
+        </p>
+
+        {/* Copyright */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/copyright.png" alt="© Clicks" className="auth-copyright" />
       </div>
-      <p className="muted" style={{ marginTop: 32, fontSize: 12 }}>
-        Venue or admin access? <Link href="/auth/login" style={{ color: "var(--accent)" }}>Log in</Link>
-      </p>
     </div>
   );
 }
