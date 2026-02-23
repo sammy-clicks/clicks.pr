@@ -13,11 +13,18 @@ const EMPTY_FORM = { name: "", price: "5.00", category: "", isAlcohol: false, im
 export default function VenueMenu() {
   const [data, setData]   = useState<any>(null);
   const [error, setError] = useState("");
-  const [showForm, setShowForm]   = useState(false);
-  const [editId, setEditId]       = useState<string | null>(null);
-  const [form, setForm]           = useState({ ...EMPTY_FORM });
-  const [msg, setMsg]             = useState("");
-  const [saving, setSaving]       = useState(false);
+  const [showForm, setShowForm]       = useState(false);
+  const [editId, setEditId]           = useState<string | null>(null);
+  const [form, setForm]               = useState({ ...EMPTY_FORM });
+  const [msg, setMsg]                 = useState("");
+  const [saving, setSaving]           = useState(false);
+
+  // Category management
+  const [localCats, setLocalCats]     = useState<string[]>([]);   // user-added names not yet in items
+  const [catInput, setCatInput]       = useState("");
+  const [catMsg, setCatMsg]           = useState("");
+  const [showNoCatModal, setShowNoCatModal] = useState(false);
+
   const imgInputRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -28,7 +35,6 @@ export default function VenueMenu() {
   }
   useEffect(() => { load(); }, []);
 
-  // Resize image via canvas → base64
   function pickImage(file: File, onDone: (url: string) => void) {
     const reader = new FileReader();
     reader.onload = ev => {
@@ -54,7 +60,37 @@ export default function VenueMenu() {
     e.target.value = "";
   }
 
-  function openAdd() { setEditId(null); setForm({ ...EMPTY_FORM }); setMsg(""); setShowForm(true); }
+  // All available categories (from items + locally created ones)
+  function allCategories(items: Item[]): string[] {
+    const fromItems = items.map(m => m.category ?? "").filter(Boolean);
+    const merged = Array.from(new Set([...fromItems, ...localCats]));
+    return merged;
+  }
+
+  function addCategory() {
+    const name = catInput.trim();
+    if (!name) { setCatMsg("Enter a category name."); return; }
+    const cats = data ? allCategories(data.items) : localCats;
+    if (cats.map((c: string) => c.toLowerCase()).includes(name.toLowerCase())) {
+      setCatMsg("Category already exists."); return;
+    }
+    setLocalCats(p => [...p, name]);
+    setCatInput("");
+    setCatMsg("");
+  }
+
+  function removeLocalCat(name: string) {
+    setLocalCats(p => p.filter(c => c !== name));
+  }
+
+  function openAdd() {
+    const cats = data ? allCategories(data.items) : localCats;
+    if (cats.length === 0) { setShowNoCatModal(true); return; }
+    setEditId(null);
+    setForm({ ...EMPTY_FORM, category: cats[0] });
+    setMsg(""); setShowForm(true);
+  }
+
   function openEdit(m: Item) {
     setEditId(m.id);
     setForm({ name: m.name, price: (m.priceCents / 100).toFixed(2), category: m.category ?? "", isAlcohol: m.isAlcohol, imageUrl: m.imageUrl ?? "" });
@@ -65,12 +101,13 @@ export default function VenueMenu() {
   async function saveItem() {
     const priceCents = Math.round(parseFloat(form.price) * 100);
     if (!form.name.trim() || isNaN(priceCents)) { setMsg("Name and price are required."); return; }
+    if (!form.category.trim()) { setMsg("Please select a category."); return; }
     setSaving(true); setMsg("");
     const body = {
       name: form.name.trim(),
       priceCents,
       isAlcohol: form.isAlcohol,
-      category: form.category.trim() || null,
+      category: form.category.trim(),
       imageUrl: form.imageUrl || null,
     };
     const url    = editId ? `/api/v/menu/${editId}` : "/api/v/menu";
@@ -79,6 +116,8 @@ export default function VenueMenu() {
     const j = await r.json();
     setSaving(false);
     if (!r.ok) { setMsg(j.error || "Failed"); return; }
+    // Once an item is saved, we can drop it from localCats (it's now in DB items)
+    setLocalCats(p => p.filter(c => c !== form.category.trim()));
     cancelForm(); load();
   }
 
@@ -94,13 +133,14 @@ export default function VenueMenu() {
   }
 
   if (error) return <div className="container"><Nav role="v" /><p className="muted">{error}</p></div>;
-  if (!data) return <div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>;
+  if (!data)  return <div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>;
 
   const items: Item[] = data.items;
+  const cats = allCategories(items);
 
-  // Get unique categories in order
-  const categories = Array.from(new Set(items.map((m: Item) => m.category ?? "Uncategorized")));
-  const existingCats = Array.from(new Set(items.map((m: Item) => m.category ?? "").filter(Boolean)));
+  // items already in DB, grouped by category
+  const dbCats = Array.from(new Set(items.map((m: Item) => m.category ?? "Uncategorized")));
+  const allDisplayCats = Array.from(new Set([...dbCats, ...localCats]));
 
   function itemsByCategory(cat: string) {
     return items.filter((m: Item) => (m.category ?? "Uncategorized") === cat);
@@ -109,45 +149,122 @@ export default function VenueMenu() {
   return (
     <div className="container">
       <div className="header">
-        <h2>Menu — {data.venueName}</h2>
+        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Menu — {data.venueName}</h2>
         <button className="btn" onClick={openAdd}>+ Add Item</button>
       </div>
       <Nav role="v" />
 
-      {items.length === 0 && <p className="muted">No items yet. Add your first item to get started.</p>}
-
-      {categories.map(cat => (
-        <div key={cat} style={{ marginBottom: 28 }}>
-          <h3 style={{ margin: "0 0 10px", color: "var(--brand)", display: "flex", alignItems: "center", gap: 8 }}>
-            {cat}
-            <span style={{ fontSize: 12, color: "var(--muted-text)", fontWeight: 400 }}>{itemsByCategory(cat).length} item{itemsByCategory(cat).length !== 1 ? "s" : ""}</span>
-          </h3>
-          <div className="row">
-            {itemsByCategory(cat).map((m: Item) => (
-              <div key={m.id} className="card" style={{ flex: "1 1 240px", opacity: m.isAvailable ? 1 : 0.6 }}>
-                {m.imageUrl && (
-                  <img src={m.imageUrl} alt={m.name} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 10 }} />
-                )}
-                <div className="header" style={{ marginBottom: 4 }}>
-                  <strong>{m.name}</strong>
-                  <span className="badge">${(m.priceCents / 100).toFixed(2)}</span>
-                </div>
-                <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
-                  {m.isAlcohol ? "🍺 Alcohol" : "🧃 Non-alcoholic"} · {m.isAvailable ? "Available" : "Unavailable"}
-                </p>
-                <div className="row" style={{ gap: 6 }}>
-                  <button className="btn sm secondary" onClick={() => openEdit(m)}>Edit</button>
+      {/* ── Category management ─────────────────────────────── */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <h3 style={{ margin: "0 0 12px", fontSize: "0.95rem" }}>Categories</h3>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+          {cats.length === 0 && (
+            <span className="muted" style={{ fontSize: 13 }}>No categories yet — add one below to start building your menu.</span>
+          )}
+          {allDisplayCats.map(cat => {
+            const isLocal = localCats.includes(cat);
+            const count = itemsByCategory(cat).length;
+            return (
+              <span key={cat} style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "5px 12px", borderRadius: 999,
+                background: "var(--venue-brand-dim)",
+                border: "1.5px solid var(--venue-brand)",
+                color: "var(--venue-brand)", fontSize: 13, fontWeight: 600,
+              }}>
+                {cat}
+                {count > 0 && <span style={{ fontSize: 11, opacity: 0.7 }}>({count})</span>}
+                {isLocal && (
                   <button
-                    className={`btn sm ${m.isAvailable ? "secondary" : ""}`}
-                    onClick={() => toggleAvail(m.id, !m.isAvailable)}
-                  >{m.isAvailable ? "Disable" : "Enable"}</button>
-                  <button className="btn sm danger" onClick={() => deleteItem(m.id)}>Del</button>
+                    onClick={() => removeLocalCat(cat)}
+                    style={{ background: "none", border: "none", color: "var(--venue-brand)", cursor: "pointer", padding: 0, fontSize: 14, lineHeight: 1, opacity: 0.7 }}
+                    title="Remove"
+                  >×</button>
+                )}
+              </span>
+            );
+          })}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+          <div style={{ flex: 1 }}>
+            <input
+              value={catInput}
+              onChange={e => { setCatInput(e.target.value); setCatMsg(""); }}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }}
+              placeholder="New category name (e.g. Cocktails, Beer, Food…)"
+              style={{ width: "100%" }}
+              maxLength={40}
+            />
+          </div>
+          <button className="btn" style={{ flexShrink: 0 }} onClick={addCategory}>Add</button>
+        </div>
+        {catMsg && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--danger)" }}>{catMsg}</p>}
+      </div>
+
+      {items.length === 0 && cats.length > 0 && (
+        <p className="muted">No items yet. Click <strong>+ Add Item</strong> to get started.</p>
+      )}
+
+      {allDisplayCats.map(cat => {
+        const catItems = itemsByCategory(cat);
+        return (
+          <div key={cat} style={{ marginBottom: 28 }}>
+            <h3 style={{ margin: "0 0 10px", color: "var(--venue-brand)", display: "flex", alignItems: "center", gap: 8 }}>
+              {cat}
+              <span style={{ fontSize: 12, color: "var(--muted-text)", fontWeight: 400 }}>{catItems.length} item{catItems.length !== 1 ? "s" : ""}</span>
+            </h3>
+            {catItems.length === 0 && (
+              <p className="muted" style={{ fontSize: 13, marginLeft: 4 }}>No items in this category yet.</p>
+            )}
+            <div className="row">
+              {catItems.map((m: Item) => (
+                <div key={m.id} className="card" style={{ flex: "1 1 240px", opacity: m.isAvailable ? 1 : 0.6 }}>
+                  {m.imageUrl && (
+                    <img src={m.imageUrl} alt={m.name} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 10 }} />
+                  )}
+                  <div className="header" style={{ marginBottom: 4 }}>
+                    <strong>{m.name}</strong>
+                    <span className="badge">${(m.priceCents / 100).toFixed(2)}</span>
+                  </div>
+                  <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
+                    {m.isAlcohol ? "🍺 Alcohol" : "🧃 Non-alcoholic"} · {m.isAvailable ? "Available" : "Unavailable"}
+                  </p>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn sm secondary" onClick={() => openEdit(m)}>Edit</button>
+                    <button
+                      className={`btn sm ${m.isAvailable ? "secondary" : ""}`}
+                      onClick={() => toggleAvail(m.id, !m.isAvailable)}
+                    >{m.isAvailable ? "Disable" : "Enable"}</button>
+                    <button className="btn sm danger" onClick={() => deleteItem(m.id)}>Del</button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* ── No Category modal ── */}
+      {showNoCatModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{
+            background: "var(--surface)", borderRadius: 16, padding: 32, maxWidth: 400, width: "100%",
+            border: "1.5px solid var(--venue-brand)",
+            boxShadow: "0 0 40px rgba(231,168,255,0.18)",
+          }}>
+            <div style={{ fontSize: 36, marginBottom: 12, textAlign: "center" }}>🗂️</div>
+            <h3 style={{ margin: "0 0 10px", color: "var(--venue-brand)", textAlign: "center" }}>Create a Category First</h3>
+            <p className="muted" style={{ textAlign: "center", marginBottom: 24 }}>
+              Before adding items to your menu, please create at least one category — for example <em>Cocktails</em>, <em>Beer</em>, or <em>Food</em>. Categories keep your menu organized for your customers.
+            </p>
+            <button
+              className="btn"
+              style={{ width: "100%" }}
+              onClick={() => setShowNoCatModal(false)}
+            >Got it — add a category</button>
           </div>
         </div>
-      ))}
+      )}
 
       {/* ── Add / Edit form modal ── */}
       {showForm && (
@@ -155,25 +272,21 @@ export default function VenueMenu() {
           <div className="card" style={{ maxWidth: 480, margin: "0 auto" }}>
             <h3 style={{ marginTop: 0 }}>{editId ? "Edit Item" : "New Item"}</h3>
 
-            <label style={{ display: "block", marginBottom: 4, fontSize: 13 }}>Name *</label>
-            <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Corona" maxLength={80} />
-
-            <label style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Price (USD) *</label>
-            <input type="number" value={form.price} step="0.01" min="0" onChange={e => setForm(p => ({ ...p, price: e.target.value }))} />
-
-            <label style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Category</label>
-            <input
+            <label>Category *</label>
+            <select
               value={form.category}
               onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-              placeholder="e.g. Beer, Cocktails, Food…"
-              list="cat-list"
-              maxLength={40}
-            />
-            <datalist id="cat-list">
-              {existingCats.map(c => <option key={c} value={c} />)}
-            </datalist>
+            >
+              {cats.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
 
-            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8 }}>
+            <label>Name *</label>
+            <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Corona" maxLength={80} />
+
+            <label>Price (USD) *</label>
+            <input type="number" value={form.price} step="0.01" min="0" onChange={e => setForm(p => ({ ...p, price: e.target.value }))} />
+
+            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8 }}>
               <input
                 type="checkbox" id="alc-chk" checked={form.isAlcohol}
                 onChange={e => setForm(p => ({ ...p, isAlcohol: e.target.checked }))}
@@ -182,7 +295,7 @@ export default function VenueMenu() {
               <label htmlFor="alc-chk" style={{ margin: 0 }}>Alcohol item</label>
             </div>
 
-            <label style={{ display: "block", margin: "16px 0 8px", fontSize: 13 }}>Photo (optional)</label>
+            <label style={{ marginTop: 16 }}>Photo (optional)</label>
             {form.imageUrl && (
               <div style={{ position: "relative", marginBottom: 8, display: "inline-block" }}>
                 <img src={form.imageUrl} alt="" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8 }} />
@@ -193,20 +306,8 @@ export default function VenueMenu() {
               </div>
             )}
             <div className="row" style={{ gap: 8 }}>
-              <button
-                className="btn sm secondary"
-                onClick={() => {
-                  const inp = imgInputRef.current;
-                  if (inp) { inp.setAttribute("capture", "environment"); inp.click(); }
-                }}
-              >📷 Camera</button>
-              <button
-                className="btn sm secondary"
-                onClick={() => {
-                  const inp = imgInputRef.current;
-                  if (inp) { inp.removeAttribute("capture"); inp.click(); }
-                }}
-              >🖼️ Choose File</button>
+              <button className="btn sm secondary" onClick={() => { const inp = imgInputRef.current; if (inp) { inp.setAttribute("capture", "environment"); inp.click(); } }}>📷 Camera</button>
+              <button className="btn sm secondary" onClick={() => { const inp = imgInputRef.current; if (inp) { inp.removeAttribute("capture"); inp.click(); } }}>🖼️ Choose File</button>
             </div>
             <input ref={imgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImgFile} />
 
@@ -222,3 +323,5 @@ export default function VenueMenu() {
     </div>
   );
 }
+
+
