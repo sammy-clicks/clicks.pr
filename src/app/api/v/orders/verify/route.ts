@@ -5,7 +5,7 @@ import { getSession } from "@/app/api/_utils";
 
 export const dynamic = 'force-dynamic';
 
-const Schema = z.object({ code: z.string().length(6) });
+const Schema = z.object({ code: z.string().length(4) });
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -17,12 +17,12 @@ export async function POST(req: Request) {
 
   const { code } = Schema.parse(await req.json());
 
-  // Find a PLACED order at this venue with matching code
+  // Find a READY order at this venue with matching code
   const order = await prisma.order.findFirst({
     where: {
       venueId: venue.id,
       orderCode: code,
-      status: "PLACED",
+      status: { in: ["READY", "ACCEPTED", "PREPARING"] },
     },
     include: {
       items: true,
@@ -33,10 +33,10 @@ export async function POST(req: Request) {
   if (!order)
     return NextResponse.json({ error: "Wrong code" }, { status: 404 });
 
-  // Transition to ACCEPTED
+  // Transition to COMPLETED
   await prisma.order.update({
     where: { id: order.id },
-    data: { status: "ACCEPTED", acceptedAt: new Date() },
+    data: { status: "COMPLETED", completedAt: new Date() },
   });
 
   return NextResponse.json({

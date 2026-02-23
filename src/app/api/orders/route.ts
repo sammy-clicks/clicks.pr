@@ -132,7 +132,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Insufficient wallet balance." }, { status: 402 });
 
   // Atomic transaction: create order, deduct wallet
-  const orderCode = String(Math.floor(100000 + Math.random() * 900000));
+  const orderCode = String(Math.floor(1000 + Math.random() * 9000));
 
   // Generate sequential order number (CLK-XXXX)
   const orderCount = await prisma.order.count();

@@ -176,6 +176,8 @@ model MenuItem {
   priceCents Int
   isAlcohol Boolean @default(false)
   isAvailable Boolean @default(true)
+  category  String?   // e.g. "Beer", "Cocktails", "Food"
+  imageUrl  String?   // optional item photo (base64 or URL)
 
   createdAt DateTime @default(now())
 }

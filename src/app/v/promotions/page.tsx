@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 
@@ -60,7 +60,7 @@ export default function VenuePromotions() {
   }
   function cancelForm() { setShowForm(false); setEditId(null); setForm({ ...EMPTY_FORM }); }
 
-  /** Save as draft â€” no confirmation needed */
+  /** Save as draft — no confirmation needed */
   async function saveDraft() {
     setSaving(true);
     const body = { ...form, isDraft: true, priceCents: Number(form.priceCents) * 100 };
@@ -130,15 +130,15 @@ export default function VenuePromotions() {
         <h2>Promotions</h2>
         {isPro
           ? <button className="btn" onClick={startCreate}>+ New Promo</button>
-          : <a href="/v/plan"><button className="btn secondary">â­ Upgrade to PRO</button></a>
+          : <a href="/v/plan"><button className="btn secondary">⭐ Upgrade to PRO</button></a>
         }
       </div>
 
-      {loading && <p className="muted">Loadingâ€¦</p>}
+      {loading && <p className="muted">Loading…</p>}
 
       {!isPro && !loading && (
         <div className="card" style={{ textAlign: "center", padding: 32 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>â­</div>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
           <h3 style={{ margin: "0 0 8px" }}>PRO feature</h3>
           <p className="muted">Upgrade to PRO ($49/mo) to create and manage nightly promotions.</p>
           <a href="/v/plan"><button className="btn" style={{ marginTop: 12 }}>See Plan Details</button></a>
@@ -165,7 +165,7 @@ export default function VenuePromotions() {
                     </div>
                     {p.description && <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>{p.description}</p>}
                     <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                      Expires {fmtExpiry(p.expiresAt)} Â· max {p.maxRedeemsPerNightPerUser} redeem{p.maxRedeemsPerNightPerUser !== 1 ? "s" : ""}/user/night
+                      Expires {fmtExpiry(p.expiresAt)} · max {p.maxRedeemsPerNightPerUser} redeem{p.maxRedeemsPerNightPerUser !== 1 ? "s" : ""}/user/night
                     </p>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -218,16 +218,16 @@ export default function VenuePromotions() {
               value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
 
             <label htmlFor="promo-desc" style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Description</label>
-            <textarea id="promo-desc" className="input" placeholder="Briefly describe the promoâ€¦" rows={3} maxLength={400}
+            <textarea id="promo-desc" className="input" placeholder="Briefly describe the promo…" rows={3} maxLength={400}
               style={{ resize: "vertical", fontFamily: "inherit", fontSize: 14 }}
               value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
 
-            <label htmlFor="promo-price" style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Price (USD) â€” leave 0 for free</label>
+            <label htmlFor="promo-price" style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Price (USD) — leave 0 for free</label>
             <input id="promo-price" type="number" className="input" min={0} step={0.01} placeholder="0.00"
               value={form.priceCents === 0 ? "" : (form.priceCents)} onChange={e => setForm(f => ({ ...f, priceCents: parseFloat(e.target.value) || 0 }))} />
 
             <label htmlFor="promo-image" style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Image URL (optional)</label>
-            <input id="promo-image" type="url" className="input" placeholder="https://â€¦"
+            <input id="promo-image" type="url" className="input" placeholder="https://…"
               value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
             {form.imageUrl && (
               <img src={form.imageUrl} alt="" style={{ marginTop: 8, width: "100%", maxHeight: 160, objectFit: "cover", borderRadius: 8 }} />
@@ -239,10 +239,10 @@ export default function VenuePromotions() {
 
             <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
               <button className="btn" onClick={requestPublish} disabled={saving || !form.title}>
-                {saving ? "â€¦" : editId ? "Update & Publish" : "Publish Now"}
+                {saving ? "…" : editId ? "Update & Publish" : "Publish Now"}
               </button>
               <button className="btn secondary" onClick={saveDraft} disabled={saving || !form.title}>
-                {saving ? "â€¦" : "Save as Draft"}
+                {saving ? "…" : "Save as Draft"}
               </button>
               <button className="btn secondary" onClick={cancelForm} disabled={saving}>Cancel</button>
             </div>
@@ -273,7 +273,7 @@ export default function VenuePromotions() {
             </p>
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
               <button className="btn" onClick={confirmPublish} disabled={publishing}>
-                {publishing ? "Publishingâ€¦" : "Confirm & Publish"}
+                {publishing ? "Publishing…" : "Confirm & Publish"}
               </button>
               <button className="btn secondary" onClick={() => setConfirmInfo(null)} disabled={publishing}>Cancel</button>
             </div>

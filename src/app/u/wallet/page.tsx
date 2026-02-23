@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
-import { GuestPageBlock, useGuestMode } from "@/components/GuestModeProvider";
 
 function fmt(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 
@@ -12,7 +11,6 @@ export default function Wallet() {
   const [sendAmt, setSendAmt] = useState("10.00");
   const [sendMemo, setSendMemo] = useState("");
   const [msg, setMsg] = useState("");
-  const { isGuest, prompt } = useGuestMode();
 
   async function load() {
     const walletR = await fetch("/api/wallet").then(r => r.json());
@@ -67,7 +65,6 @@ export default function Wallet() {
         <span className="badge" style={{ fontSize: 16, padding: "6px 14px" }}>{fmt(data.balanceCents)}</span>
       </div>
       <Nav role="u" />
-      <GuestPageBlock />
 
       {msg && <p className="muted" style={{ marginBottom: 10 }}>{msg}</p>}
 
@@ -77,7 +74,7 @@ export default function Wallet() {
           <h3 style={{ margin: "0 0 10px" }}>Top Up (mock)</h3>
           <label>Amount ($, min $10)</label>
           <input type="number" value={amount} min={10} onChange={e => setAmount(parseInt(e.target.value || "10", 10))} />
-          <button className="btn" style={{ marginTop: 10 }} onClick={isGuest ? prompt : topup}>Top up</button>
+          <button className="btn" style={{ marginTop: 10 }} onClick={topup}>Top up</button>
         </div>
 
         {/* Send */}
@@ -89,7 +86,7 @@ export default function Wallet() {
           <input type="number" value={sendAmt} step="0.01" min="1" onChange={e => setSendAmt(e.target.value)} />
           <label>Memo (optional)</label>
           <input value={sendMemo} onChange={e => setSendMemo(e.target.value)} placeholder="Drinks, etc." />
-          <button className="btn" style={{ marginTop: 10 }} onClick={isGuest ? prompt : transfer}>Send</button>
+          <button className="btn" style={{ marginTop: 10 }} onClick={transfer}>Send</button>
         </div>
 
       </div>

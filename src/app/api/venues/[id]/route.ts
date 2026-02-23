@@ -23,9 +23,18 @@ function isAlcoholAllowed(startMins: number, cutoffMins: number): boolean {
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
+  const now = new Date();
   const venue = await prisma.venue.findUnique({
     where: { id: params.id },
-    include: { municipality: true, menuItems: { orderBy: { name: "asc" } } },
+    include: {
+      municipality: true,
+      menuItems: { orderBy: [{ category: "asc" }, { name: "asc" }] },
+      promotions: {
+        where: { active: true, isDraft: false, OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      },
+    },
   });
   if (!venue) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -54,6 +63,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       lat: venue.lat,
       lng: venue.lng,
       plan: venue.plan,
+      venueImageUrl: venue.venueImageUrl ?? null,
     },
     alcoholStartMins: startMins,
     alcoholCutoffMins: cutoffMins,
@@ -66,6 +76,16 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       priceCents: m.priceCents,
       isAlcohol: m.isAlcohol,
       isAvailable: m.isAvailable,
+      category: m.category ?? null,
+      imageUrl: m.imageUrl ?? null,
+    })),
+    promotions: venue.promotions.map(p => ({
+      id: p.id,
+      title: p.title,
+      description: p.description ?? null,
+      priceCents: p.priceCents,
+      imageUrl: p.imageUrl ?? null,
+      expiresAt: p.expiresAt?.toISOString() ?? null,
     })),
   });
 }

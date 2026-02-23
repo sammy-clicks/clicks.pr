@@ -10,6 +10,8 @@ const PatchSchema = z.object({
   priceCents: z.number().int().min(0).optional(),
   isAlcohol: z.boolean().optional(),
   isAvailable: z.boolean().optional(),
+  category: z.string().optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

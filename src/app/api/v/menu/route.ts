@@ -20,7 +20,7 @@ export async function GET() {
 
   const items = await prisma.menuItem.findMany({
     where: { venueId: venue.id },
-    orderBy: { name: "asc" },
+    orderBy: [{ category: "asc" }, { name: "asc" }],
   });
   return NextResponse.json({ venueId: venue.id, venueName: venue.name, items });
 }
@@ -30,6 +30,8 @@ const CreateSchema = z.object({
   priceCents: z.number().int().min(0),
   isAlcohol: z.boolean().default(false),
   isAvailable: z.boolean().default(true),
+  category: z.string().optional().nullable(),
+  imageUrl: z.string().optional().nullable(),
 });
 
 export async function POST(req: Request) {

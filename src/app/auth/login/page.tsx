@@ -169,10 +169,6 @@ export default function Login() {
             </div>
           </div>
 
-          <a href="/api/auth/guest" className="auth-guest-link">
-            Continue as guest
-          </a>
-
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/copyright.png" alt="© Clicks" className="auth-copyright" />
         </div>

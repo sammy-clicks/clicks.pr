@@ -557,21 +557,6 @@ tr:hover td { background: var(--bg); }
   opacity: 0.52;
 }
 
-.auth-guest-link {
-  margin-top: 20px;
-  margin-bottom: 4px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.45);
-  text-decoration: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px 0;
-  font-family: inherit;
-  transition: color 0.15s;
-}
-.auth-guest-link:hover { color: rgba(255, 255, 255, 0.78); }
-
 .auth-terms {
   display: flex;
   align-items: flex-start;

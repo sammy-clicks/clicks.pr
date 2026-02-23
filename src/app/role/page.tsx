@@ -41,10 +41,6 @@ export default async function RoleGate() {
           <Link href="/auth/login">Log in</Link>
         </p>
 
-        <a href="/api/auth/guest" className="auth-guest-link">
-          Continue as guest
-        </a>
-
         {/* Copyright */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/copyright.png" alt="© Clicks" className="auth-copyright" />
