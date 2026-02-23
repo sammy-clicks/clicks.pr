@@ -127,10 +127,7 @@ export default function VenuePromotions() {
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Promotions — {venueName}</h2>
-        {isPro
-          ? <button className="btn" onClick={startCreate}>+ New Promo</button>
-          : <a href="/v/plan"><button className="btn secondary">⭐ Upgrade to PRO</button></a>
-        }
+        {!isPro && <a href="/v/plan"><button className="btn secondary">⭐ Upgrade to PRO</button></a>}
       </div>
       <Nav role="v" />
 
@@ -148,7 +145,10 @@ export default function VenuePromotions() {
       {isPro && !loading && (
         <>
           {/* â”€â”€ Active promotions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <h3>Active ({active.length})</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+            <h3 style={{ margin: 0 }}>Active ({active.length})</h3>
+            <button className="btn" onClick={startCreate}>+ New Promo</button>
+          </div>
           {active.length === 0
             ? <p className="muted">No active promotions right now.</p>
             : active.map(p => (

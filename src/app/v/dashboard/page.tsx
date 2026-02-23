@@ -28,9 +28,26 @@ export default function VenueDashboard() {
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Dashboard — {data.venueName}</h2>
-        <span className="badge">{open.length} open orders</span>
       </div>
       <Nav role="v" />
+
+      {/* ── Active Orders Hero ───────────────────────────────── */}
+      <div style={{ textAlign: "center", padding: "28px 0 20px" }}>
+        <div style={{
+          fontSize: 96, fontWeight: 800, lineHeight: 1,
+          color: open.length > 0 ? "var(--venue-brand)" : "var(--muted-text)",
+          transition: "color 0.3s",
+        }}>
+          {open.length}
+        </div>
+        <div style={{
+          fontSize: 15, fontWeight: 600, letterSpacing: "0.1em",
+          textTransform: "uppercase", color: "var(--venue-brand)",
+          marginTop: 8, opacity: open.length > 0 ? 1 : 0.45,
+        }}>
+          Active Orders
+        </div>
+      </div>
 
       <div className="row" style={{ marginBottom: 16 }}>
         {["PLACED", "ACCEPTED", "PREPARING", "READY"].map(s => (

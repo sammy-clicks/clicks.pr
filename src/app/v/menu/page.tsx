@@ -83,11 +83,11 @@ export default function VenueMenu() {
     setLocalCats(p => p.filter(c => c !== name));
   }
 
-  function openAdd() {
+  function openAdd(category?: string) {
     const cats = data ? allCategories(data.items) : localCats;
     if (cats.length === 0) { setShowNoCatModal(true); return; }
     setEditId(null);
-    setForm({ ...EMPTY_FORM, category: cats[0] });
+    setForm({ ...EMPTY_FORM, category: category ?? cats[0] });
     setMsg(""); setShowForm(true);
   }
 
@@ -150,7 +150,6 @@ export default function VenueMenu() {
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Menu — {data.venueName}</h2>
-        <button className="btn" onClick={openAdd}>+ Add Item</button>
       </div>
       <Nav role="v" />
 
@@ -202,7 +201,7 @@ export default function VenueMenu() {
       </div>
 
       {items.length === 0 && cats.length > 0 && (
-        <p className="muted">No items yet. Click <strong>+ Add Item</strong> to get started.</p>
+        <p className="muted">No items yet. Use the <strong>+ Add Item</strong> button on any category to get started.</p>
       )}
 
       {allDisplayCats.map(cat => {
@@ -240,6 +239,11 @@ export default function VenueMenu() {
                 </div>
               ))}
             </div>
+            <button
+              className="btn sm"
+              style={{ marginTop: 10 }}
+              onClick={() => openAdd(cat)}
+            >+ Add Item</button>
           </div>
         );
       })}
