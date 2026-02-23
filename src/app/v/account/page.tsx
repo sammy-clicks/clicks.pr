@@ -3,42 +3,45 @@ import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { PinGate, usePinManager } from "@/components/PinGate";
 
-const CROWD_LABELS  = ["Off",   "Quiet",    "Moderate", "Busy",    "Packed",  "Full"];
-const CROWD_COLORS  = ["#555",  "#22c55e",  "#a3e635",  "#f59e0b", "#f97316", "#ef4444"];
-const CROWD_EMOJIS  = ["—",     "🟢",       "🟡",       "🟠",      "🔴",      "🔴"];
+const pinBoxStyle: React.CSSProperties = {
+  width: 48, height: 56, borderRadius: 10, fontSize: 28, fontWeight: 700,
+  textAlign: "center", border: "1.5px solid rgba(255,255,255,0.2)",
+  background: "var(--bg, #0d0d1a)", color: "var(--ink, #fff)",
+  outline: "none", caretColor: "transparent",
+};
+const pinBoxActiveStyle: React.CSSProperties = {
+  ...pinBoxStyle,
+  border: "1.5px solid var(--venue-brand)",
+  boxShadow: "0 0 0 3px rgba(231,168,255,0.15)",
+};
 
 export default function VenueAccount() {
   const [user, setUser]   = useState<any>(null);
   const [venue, setVenue] = useState<any>(null);
 
-  // Photo state
   const [avatarUrl, setAvatarUrl]         = useState("");
   const [venueImageUrl, setVenueImageUrl] = useState("");
-  const avatarRef    = useRef<HTMLInputElement>(null);
-  const venueImgRef  = useRef<HTMLInputElement>(null);
+  const avatarRef   = useRef<HTMLInputElement>(null);
+  const venueImgRef = useRef<HTMLInputElement>(null);
 
-  // Password state
-  const [currentPw, setCurrentPw]   = useState("");
-  const [newPw, setNewPw]           = useState("");
-  const [confirmPw, setConfirmPw]   = useState("");
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw]         = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
 
-  // Crowd meter state
-  const [crowdLevel, setCrowdLevel]   = useState(0);
-  const [crowdSaving, setCrowdSaving] = useState(false);
-  const [crowdMsg, setCrowdMsg]       = useState("");
+  const [liveCrowd, setLiveCrowd]           = useState(0);
+  const [activeCheckins, setActiveCheckins] = useState(0);
 
-  // PIN management
   const { currentPin, savePin, removePin } = usePinManager();
-  const [pinStep, setPinStep]     = useState<"idle"|"set"|"change-enter"|"change-new"|"remove">("idle");
-  const [pinInput1, setPinInput1] = useState("");
-  const [pinInput2, setPinInput2] = useState("");
-  const [pinErr, setPinErr]       = useState("");
+  const [pinStep, setPinStep] = useState<"idle"|"set"|"change-enter"|"change-new"|"remove">("idle");
+  const [pin1, setPin1] = useState(["","","",""]);
+  const [pin2, setPin2] = useState(["","","",""]);
+  const [pinErr, setPinErr] = useState("");
+  const p1r = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const p2r = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
-  // UI state
   const [msg, setMsg]       = useState({ text: "", ok: true });
   const [saving, setSaving] = useState(false);
 
-  // Modals
   const [showPauseModal, setShowPauseModal]     = useState(false);
   const [showDelete, setShowDelete]             = useState(false);
   const [deleteConfirm, setDeleteConfirm]       = useState("");
@@ -50,27 +53,21 @@ export default function VenueAccount() {
     const r = await fetch("/api/v/account");
     const j = await r.json();
     if (j.user)  { setUser(j.user);  setAvatarUrl(j.user.avatarUrl ?? ""); }
-    if (j.venue) {
-      setVenue(j.venue);
-      setVenueImageUrl(j.venue.venueImageUrl ?? "");
-      setCrowdLevel(j.venue.crowdLevel ?? 0);
-    }
+    if (j.venue) { setVenue(j.venue); setVenueImageUrl(j.venue.venueImageUrl ?? ""); }
+    if (typeof j.liveCrowd    === "number") setLiveCrowd(j.liveCrowd);
+    if (typeof j.activeCheckins === "number") setActiveCheckins(j.activeCheckins);
   }
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("upgraded") === "1" && !sessionStorage.getItem("welcome_dismissed")) {
-      setShowWelcome(true);
-    }
+    if (params.get("upgraded") === "1" && !sessionStorage.getItem("welcome_dismissed")) setShowWelcome(true);
   }, []);
 
   function dismissWelcome() {
-    sessionStorage.setItem("welcome_dismissed", "1");
-    setShowWelcome(false);
+    sessionStorage.setItem("welcome_dismissed", "1"); setShowWelcome(false);
     window.history.replaceState({}, "", "/v/account");
   }
-
   function setMsg2(text: string, ok = true) { setMsg({ text, ok }); }
 
   function pickImage(file: File, size: { w: number; h: number }, onDone: (d: string) => void) {
@@ -80,12 +77,11 @@ export default function VenueAccount() {
       const img = new Image();
       img.onload = () => {
         const { w, h } = size;
-        const canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
+        const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext("2d")!;
         const srcR = img.width / img.height, tgtR = w / h;
         let sx = 0, sy = 0, sw = img.width, sh = img.height;
-        if (srcR > tgtR) { sw = sh * tgtR; sx = (img.width  - sw) / 2; }
+        if (srcR > tgtR) { sw = sh * tgtR; sx = (img.width - sw) / 2; }
         else             { sh = sw / tgtR; sy = (img.height - sh) / 2; }
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
         onDone(canvas.toDataURL("image/jpeg", 0.85));
@@ -96,12 +92,10 @@ export default function VenueAccount() {
   }
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]; if (!f) return;
-    pickImage(f, { w: 200, h: 200 }, setAvatarUrl); e.target.value = "";
+    const f = e.target.files?.[0]; if (!f) return; pickImage(f, { w: 200, h: 200 }, setAvatarUrl); e.target.value = "";
   }
   function handleVenueImgChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]; if (!f) return;
-    pickImage(f, { w: 600, h: 400 }, setVenueImageUrl); e.target.value = "";
+    const f = e.target.files?.[0]; if (!f) return; pickImage(f, { w: 600, h: 400 }, setVenueImageUrl); e.target.value = "";
   }
 
   async function saveAvatar() {
@@ -111,7 +105,6 @@ export default function VenueAccount() {
     if (!r.ok) { setMsg2(j.error || "Failed", false); return; }
     setMsg2("Profile photo saved."); load();
   }
-
   async function saveVenueImage() {
     setSaving(true); setMsg2("");
     const r = await fetch("/api/v/account", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ venueImageUrl: venueImageUrl || null }) });
@@ -119,14 +112,6 @@ export default function VenueAccount() {
     if (!r.ok) { setMsg2(j.error || "Failed", false); return; }
     setMsg2("Venue photo saved."); load();
   }
-
-  async function saveCrowdLevel(level: number) {
-    setCrowdLevel(level); setCrowdSaving(true); setCrowdMsg("");
-    const r = await fetch("/api/v/account", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ crowdLevel: level }) });
-    setCrowdSaving(false);
-    if (!r.ok) { setCrowdMsg("Save failed"); } else { setCrowdMsg("Saved!"); setTimeout(() => setCrowdMsg(""), 1500); }
-  }
-
   async function changePassword() {
     if (newPw !== confirmPw) { setMsg2("New passwords don't match.", false); return; }
     setSaving(true); setMsg2("");
@@ -135,7 +120,6 @@ export default function VenueAccount() {
     if (!r.ok) { setMsg2(j.error || "Failed", false); return; }
     setMsg2("Password changed."); setCurrentPw(""); setNewPw(""); setConfirmPw("");
   }
-
   async function togglePause() {
     setSaving(true); setMsg2("");
     const r = await fetch("/api/v/account/pause", { method: "POST" });
@@ -145,79 +129,74 @@ export default function VenueAccount() {
     else          setMsg2("Venue resumed. You're open for orders.");
     load();
   }
-
   async function deleteAccount() {
     if (deleteConfirm !== user?.username) { setMsg2("Type your username exactly to confirm.", false); return; }
     const r = await fetch("/api/v/account", { method: "DELETE" });
     if (r.ok) window.location.href = "/auth/login";
     else { const j = await r.json(); setMsg2(j.error || "Failed", false); }
   }
-
-  async function handleUpgrade() {
-    setSaving(true); setMsg2("");
-    const r = await fetch("/api/v/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "checkout" }) });
-    const j = await r.json(); setSaving(false);
-    if (!r.ok) { setMsg2(j.error || "Checkout failed.", false); return; }
-    if (j.simulated) window.location.href = j.redirectUrl ?? "/v/account?upgraded=1";
-    else if (j.checkoutUrl) window.location.href = j.checkoutUrl;
-  }
-
-  async function handlePortal() {
-    setSaving(true); setMsg2("");
-    const r = await fetch("/api/v/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "portal" }) });
-    const j = await r.json(); setSaving(false);
-    if (!r.ok) { setMsg2(j.error || "Failed to open billing portal.", false); return; }
-    if (j.portalUrl) window.location.href = j.portalUrl;
-  }
-
   async function activateBoost() {
     setSaving(true); setMsg2("");
     const r = await fetch("/api/v/boost", { method: "POST" });
     const j = await r.json(); setSaving(false); setShowBoostConfirm(false);
     if (!r.ok) { setMsg2(j.error || "Failed to activate Boost Hour.", false); return; }
-    setMsg2("Boost Hour activated. Your venue will receive increased visibility for the next 60 minutes.");
-    load();
+    setMsg2("Boost Hour activated! Increased visibility for the next 60 minutes."); load();
   }
 
-  // ── PIN helpers ───────────────────────────────────────────
-  function startSetPin()    { setPinInput1(""); setPinInput2(""); setPinErr(""); setPinStep("set"); }
-  function startChangePin() { setPinInput1(""); setPinInput2(""); setPinErr(""); setPinStep("change-enter"); }
-  function startRemovePin() { setPinInput1(""); setPinErr(""); setPinStep("remove"); }
-  function cancelPin()      { setPinStep("idle"); setPinInput1(""); setPinInput2(""); setPinErr(""); }
+  // PIN helpers
+  const joinPin = (b: string[]) => b.join("");
+  function resetPin() { setPin1(["","","",""]); setPin2(["","","",""]); setPinErr(""); }
+
+  function startPin(step: typeof pinStep, refs: typeof p1r) {
+    resetPin(); setPinStep(step); setTimeout(() => refs[0].current?.focus(), 50);
+  }
+  function cancelPin() { resetPin(); setPinStep("idle"); }
+
+  function onPinDigit(
+    boxes: string[], set: (v: string[]) => void,
+    refs: typeof p1r, idx: number, val: string
+  ) {
+    const d = val.replace(/\D/g, "").slice(-1);
+    const next = [...boxes]; next[idx] = d; set(next);
+    if (d && idx < 3) refs[idx + 1].current?.focus();
+  }
+  function onPinBack(
+    boxes: string[], set: (v: string[]) => void,
+    refs: typeof p1r, idx: number, e: React.KeyboardEvent
+  ) {
+    if (e.key === "Backspace" && !boxes[idx] && idx > 0) {
+      const next = [...boxes]; next[idx - 1] = ""; set(next); refs[idx - 1].current?.focus();
+    }
+  }
 
   function confirmSetPin() {
-    if (pinInput1.length !== 4) { setPinErr("PIN must be 4 digits"); return; }
-    if (pinInput1 !== pinInput2) { setPinErr("PINs don't match"); return; }
-    savePin(pinInput1); setPinStep("idle"); setPinInput1(""); setPinInput2(""); setPinErr("");
+    const p = joinPin(pin1), q = joinPin(pin2);
+    if (p.length !== 4) { setPinErr("Fill all 4 boxes in both rows"); return; }
+    if (p !== q) { setPinErr("PINs don't match  try again"); resetPin(); setTimeout(() => p1r[0].current?.focus(), 50); return; }
+    savePin(p); cancelPin();
   }
   function confirmChangePin() {
     if (pinStep === "change-enter") {
-      if (pinInput1 !== currentPin) { setPinErr("Wrong current PIN"); return; }
-      setPinInput1(""); setPinInput2(""); setPinErr(""); setPinStep("change-new"); return;
+      if (joinPin(pin1) !== currentPin) { setPinErr("Wrong PIN"); setPin1(["","","",""]); setTimeout(() => p1r[0].current?.focus(), 50); return; }
+      setPin1(["","","",""]); setPin2(["","","",""]); setPinErr(""); setPinStep("change-new");
+      setTimeout(() => p1r[0].current?.focus(), 50); return;
     }
-    if (pinInput1.length !== 4) { setPinErr("PIN must be 4 digits"); return; }
-    if (pinInput1 !== pinInput2) { setPinErr("PINs don't match"); return; }
-    savePin(pinInput1); setPinStep("idle"); setPinInput1(""); setPinInput2(""); setPinErr("");
+    const p = joinPin(pin1), q = joinPin(pin2);
+    if (p.length !== 4) { setPinErr("Fill all 4 boxes"); return; }
+    if (p !== q) { setPinErr("PINs don't match  try again"); resetPin(); setTimeout(() => p1r[0].current?.focus(), 50); return; }
+    savePin(p); cancelPin();
   }
   function confirmRemovePin() {
-    if (pinInput1 !== currentPin) { setPinErr("Wrong current PIN"); return; }
-    removePin(); setPinStep("idle"); setPinInput1(""); setPinErr("");
+    if (joinPin(pin1) !== currentPin) { setPinErr("Wrong PIN"); setPin1(["","","",""]); setTimeout(() => p1r[0].current?.focus(), 50); return; }
+    removePin(); cancelPin();
   }
 
-  function PinInput({ value, onChange, placeholder = "••••" }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-    return (
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value.replace(/\D/g, "").slice(0, 4))}
-        type="password" inputMode="numeric" maxLength={4} placeholder={placeholder}
-        style={{ width: 80, letterSpacing: 8, fontSize: 22, fontWeight: 700, textAlign: "center", padding: "6px 10px" }}
-      />
-    );
-  }
-
-  if (!user) return <div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>;
+  if (!user) return <div className="container"><Nav role="v" /><p className="muted">Loading</p></div>;
 
   const paused = venue && !venue.isEnabled;
+
+  const crowdLabel = liveCrowd === 0 ? "No activity" : liveCrowd <= 2 ? "Quiet" : liveCrowd <= 4 ? "Moderate" : liveCrowd <= 6 ? "Busy" : liveCrowd <= 8 ? "Packed" : "Full";
+  const crowdColor = liveCrowd === 0 ? "var(--muted-text)" : liveCrowd <= 3 ? "#22c55e" : liveCrowd <= 6 ? "#f59e0b" : "#ef4444";
 
   const AvatarEl = ({ size = 48 }: { size?: number }) => (
     user.avatarUrl
@@ -227,151 +206,168 @@ export default function VenueAccount() {
         </div>
   );
 
+  // stable PIN box row  NOT a component (just a helper that returns JSX)
+  const pinBoxRow = (
+    label: string,
+    boxes: string[],
+    setBoxes: (v: string[]) => void,
+    refs: typeof p1r
+  ) => (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: "var(--muted-text)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {[0,1,2,3].map(i => (
+          <input
+            key={i}
+            ref={refs[i]}
+            type="password"
+            inputMode="numeric"
+            maxLength={1}
+            value={boxes[i]}
+            style={boxes[i] ? pinBoxActiveStyle : pinBoxStyle}
+            onChange={e => onPinDigit(boxes, setBoxes, refs, i, e.target.value)}
+            onKeyDown={e => onPinBack(boxes, setBoxes, refs, i, e)}
+            onFocus={e => (e.target as HTMLInputElement).select()}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <PinGate>
     <div className="container">
       <div className="header">
-        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Account — {venue?.name ?? user.username}</h2>
+        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.6rem" }}>Account</h2>
+        <span className="muted" style={{ fontSize: 13 }}>{venue?.name ?? user.username}</span>
       </div>
       <Nav role="v" />
 
       {msg.text && (
-        <p className="muted" style={{ color: msg.ok ? "var(--green,#0f0)" : "var(--error,#f66)", marginBottom: 12 }}>
+        <div style={{ padding: "10px 14px", borderRadius: 10, marginBottom: 16, background: msg.ok ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${msg.ok ? "#22c55e" : "#ef4444"}`, color: msg.ok ? "#22c55e" : "#ef4444", fontSize: 13, fontWeight: 600 }}>
           {msg.text}
-        </p>
+        </div>
       )}
 
-      {/* ── Manager PIN ─────────────────────────────────────── */}
+      {/* 1  Manager PIN */}
       <div className="card" style={{ marginBottom: 20, border: "1.5px solid var(--venue-brand)" }}>
-        <div className="header" style={{ marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <div>
-            <h3 style={{ margin: 0, color: "var(--venue-brand)" }}>🔒 Manager PIN</h3>
-            <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>
-              Protect Menu, Promotions, and Account from employee access.
-            </p>
+            <div style={{ fontWeight: 700, color: "var(--venue-brand)", marginBottom: 3 }}> Manager PIN</div>
+            <div className="muted" style={{ fontSize: 12 }}>Locks Menu, Promotions &amp; Account from employees. Dashboard and Orders always accessible.</div>
           </div>
           {currentPin && pinStep === "idle" && (
-            <span style={{ background: "rgba(34,197,94,0.15)", color: "#22c55e", fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 20, border: "1px solid #22c55e" }}>
-              PIN Active
+            <span style={{ flexShrink: 0, marginLeft: 12, fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.35)" }}>
+              Active
             </span>
           )}
         </div>
 
         {pinStep === "idle" && !currentPin && (
-          <button className="btn sm" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }} onClick={startSetPin}>
-            Set PIN
-          </button>
+          <button className="btn sm" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }} onClick={() => startPin("set", p1r)}>Set PIN</button>
         )}
         {pinStep === "idle" && currentPin && (
-          <div className="row" style={{ gap: 8 }}>
-            <button className="btn sm secondary" onClick={startChangePin}>Change PIN</button>
-            <button className="btn sm danger"    onClick={startRemovePin}>Remove PIN</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn sm secondary" onClick={() => startPin("change-enter", p1r)}>Change PIN</button>
+            <button className="btn sm danger"    onClick={() => startPin("remove", p1r)}>Remove PIN</button>
           </div>
         )}
+
         {pinStep === "set" && (
           <div>
-            <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>New PIN (4 digits)</label>
-            <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <PinInput value={pinInput1} onChange={setPinInput1} placeholder="1234" />
-              <PinInput value={pinInput2} onChange={setPinInput2} placeholder="1234" />
-              <button className="btn sm" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }} onClick={confirmSetPin} disabled={pinInput1.length !== 4 || pinInput2.length !== 4}>Save</button>
+            {pinBoxRow("New PIN", pin1, setPin1, p1r)}
+            {pinBoxRow("Confirm PIN", pin2, setPin2, p2r)}
+            {pinErr && <p style={{ margin: "0 0 8px", fontSize: 12, color: "#ef4444", fontWeight: 600 }}>{pinErr}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn sm" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }} onClick={confirmSetPin} disabled={joinPin(pin1).length < 4 || joinPin(pin2).length < 4}>Save PIN</button>
               <button className="btn sm secondary" onClick={cancelPin}>Cancel</button>
             </div>
-            <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>Enter PIN twice to confirm.</p>
-            {pinErr && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--error,#f66)", fontWeight: 600 }}>{pinErr}</p>}
           </div>
         )}
         {pinStep === "change-enter" && (
           <div>
-            <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Enter current PIN</label>
-            <div className="row" style={{ gap: 8, alignItems: "center" }}>
-              <PinInput value={pinInput1} onChange={setPinInput1} />
-              <button className="btn sm" onClick={confirmChangePin} disabled={pinInput1.length !== 4}>Next</button>
+            {pinBoxRow("Current PIN", pin1, setPin1, p1r)}
+            {pinErr && <p style={{ margin: "0 0 8px", fontSize: 12, color: "#ef4444", fontWeight: 600 }}>{pinErr}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn sm" onClick={confirmChangePin} disabled={joinPin(pin1).length < 4}>Next </button>
               <button className="btn sm secondary" onClick={cancelPin}>Cancel</button>
             </div>
-            {pinErr && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--error,#f66)", fontWeight: 600 }}>{pinErr}</p>}
           </div>
         )}
         {pinStep === "change-new" && (
           <div>
-            <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>New PIN (enter twice)</label>
-            <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <PinInput value={pinInput1} onChange={setPinInput1} placeholder="New" />
-              <PinInput value={pinInput2} onChange={setPinInput2} placeholder="Confirm" />
-              <button className="btn sm" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }} onClick={confirmChangePin} disabled={pinInput1.length !== 4 || pinInput2.length !== 4}>Save</button>
+            {pinBoxRow("New PIN", pin1, setPin1, p1r)}
+            {pinBoxRow("Confirm New PIN", pin2, setPin2, p2r)}
+            {pinErr && <p style={{ margin: "0 0 8px", fontSize: 12, color: "#ef4444", fontWeight: 600 }}>{pinErr}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn sm" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }} onClick={confirmChangePin} disabled={joinPin(pin1).length < 4 || joinPin(pin2).length < 4}>Save PIN</button>
               <button className="btn sm secondary" onClick={cancelPin}>Cancel</button>
             </div>
-            {pinErr && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--error,#f66)", fontWeight: 600 }}>{pinErr}</p>}
           </div>
         )}
         {pinStep === "remove" && (
           <div>
-            <label style={{ fontSize: 12, marginBottom: 4, display: "block" }}>Enter current PIN to remove</label>
-            <div className="row" style={{ gap: 8, alignItems: "center" }}>
-              <PinInput value={pinInput1} onChange={setPinInput1} />
-              <button className="btn sm danger" onClick={confirmRemovePin} disabled={pinInput1.length !== 4}>Remove</button>
+            {pinBoxRow("Enter current PIN to remove", pin1, setPin1, p1r)}
+            {pinErr && <p style={{ margin: "0 0 8px", fontSize: 12, color: "#ef4444", fontWeight: 600 }}>{pinErr}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn sm danger" onClick={confirmRemovePin} disabled={joinPin(pin1).length < 4}>Remove PIN</button>
               <button className="btn sm secondary" onClick={cancelPin}>Cancel</button>
             </div>
-            {pinErr && <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--error,#f66)", fontWeight: 600 }}>{pinErr}</p>}
           </div>
         )}
       </div>
 
-      {/* ── Your photo ──────────────────────────────────────── */}
+      {/* 2  Profile photo */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <h3 style={{ margin: "0 0 12px" }}>Your photo</h3>
-        <div className="row" style={{ alignItems: "center", gap: 16, marginBottom: 14 }}>
-          <div style={{ position: "relative", display: "inline-block" }}>
+        <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Profile Photo</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ position: "relative", flexShrink: 0 }}>
             <AvatarEl size={72} />
-            <button onClick={() => avatarRef.current?.click()} title="Change photo"
-              style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "2px solid rgba(255,255,255,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, padding: 0 }}>
-              📷
+            <button onClick={() => avatarRef.current?.click()} title="Change"
+              style={{ position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,0.75)", border: "2px solid rgba(255,255,255,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, padding: 0 }}>
+              
             </button>
             <input ref={avatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarChange} />
           </div>
           <div>
-            <strong>@{user.username}</strong>
+            <div style={{ fontWeight: 700 }}>@{user.username}</div>
             <div className="muted" style={{ fontSize: 13 }}>{user.firstName} {user.lastName}</div>
-            <button className="btn sm secondary" style={{ marginTop: 6, fontSize: 12 }} onClick={() => avatarRef.current?.click()}>Change photo</button>
+            <button className="btn sm secondary" style={{ marginTop: 8, fontSize: 11 }} onClick={() => avatarRef.current?.click()}>Change photo</button>
           </div>
         </div>
-        {avatarUrl !== (user.avatarUrl ?? "") && <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>New photo selected — save to apply.</p>}
-        <button className="btn" onClick={saveAvatar} disabled={saving}>Save photo</button>
+        {avatarUrl !== (user.avatarUrl ?? "") && <div style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>New photo selected  not saved yet.</div>}
+        <button className="btn" style={{ marginTop: 14 }} onClick={saveAvatar} disabled={saving}>Save photo</button>
       </div>
 
-      {/* ── Venue photo + Preview ────────────────────────────── */}
+      {/* 3  Venue photo + Preview */}
       {venue && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <div className="header" style={{ marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
             <div>
-              <h3 style={{ margin: 0 }}>Venue photo</h3>
-              <p className="muted" style={{ fontSize: 12, margin: "3px 0 0" }}>Shown to customers. Recommended: 600×400.</p>
+              <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>Venue Photo</div>
+              <div className="muted" style={{ fontSize: 12 }}>Shown to customers. Recommended 600400.</div>
             </div>
-            <button className="btn sm secondary" style={{ fontSize: 11 }} onClick={() => setShowPreview(p => !p)}>
-              {showPreview ? "Hide Preview" : "👁 Preview"}
+            <button className="btn sm secondary" style={{ fontSize: 11, flexShrink: 0, marginLeft: 10 }} onClick={() => setShowPreview(p => !p)}>
+              {showPreview ? "Hide preview" : " Customer view"}
             </button>
           </div>
 
+          {/* Preview matching u/zone/[id] exactly */}
           {showPreview && (
-            <div style={{ marginBottom: 14, padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              <p className="muted" style={{ fontSize: 11, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>Customer view</p>
-              <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 14, overflow: "hidden", maxWidth: 340, border: "1px solid rgba(255,255,255,0.1)" }}>
-                {venueImageUrl
-                  ? <img src={venueImageUrl} alt="Venue" style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }} />
-                  : <div style={{ width: "100%", height: 140, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 28 }}>🏠</span>
-                    </div>
-                }
-                <div style={{ padding: "10px 14px 14px" }}>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>{venue.name}</div>
-                  {venue.type    && <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{venue.type}</div>}
-                  {venue.address && <div className="muted" style={{ fontSize: 12 }}>{venue.address}</div>}
-                  <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 12, background: "rgba(255,255,255,0.07)", padding: "2px 8px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.12)" }}>
-                      {CROWD_EMOJIS[crowdLevel]} {CROWD_LABELS[crowdLevel]}
-                    </span>
-                    {paused && <span style={{ fontSize: 11, color: "#f59e0b", background: "rgba(245,158,11,0.1)", padding: "2px 8px", borderRadius: 20, border: "1px solid rgba(245,158,11,0.3)" }}>Paused</span>}
-                  </div>
+            <div style={{ marginBottom: 16, padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ fontSize: 11, color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>As seen in Zones</div>
+              <div className="card" style={{ maxWidth: 340, marginBottom: 0 }}>
+                <div className="header">
+                  <strong>{venue.name}</strong>
+                  {venue.type && <span className="badge">{venue.type}</span>}
+                </div>
+                <p className="muted">{venue.description || ""}</p>
+                <p className="muted">Crowd {liveCrowd}/10</p>
+                <div className="row">
+                  <span className="btn" style={{ opacity: 0.45, cursor: "default", userSelect: "none" }}>View</span>
+                  {venue.address && (
+                    <a className="btn secondary" href={`https://www.google.com/maps?q=${encodeURIComponent(venue.address)}`} target="_blank" rel="noreferrer">Maps</a>
+                  )}
                 </div>
               </div>
             </div>
@@ -379,72 +375,65 @@ export default function VenueAccount() {
 
           {venueImageUrl
             ? <img src={venueImageUrl} alt="Venue" style={{ width: "100%", maxWidth: 360, height: 200, objectFit: "cover", borderRadius: 10, marginBottom: 12 }} />
-            : <div style={{ width: "100%", maxWidth: 360, height: 120, background: "rgba(255,255,255,0.04)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, border: "2px dashed rgba(255,255,255,0.12)" }}>
+            : <div style={{ width: "100%", maxWidth: 360, height: 110, background: "rgba(255,255,255,0.04)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, border: "2px dashed rgba(255,255,255,0.1)" }}>
                 <span className="muted" style={{ fontSize: 13 }}>No photo yet</span>
               </div>
           }
-          <div className="row" style={{ gap: 10, marginBottom: 8 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <button className="btn sm secondary" onClick={() => venueImgRef.current?.click()}>
-              📷 {venueImageUrl ? "Change" : "Upload"}
+               {venueImageUrl ? "Change" : "Upload"}
             </button>
             {venueImageUrl && <button className="btn sm secondary" onClick={() => setVenueImageUrl("")}>Remove</button>}
           </div>
           <input ref={venueImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleVenueImgChange} />
-          {venueImageUrl !== (venue.venueImageUrl ?? "") && <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>New photo selected — save to apply.</p>}
+          {venueImageUrl !== (venue.venueImageUrl ?? "") && <div style={{ marginBottom: 12, padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>New photo selected  not saved yet.</div>}
           <button className="btn" onClick={saveVenueImage} disabled={saving}>Save venue photo</button>
         </div>
       )}
 
-      {/* ── Crowd Meter ──────────────────────────────────────── */}
+      {/* 4  Live Crowd (read-only) */}
       {venue && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ margin: "0 0 4px" }}>Crowd Meter 🫶</h3>
-          <p className="muted" style={{ fontSize: 12, margin: "0 0 14px" }}>
-            Let customers know how busy you are. Updates live on your venue card.
-          </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {CROWD_LABELS.map((label, i) => {
-              const active = crowdLevel === i;
-              return (
-                <button key={i} onClick={() => saveCrowdLevel(i)} disabled={crowdSaving}
-                  style={{
-                    padding: "8px 16px", borderRadius: 24,
-                    border: active ? `2px solid ${CROWD_COLORS[i]}` : "2px solid rgba(255,255,255,0.1)",
-                    background: active ? `${CROWD_COLORS[i]}22` : "rgba(255,255,255,0.04)",
-                    color: active ? CROWD_COLORS[i] : "var(--muted-text)",
-                    fontWeight: active ? 700 : 500, fontSize: 13, cursor: "pointer",
-                    transition: "all 0.15s", transform: active ? "scale(1.05)" : "scale(1)",
-                  }}>
-                  {i === 0 ? "—" : CROWD_EMOJIS[i]} {label}
-                </button>
-              );
-            })}
+          <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Live Crowd</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <div style={{ fontSize: 52, fontWeight: 800, lineHeight: 1, color: crowdColor }}>
+              {liveCrowd}<span style={{ fontSize: 18, fontWeight: 400, color: "var(--muted-text)" }}>/10</span>
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 15 }}>{crowdLabel}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{activeCheckins} active check-in{activeCheckins !== 1 ? "s" : ""}</div>
+            </div>
           </div>
-          {crowdSaving && <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>Saving…</p>}
-          {crowdMsg    && <p style={{ fontSize: 12, marginTop: 8, color: crowdMsg === "Saved!" ? "#22c55e" : "var(--error,#f66)", fontWeight: 600 }}>{crowdMsg}</p>}
+          <div style={{ marginTop: 14, height: 6, borderRadius: 6, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${Math.max(liveCrowd * 10, liveCrowd > 0 ? 3 : 0)}%`, borderRadius: 6, transition: "width 0.4s", background: crowdColor === "var(--muted-text)" ? "rgba(255,255,255,0.15)" : crowdColor }} />
+          </div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>Based on check-ins in the last 2 hours. Updated automatically.</div>
         </div>
       )}
 
-      {/* ── Change password ───────────────────────────────────── */}
+      {/* 5  Change password */}
       <div className="card" style={{ marginBottom: 20 }}>
-        <h3 style={{ margin: "0 0 12px" }}>Change password</h3>
+        <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 14 }}>Change Password</div>
         <label>Current password</label>
         <input type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} autoComplete="current-password" />
-        <label>New password (min 8 chars)</label>
+        <label>New password</label>
         <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} autoComplete="new-password" />
         <label>Confirm new password</label>
         <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} autoComplete="new-password" />
-        <button className="btn" style={{ marginTop: 10 }} onClick={changePassword} disabled={saving || !currentPw || !newPw}>
-          Change password
-        </button>
+        <button className="btn" style={{ marginTop: 12 }} onClick={changePassword} disabled={saving || !currentPw || !newPw}>Update password</button>
       </div>
 
-      {/* ── Venue status ─────────────────────────────────────── */}
+      {/* 6  Venue status */}
       {venue && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <h3 style={{ margin: "0 0 8px" }}>Venue status</h3>
-          <p className="muted" style={{ marginBottom: 12 }}>
-            {paused ? "Your venue is currently paused. Customers cannot place new orders." : "Your venue is open and accepting orders."}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em" }}>Venue Status</div>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 20, background: paused ? "rgba(245,158,11,0.12)" : "rgba(34,197,94,0.12)", color: paused ? "#f59e0b" : "#22c55e", border: `1px solid ${paused ? "rgba(245,158,11,0.35)" : "rgba(34,197,94,0.35)"}` }}>
+              {paused ? "Paused" : "Open"}
+            </span>
+          </div>
+          <p className="muted" style={{ marginBottom: 12, fontSize: 13 }}>
+            {paused ? "Your venue is paused  no new orders." : "Your venue is live and accepting orders."}
           </p>
           {paused
             ? <button className="btn" onClick={togglePause} disabled={saving}>Resume venue</button>
@@ -453,18 +442,16 @@ export default function VenueAccount() {
         </div>
       )}
 
-      {/* ── Danger zone ──────────────────────────────────────── */}
-      <div className="card" style={{ border: "1px solid var(--error,#f66)", marginBottom: 20 }}>
-        <h3 style={{ margin: "0 0 8px", color: "var(--error,#f66)" }}>Danger zone</h3>
+      {/* 7  Danger zone */}
+      <div className="card" style={{ border: "1px solid rgba(239,68,68,0.35)", marginBottom: 20 }}>
+        <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10, color: "#ef4444" }}>Danger Zone</div>
         {!showDelete ? (
           <button className="btn danger" onClick={() => setShowDelete(true)}>Delete account</button>
         ) : (
           <>
-            <p className="muted">
-              Your account will be permanently deleted. Type your username <strong>@{user.username}</strong> to confirm.
-            </p>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Permanently deletes your account. Active orders will be cancelled with full refunds. Type <strong>@{user.username}</strong> to confirm.</p>
             <input value={deleteConfirm} onChange={e => setDeleteConfirm(e.target.value)} placeholder={user.username} />
-            <div className="row" style={{ marginTop: 10, gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
               <button className="btn danger" onClick={deleteAccount} disabled={deleteConfirm !== user.username}>Delete permanently</button>
               <button className="btn secondary" onClick={() => { setShowDelete(false); setDeleteConfirm(""); }}>Cancel</button>
             </div>
@@ -472,20 +459,19 @@ export default function VenueAccount() {
         )}
       </div>
 
-      {/* ── Log out ──────────────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 32 }}>
-        <h3 style={{ margin: "0 0 8px" }}>Log out</h3>
-        <p className="muted">You'll be returned to the login screen.</p>
+      {/* 8  Log out */}
+      <div className="card" style={{ marginBottom: 40 }}>
+        <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Session</div>
         <a className="btn secondary" href="/api/auth/logout">Log out</a>
       </div>
 
-      {/* ── Modals ─────────────────────────────────────────── */}
+      {/* Modals */}
       {showPauseModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
           <div style={{ background: "var(--surface,#1a1a2e)", borderRadius: 14, padding: 28, maxWidth: 420, width: "100%" }}>
             <h3 style={{ margin: "0 0 10px" }}>Pause your venue?</h3>
-            <p className="muted" style={{ marginBottom: 20 }}>All active orders will be <strong>cancelled with full wallet refunds</strong> to your customers.</p>
-            <div className="row" style={{ gap: 10 }}>
+            <p className="muted" style={{ marginBottom: 20 }}>All active orders will be <strong>cancelled with full wallet refunds</strong>.</p>
+            <div style={{ display: "flex", gap: 10 }}>
               <button className="btn" style={{ background: "#c0392b" }} onClick={togglePause} disabled={saving}>Pause & cancel orders</button>
               <button className="btn secondary" onClick={() => setShowPauseModal(false)}>Cancel</button>
             </div>
@@ -497,7 +483,7 @@ export default function VenueAccount() {
           <div style={{ background: "var(--surface,#1a1a2e)", borderRadius: 14, padding: 28, maxWidth: 420, width: "100%" }}>
             <h3 style={{ margin: "0 0 12px" }}>Activate Boost Hour?</h3>
             <p className="muted" style={{ marginBottom: 20, lineHeight: 1.6 }}>Your venue receives higher visibility for <strong>60 minutes</strong>.</p>
-            <div className="row" style={{ gap: 10 }}>
+            <div style={{ display: "flex", gap: 10 }}>
               <button className="btn" onClick={activateBoost} disabled={saving}>Activate</button>
               <button className="btn secondary" onClick={() => setShowBoostConfirm(false)}>Cancel</button>
             </div>

@@ -25,7 +25,18 @@ export async function GET() {
     },
   });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ user, venue: user.managedVenue });
+
+  // Live crowd level from active check-ins (last 2 hours)
+  let activeCheckins = 0;
+  if (user.managedVenue) {
+    const since = new Date(Date.now() - 120 * 60 * 1000);
+    activeCheckins = await prisma.checkIn.count({
+      where: { venueId: user.managedVenue.id, startAt: { gte: since }, endAt: null },
+    });
+  }
+  const liveCrowd = Math.min(10, Math.ceil(activeCheckins / 2) || 0);
+
+  return NextResponse.json({ user, venue: user.managedVenue, activeCheckins, liveCrowd });
 }
 
 const PatchSchema = z.object({
