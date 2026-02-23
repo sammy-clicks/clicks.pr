@@ -18,9 +18,8 @@ async function getVenuePromo(userId: string, promoId: string) {
 
 const PatchSchema = z.object({
   title: z.string().min(1).max(80).optional(),
-  description: z.string().max(400).nullable().optional(),
   priceCents: z.number().int().min(0).optional(),
-  imageUrl: z.string().nullable().optional().or(z.literal("")),
+  items: z.string().optional(),  // JSON string
   maxRedeemsPerNightPerUser: z.number().int().min(1).max(99).optional(),
   active: z.boolean().optional(),
   // Publish a draft: set isDraft=false to go live
@@ -42,7 +41,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const updateData: any = { ...body };
-  if (body.imageUrl === "") updateData.imageUrl = null;
 
   // Publishing a draft: compute expiresAt
   if (body.isDraft === false && promo.isDraft === true) {

@@ -46,7 +46,7 @@ export async function GET() {
   const venueId = await getVenueId(session.sub);
   if (!venueId) return NextResponse.json({ error: "No venue linked." }, { status: 404 });
 
-  const [active, drafts] = await Promise.all([
+  const [active, drafts, menuItems] = await Promise.all([
     prisma.promotion.findMany({
       where: { venueId, isDraft: false },
       orderBy: { createdAt: "desc" },
@@ -55,17 +55,28 @@ export async function GET() {
       where: { venueId, isDraft: true },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.menuItem.findMany({
+      where: { venueId },
+      orderBy: [{ category: "asc" }, { name: "asc" }],
+    }),
   ]);
 
+  const parseItems = (promos: any[]) =>
+    promos.map(p => ({ ...p, items: JSON.parse(p.items ?? "[]") }));
+
   const nextCutoff = await nextCutoffDate(venueId);
-  return NextResponse.json({ active, drafts, nextCutoff: nextCutoff.toISOString() });
+  return NextResponse.json({
+    active: parseItems(active),
+    drafts: parseItems(drafts),
+    nextCutoff: nextCutoff.toISOString(),
+    menuItems,
+  });
 }
 
 const CreateSchema = z.object({
   title: z.string().min(1).max(80),
-  description: z.string().max(400).optional(),
   priceCents: z.number().int().min(0).default(0),
-  imageUrl: z.string().optional().or(z.literal("")),
+  items: z.string().optional().default("[]"),  // JSON string
   maxRedeemsPerNightPerUser: z.number().int().min(1).max(99).default(1),
   isDraft: z.boolean().default(false),
 });
@@ -97,9 +108,8 @@ export async function POST(req: Request) {
     data: {
       venueId: venue.id,
       title: body.title,
-      description: body.description ?? null,
       priceCents: body.priceCents,
-      imageUrl: body.imageUrl || null,
+      items: body.items,
       maxRedeemsPerNightPerUser: body.maxRedeemsPerNightPerUser,
       isDraft: body.isDraft,
       active: !body.isDraft,

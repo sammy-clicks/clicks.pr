@@ -37,11 +37,24 @@ export default async function ZonePage({ params }: { params: { id: string } }) {
       <div className="row">
         {venues.map(v => (
           <div key={v.id} className="card" style={{ flex: "1 1 320px" }}>
-            <div className="header">
-              <strong>{v.name}</strong>
-              <span className="badge">{v.type}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              {v.venueImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={v.venueImageUrl} alt={v.name} style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid #08daf4", flexShrink: 0 }} />
+              ) : (
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(8,218,244,0.1)", border: "2px solid #08daf4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#08daf4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </div>
+              )}
+              <div>
+                <strong style={{ display: "block" }}>{v.name}</strong>
+                <span className="badge" style={{ fontSize: 11 }}>{v.type}</span>
+              </div>
             </div>
-            <p className="muted">{v.description || ""}</p>
+            <p className="muted" style={{ margin: "0 0 4px" }}>{v.description || ""}</p>
             <p className="muted">Crowd {v.crowdLevel}/10</p>
             <div className="row">
               <Link className="btn" href={`/u/venue/${v.id}`}>View</Link>

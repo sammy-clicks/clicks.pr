@@ -14,13 +14,20 @@ const VENUE_LINKS: [string, string, string][] = [
 
 function VenueNav({ path }: { path: string }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [hasPIN, setHasPIN] = useState(false);
 
   useEffect(() => {
     fetch("/api/v/account")
       .then(r => r.json())
       .then(j => { if (j.user?.avatarUrl) setAvatarUrl(j.user.avatarUrl); })
       .catch(() => {});
+    setHasPIN(!!localStorage.getItem("venue_pin"));
   }, []);
+
+  function lockApp() {
+    sessionStorage.removeItem("venue_pin_unlocked");
+    window.location.reload();
+  }
 
   const accountActive = path.startsWith("/v/account");
 

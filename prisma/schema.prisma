@@ -250,6 +250,7 @@ model Promotion {
   description String?          // what the promo is
   priceCents  Int   @default(0) // 0 = free, > 0 = paid promo
   imageUrl    String?          // optional promo image
+  items       String? @default("[]") // JSON: [{menuItemId,name,qty,priceCents}]
   active      Boolean @default(true)
   isDraft     Boolean @default(false) // saved draft, not yet published
   expiresAt   DateTime?        // set to municipality cutoff time of that night
