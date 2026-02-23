@@ -153,82 +153,77 @@ export default function VenueMenu() {
       </div>
       <Nav role="v" />
 
-      {/* ── Category management ─────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 24 }}>
-        <h3 style={{ margin: "0 0 12px", fontSize: "0.95rem" }}>Categories</h3>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          {cats.length === 0 && (
-            <span className="muted" style={{ fontSize: 13 }}>No categories yet — add one below to start building your menu.</span>
-          )}
-          {allDisplayCats.map(cat => {
-            const isLocal = localCats.includes(cat);
-            const count = itemsByCategory(cat).length;
-            return (
-              <span key={cat} style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "5px 12px", borderRadius: 999,
-                background: "var(--venue-brand-dim)",
-                border: "1.5px solid var(--venue-brand)",
-                color: "var(--venue-brand)", fontSize: 13, fontWeight: 600,
-              }}>
-                {cat}
-                {count > 0 && <span style={{ fontSize: 11, opacity: 0.7 }}>({count})</span>}
-                {isLocal && (
-                  <button
-                    onClick={() => removeLocalCat(cat)}
-                    style={{ background: "none", border: "none", color: "var(--venue-brand)", cursor: "pointer", padding: 0, fontSize: 14, lineHeight: 1, opacity: 0.7 }}
-                    title="Remove"
-                  >×</button>
-                )}
-              </span>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <input
-              value={catInput}
-              onChange={e => { setCatInput(e.target.value); setCatMsg(""); }}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }}
-              placeholder="New category name (e.g. Cocktails, Beer, Food…)"
-              style={{ width: "100%" }}
-              maxLength={40}
-            />
-          </div>
-          <button className="btn" style={{ flexShrink: 0 }} onClick={addCategory}>Add</button>
-        </div>
-        {catMsg && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--danger)" }}>{catMsg}</p>}
+      {/* ── Add category row ──────────────────────────────── */}
+      <div style={{ display: "flex", gap: 8, marginBottom: catMsg ? 4 : 24, alignItems: "center" }}>
+        <input
+          value={catInput}
+          onChange={e => { setCatInput(e.target.value); setCatMsg(""); }}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }}
+          placeholder="New category (e.g. Cocktails, Beer, Food…)"
+          style={{ flex: 1 }}
+          maxLength={40}
+        />
+        <button className="btn" style={{ flexShrink: 0 }} onClick={addCategory}>+ Category</button>
       </div>
+      {catMsg && <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--danger)" }}>{catMsg}</p>}
 
-      {items.length === 0 && cats.length > 0 && (
-        <p className="muted">No items yet. Use the <strong>+ Add Item</strong> button on any category to get started.</p>
+      {allDisplayCats.length === 0 && (
+        <p className="muted" style={{ textAlign: "center", padding: "32px 0" }}>
+          No categories yet — add one above to start building your menu.
+        </p>
       )}
 
       {allDisplayCats.map(cat => {
         const catItems = itemsByCategory(cat);
+        const isLocal  = localCats.includes(cat);
         return (
           <div key={cat} style={{ marginBottom: 28 }}>
-            <h3 style={{ margin: "0 0 10px", color: "var(--venue-brand)", display: "flex", alignItems: "center", gap: 8 }}>
-              {cat}
-              <span style={{ fontSize: 12, color: "var(--muted-text)", fontWeight: 400 }}>{catItems.length} item{catItems.length !== 1 ? "s" : ""}</span>
-            </h3>
+            {/* Category header */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              borderBottom: "1.5px solid var(--venue-brand)", paddingBottom: 6, marginBottom: 10,
+            }}>
+              <span style={{ fontWeight: 700, fontSize: "1rem", color: "var(--venue-brand)", flex: 1 }}>
+                {cat}
+              </span>
+              <span className="muted" style={{ fontSize: 12 }}>{catItems.length} item{catItems.length !== 1 ? "s" : ""}</span>
+              {isLocal && catItems.length === 0 && (
+                <button
+                  onClick={() => removeLocalCat(cat)}
+                  style={{ background: "none", border: "none", color: "var(--muted-text)", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "0 4px" }}
+                  title="Remove category"
+                >×</button>
+              )}
+              <button className="btn sm" onClick={() => openAdd(cat)}>+ Add Item</button>
+            </div>
+
+            {/* Items — compact list rows */}
             {catItems.length === 0 && (
-              <p className="muted" style={{ fontSize: 13, marginLeft: 4 }}>No items in this category yet.</p>
+              <p className="muted" style={{ fontSize: 13, marginLeft: 2 }}>No items yet.</p>
             )}
-            <div className="row">
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {catItems.map((m: Item) => (
-                <div key={m.id} className="card" style={{ flex: "1 1 240px", opacity: m.isAvailable ? 1 : 0.6 }}>
-                  {m.imageUrl && (
-                    <img src={m.imageUrl} alt={m.name} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 10 }} />
-                  )}
-                  <div className="header" style={{ marginBottom: 4 }}>
-                    <strong>{m.name}</strong>
-                    <span className="badge">${(m.priceCents / 100).toFixed(2)}</span>
+                <div key={m.id} style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "10px 12px", borderRadius: 10,
+                  background: "var(--surface)", opacity: m.isAvailable ? 1 : 0.55,
+                  border: "1px solid var(--border)",
+                }}>
+                  {m.imageUrl
+                    ? <img src={m.imageUrl} alt={m.name} style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                    : <div style={{ width: 48, height: 48, borderRadius: 8, background: "var(--venue-brand-dim)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                        {m.isAlcohol ? "🍺" : "🧃"}
+                      </div>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {m.name}
+                    </div>
+                    <div className="muted" style={{ fontSize: 12 }}>
+                      ${(m.priceCents / 100).toFixed(2)} · {m.isAlcohol ? "Alcohol" : "Non-alc"} · {m.isAvailable ? "Available" : "Off"}
+                    </div>
                   </div>
-                  <p className="muted" style={{ margin: "0 0 8px", fontSize: 12 }}>
-                    {m.isAlcohol ? "🍺 Alcohol" : "🧃 Non-alcoholic"} · {m.isAvailable ? "Available" : "Unavailable"}
-                  </p>
-                  <div className="row" style={{ gap: 6 }}>
+                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                     <button className="btn sm secondary" onClick={() => openEdit(m)}>Edit</button>
                     <button
                       className={`btn sm ${m.isAvailable ? "secondary" : ""}`}
@@ -239,11 +234,6 @@ export default function VenueMenu() {
                 </div>
               ))}
             </div>
-            <button
-              className="btn sm"
-              style={{ marginTop: 10 }}
-              onClick={() => openAdd(cat)}
-            >+ Add Item</button>
           </div>
         );
       })}

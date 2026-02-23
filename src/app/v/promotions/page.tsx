@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 
 function $$(n: number) { return `$${(n / 100).toFixed(2)}`; }
@@ -35,6 +35,32 @@ export default function VenuePromotions() {
   const [publishing, setPublishing] = useState(false);
   const [error, setError]   = useState("");
   const [loading, setLoading] = useState(true);
+  const imgInputRef = useRef<HTMLInputElement>(null);
+
+  function pickImage(file: File, onDone: (url: string) => void) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const src = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        onDone(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handlePromoImgFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return;
+    pickImage(f, url => setForm(p => ({ ...p, imageUrl: url })));
+    e.target.value = "";
+  }
 
   async function load() {
     const [rPromos, rPlan] = await Promise.all([
@@ -127,7 +153,7 @@ export default function VenuePromotions() {
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Promotions — {venueName}</h2>
-        {!isPro && <a href="/v/plan"><button className="btn secondary">⭐ Upgrade to PRO</button></a>}
+        {!isPro && !loading && <a href="/v/plan"><button className="btn secondary">⭐ Upgrade to PRO</button></a>}
       </div>
       <Nav role="v" />
 
@@ -226,12 +252,21 @@ export default function VenuePromotions() {
             <input id="promo-price" type="number" className="input" min={0} step={0.01} placeholder="0.00"
               value={form.priceCents === 0 ? "" : (form.priceCents)} onChange={e => setForm(f => ({ ...f, priceCents: parseFloat(e.target.value) || 0 }))} />
 
-            <label htmlFor="promo-image" style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Image URL (optional)</label>
-            <input id="promo-image" type="url" className="input" placeholder="https://…"
-              value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
+            <label style={{ display: "block", margin: "12px 0 6px", fontSize: 13 }}>Photo (optional)</label>
             {form.imageUrl && (
-              <img src={form.imageUrl} alt="" style={{ marginTop: 8, width: "100%", maxHeight: 160, objectFit: "cover", borderRadius: 8 }} />
+              <div style={{ position: "relative", marginBottom: 8 }}>
+                <img src={form.imageUrl} alt="" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 8 }} />
+                <button
+                  onClick={() => setForm(p => ({ ...p, imageUrl: "" }))}
+                  style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.65)", border: "none", borderRadius: 6, color: "#fff", fontSize: 13, padding: "3px 8px", cursor: "pointer" }}
+                >Remove</button>
+              </div>
             )}
+            <div className="row" style={{ gap: 8 }}>
+              <button className="btn sm secondary" onClick={() => { const inp = imgInputRef.current; if (inp) { inp.setAttribute("capture", "environment"); inp.click(); } }}>📷 Camera</button>
+              <button className="btn sm secondary" onClick={() => { const inp = imgInputRef.current; if (inp) { inp.removeAttribute("capture"); inp.click(); } }}>🖼️ Choose File</button>
+            </div>
+            <input ref={imgInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePromoImgFile} />
 
             <label htmlFor="promo-redeems" style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Max redeems per user per night</label>
             <input id="promo-redeems" type="number" className="input" min={1} max={99}
