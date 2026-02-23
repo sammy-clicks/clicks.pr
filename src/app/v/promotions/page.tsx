@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
+import { PinGate } from "@/components/PinGate";
 
 function $$(n: number) { return `$${(n / 100).toFixed(2)}`; }
 
@@ -25,7 +26,7 @@ interface ConfirmInfo {
 export default function VenuePromotions() {
   const [active, setActive]   = useState<Promo[]>([]);
   const [drafts, setDrafts]   = useState<Promo[]>([]);
-  const [isPro, setIsPro]     = useState(false);
+  const [isPro, setIsPro]     = useState<boolean | null>(null);
   const [venueName, setVenueName] = useState("");
   const [showForm, setShowForm]   = useState(false);
   const [form, setForm]           = useState({ ...EMPTY_FORM });
@@ -160,16 +161,17 @@ export default function VenuePromotions() {
   if (error) return <div className="container"><Nav role="v" /><p className="muted">{error}</p></div>;
 
   return (
+    <PinGate>
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Promotions — {venueName}</h2>
-        {!isPro && !loading && <a href="/v/plan"><button className="btn secondary">⭐ Upgrade to PRO</button></a>}
+        {isPro === false && !loading && <a href="/v/plan"><button className="btn secondary">⭐ Upgrade to PRO</button></a>}
       </div>
       <Nav role="v" />
 
       {loading && <p className="muted">Loading…</p>}
 
-      {!isPro && !loading && (
+      {isPro === false && !loading && (
         <div className="card" style={{ textAlign: "center", padding: 32 }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
           <h3 style={{ margin: "0 0 8px" }}>PRO feature</h3>
@@ -178,7 +180,7 @@ export default function VenuePromotions() {
         </div>
       )}
 
-      {isPro && !loading && (
+      {isPro === true && !loading && (
         <>
           {/* â”€â”€ Active promotions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -335,6 +337,7 @@ export default function VenuePromotions() {
         </div>
       )}
     </div>
+    </PinGate>
   );
 }
 

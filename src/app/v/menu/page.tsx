@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
+import { PinGate } from "@/components/PinGate";
 
 type Item = {
   id: string; name: string; priceCents: number;
@@ -147,6 +148,7 @@ export default function VenueMenu() {
   }
 
   return (
+    <PinGate>
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Menu — {data.venueName}</h2>
@@ -315,6 +317,7 @@ export default function VenueMenu() {
         </div>
       )}
     </div>
+    </PinGate>
   );
 }
 

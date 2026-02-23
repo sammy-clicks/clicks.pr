@@ -149,6 +149,7 @@ model Venue {
   alcoholCutoffOverrideMins Int?
 
   venueImageUrl String?               // public-facing photo shown in the app
+  crowdLevel    Int      @default(0)  // 0=unknown 1=quiet 2=moderate 3=busy 4=packed 5=full
   isEnabled     Boolean  @default(true) // false = paused/disabled
   pausedAt      DateTime?              // set when venue is paused
 

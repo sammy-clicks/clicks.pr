@@ -18,7 +18,7 @@ export async function GET() {
       managedVenue: {
         select: {
           id: true, name: true, type: true, description: true, address: true,
-          venueImageUrl: true, isEnabled: true, pausedAt: true, plan: true,
+          venueImageUrl: true, crowdLevel: true, isEnabled: true, pausedAt: true, plan: true,
           subscriptionStartedAt: true, subscriptionEndsAt: true, boostActiveUntil: true,
         },
       },
@@ -29,8 +29,9 @@ export async function GET() {
 }
 
 const PatchSchema = z.object({
-  avatarUrl:      z.string().optional().nullable(),   // user profile pic
-  venueImageUrl:  z.string().optional().nullable(),   // venue public photo
+  avatarUrl:      z.string().optional().nullable(),
+  venueImageUrl:  z.string().optional().nullable(),
+  crowdLevel:     z.number().int().min(0).max(5).optional(),
   currentPassword: z.string().optional(),
   newPassword:    z.string().min(8).optional(),
 }).refine(d => !(d.newPassword && !d.currentPassword), {
@@ -67,11 +68,14 @@ export async function PATCH(req: Request) {
     await prisma.user.update({ where: { id: auth.session.sub }, data: { avatarUrl: body.avatarUrl } });
   }
 
-  // Venue image
-  if (body.venueImageUrl !== undefined && user.managedVenue) {
+  // Venue image and crowd level
+  if ((body.venueImageUrl !== undefined || body.crowdLevel !== undefined) && user.managedVenue) {
     await prisma.venue.update({
       where: { id: user.managedVenue.id },
-      data: { venueImageUrl: body.venueImageUrl },
+      data: {
+        ...(body.venueImageUrl !== undefined ? { venueImageUrl: body.venueImageUrl } : {}),
+        ...(body.crowdLevel !== undefined ? { crowdLevel: body.crowdLevel } : {}),
+      },
     });
   }
 
