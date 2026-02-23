@@ -35,6 +35,7 @@ export default function VenuePromotions() {
   const [publishing, setPublishing] = useState(false);
   const [error, setError]   = useState("");
   const [loading, setLoading] = useState(true);
+  const [nextCutoff, setNextCutoff] = useState<string | null>(null);
   const imgInputRef = useRef<HTMLInputElement>(null);
 
   function pickImage(file: File, onDone: (url: string) => void) {
@@ -69,7 +70,7 @@ export default function VenuePromotions() {
     ]);
     const jPromos = await rPromos.json();
     const jPlan   = await rPlan.json();
-    if (rPromos.ok) { setActive(jPromos.active ?? []); setDrafts(jPromos.drafts ?? []); }
+    if (rPromos.ok) { setActive(jPromos.active ?? []); setDrafts(jPromos.drafts ?? []); setNextCutoff(jPromos.nextCutoff ?? null); }
     if (rPlan.ok)   { setIsPro(jPlan.plan === "PRO"); setVenueName(jPlan.venueName ?? ""); }
     else if (jPromos.error) setError(jPromos.error);
     setLoading(false);
@@ -136,6 +137,15 @@ export default function VenuePromotions() {
     const r = await fetch(`/api/v/promotions/${id}`, { method: "DELETE" });
     if (!r.ok) { const j = await r.json(); alert(j.error || "Failed to delete."); return; }
     load();
+  }
+
+  function fmtCutoff(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleString("en-US", {
+      timeZone: "America/Puerto_Rico",
+      weekday: "long", month: "long", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit",
+    });
   }
 
   function fmtExpiry(iso?: string) {
@@ -300,11 +310,20 @@ export default function VenuePromotions() {
                 Price: <strong>{confirmInfo.priceCents > 0 ? $$(confirmInfo.priceCents) : "Free"}</strong>
               </div>
             </div>
-            <p style={{ fontSize: 13, lineHeight: 1.6 }}>
-              â° This promotion will <strong>take effect immediately</strong> and will be <strong>automatically removed at your municipality&rsquo;s alcohol cutoff time</strong> tonight.
+            <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 6 }}>
+              This promotion will <strong>take effect immediately</strong> and will be active until:
             </p>
-            <p className="muted" style={{ fontSize: 12, fontStyle: "italic" }}>
-              Note: if your cutoff is after midnight (e.g. 2:00 AM), it will expire the following calendar day.
+            {nextCutoff && (
+              <div style={{
+                background: "var(--venue-brand-dim)", border: "1.5px solid var(--venue-brand)",
+                borderRadius: 10, padding: "10px 14px", marginBottom: 12,
+                fontSize: 14, fontWeight: 600, color: "var(--venue-brand)",
+              }}>
+                {fmtCutoff(nextCutoff)}
+              </div>
+            )}
+            <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>
+              It will be automatically deleted at that time.
             </p>
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
               <button className="btn" onClick={confirmPublish} disabled={publishing}>

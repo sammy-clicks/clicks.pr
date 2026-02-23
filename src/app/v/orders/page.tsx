@@ -3,6 +3,13 @@ import { useEffect, useState, useRef } from "react";
 import { Nav } from "@/components/Nav";
 
 const OPEN = ["PLACED", "ACCEPTED", "PREPARING", "READY"];
+const PERIODS = [
+  { key: "24h", label: "24 h"     },
+  { key: "7d",  label: "7 d"      },
+  { key: "30d", label: "30 d"     },
+  { key: "90d", label: "90 d"     },
+  { key: "all", label: "All time" },
+];
 
 type CompletedInfo = {
   orderNumber: string;
@@ -21,8 +28,14 @@ export default function VenueOrders() {
   const [completeCodes, setCompleteCodes] = useState<Record<string, string>>({});
   const [completeMsgs, setCompleteMsgs]   = useState<Record<string, string>>({});
   const [completing, setCompleting]       = useState<string | null>(null);
-  const [completed, setCompleted]         = useState<CompletedInfo | null>(null);
+  const [completed,     setCompleted]    = useState<CompletedInfo | null>(null);
   const prevOpenCount = useRef(0);
+
+  // Analytics
+  const [period,        setPeriod]        = useState("24h");
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [analyticsLoad, setAnalyticsLoad] = useState(false);
+  const [recentPage,    setRecentPage]    = useState(1);
 
   async function load() {
     const r = await fetch("/api/v/orders");
@@ -45,6 +58,16 @@ export default function VenueOrders() {
     return () => clearInterval(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function loadAnalytics(p = period, pg = recentPage) {
+    setAnalyticsLoad(true);
+    const r = await fetch(`/api/v/orders/analytics?period=${p}&page=${pg}`);
+    const j = await r.json();
+    setAnalyticsLoad(false);
+    if (r.ok) setAnalyticsData(j);
+  }
+
+  useEffect(() => { loadAnalytics(period, recentPage); }, [period, recentPage]);
 
   async function advance(id: string, to: string) {
     await fetch(`/api/orders/${id}`, {
@@ -72,15 +95,24 @@ export default function VenueOrders() {
     } else {
       setCompleteCodes(c => ({ ...c, [orderId]: "" }));
       setCompleted(j);
-      load();
+      load(); loadAnalytics();
     }
   }
 
   if (error) return <div className="container"><Nav role="v" /><p style={{ color: "var(--danger)" }}>{error}</p></div>;
-  if (!data) return <div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>;
+  if (!data)  return <div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>;
 
-  const open   = data.orders.filter((o: any) =>  OPEN.includes(o.status));
-  const closed = data.orders.filter((o: any) => !OPEN.includes(o.status)).slice(0, 20);
+  const open = data.orders.filter((o: any) =>  OPEN.includes(o.status));
+  const ana  = analyticsData?.analytics;
+
+  function fmt$(n: number) { return `$${(n / 100).toFixed(2)}`; }
+  function fmtTime(iso: string) {
+    return new Date(iso).toLocaleString("en-US", {
+      timeZone: "America/Puerto_Rico",
+      month: "short", day: "numeric",
+      hour: "numeric", minute: "2-digit",
+    });
+  }
 
   return (
     <div className="container">
@@ -237,30 +269,133 @@ export default function VenueOrders() {
         ))}
       </div>
 
-      {/* ── Recent (closed) ── */}
-      {closed.length > 0 && (
-        <>
-          <h3>Recent</h3>
-          <table>
-            <thead>
-              <tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th><th>Time</th></tr>
-            </thead>
-            <tbody>
-              {closed.map((o: any) => (
-                <tr key={o.id}>
-                  <td style={{ fontFamily: "monospace", color: "var(--brand)", fontWeight: 700 }}>
-                    {o.orderNumber || "—"}
-                  </td>
-                  <td>{o.user.firstName} {o.user.lastName ? `${o.user.lastName[0]}.` : ""}</td>
-                  <td>${(o.totalCents / 100).toFixed(2)}</td>
-                  <td><span className={`st-${o.status}`}>{o.status}</span></td>
-                  <td>{new Date(o.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                </tr>
+      {/* ══════════════════ ANALYTICS ══════════════════ */}
+      <div style={{ marginTop: 36 }}>
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          borderBottom: "1.5px solid var(--venue-brand)", paddingBottom: 8, marginBottom: 20,
+        }}>
+          <h3 style={{ margin: 0, color: "var(--venue-brand)" }}>Analytics</h3>
+          {analyticsLoad && <span className="muted" style={{ fontSize: 12 }}>Loading…</span>}
+        </div>
+
+        {/* Period tabs */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+          {PERIODS.map(p => (
+            <button
+              key={p.key}
+              onClick={() => { setPeriod(p.key); setRecentPage(1); }}
+              style={{
+                padding: "6px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600,
+                border: `1.5px solid ${period === p.key ? "var(--venue-brand)" : "var(--border)"}`,
+                background: period === p.key ? "var(--venue-brand)" : "transparent",
+                color: period === p.key ? "#1a003a" : "var(--muted-text)",
+                cursor: "pointer", transition: "all 0.15s",
+              }}
+            >{p.label}</button>
+          ))}
+        </div>
+
+        {/* KPI cards */}
+        {ana && (
+          <>
+            <div className="row" style={{ marginBottom: 20, gap: 10 }}>
+              {[
+                { label: "Revenue",   value: fmt$(ana.revenue),         sub: "from completed orders" },
+                { label: "Orders",    value: ana.orderCount,             sub: "total in period" },
+                { label: "Completed", value: ana.completedCount,         sub: `${ana.orderCount > 0 ? Math.round(ana.completedCount / ana.orderCount * 100) : 0}% of orders` },
+                { label: "Cancelled", value: ana.cancelledCount,         sub: `${ana.orderCount > 0 ? Math.round(ana.cancelledCount / ana.orderCount * 100) : 0}% of orders` },
+                { label: "Avg Order", value: fmt$(ana.avgOrderCents),    sub: "per completed order" },
+              ].map(card => (
+                <div key={card.label} className="card" style={{ flex: "1 1 130px", textAlign: "center", padding: "14px 10px" }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--venue-brand)", lineHeight: 1 }}>
+                    {card.value}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginTop: 4 }}>{card.label}</div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{card.sub}</div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </>
-      )}
+            </div>
+
+            {/* Top items */}
+            {ana.topItems.length > 0 && (
+              <div style={{ marginBottom: 28 }}>
+                <h4 style={{ margin: "0 0 10px", fontSize: "0.9rem", color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Top Items
+                </h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {ana.topItems.map((item: any, i: number) => {
+                    const pct = ana.revenue > 0 ? item.revenueCents / ana.revenue : 0;
+                    return (
+                      <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 11, width: 18, color: "var(--muted-text)", flexShrink: 0 }}>#{i + 1}</span>
+                        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</span>
+                        <div style={{ flex: 2, height: 8, background: "var(--border)", borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ width: `${(pct * 100).toFixed(1)}%`, height: "100%", background: "var(--venue-brand)", borderRadius: 4 }} />
+                        </div>
+                        <span style={{ fontSize: 12, color: "var(--muted-text)", width: 36, textAlign: "right", flexShrink: 0 }}>{item.qty}×</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, width: 64, textAlign: "right", flexShrink: 0, color: "var(--venue-brand)" }}>
+                          {fmt$(item.revenueCents)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Recent orders table ── */}
+        <h4 style={{ margin: "0 0 10px", fontSize: "0.9rem", color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Recent Orders
+        </h4>
+        {analyticsData?.recent?.length === 0 && <p className="muted">No closed orders in this period.</p>}
+        {analyticsData?.recent?.length > 0 && (
+          <>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1.5px solid var(--border)" }}>
+                    {["Order","Customer","Items","Total","Status","Time"].map(h => (
+                      <th key={h} style={{ textAlign: h === "Total" || h === "Time" ? "right" : h === "Status" ? "center" : "left", padding: "6px 8px", fontWeight: 600, fontSize: 11, color: "var(--muted-text)", whiteSpace: "nowrap" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {analyticsData.recent.map((o: any) => (
+                    <tr key={o.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                      <td style={{ padding: "8px 8px", fontFamily: "monospace", color: "var(--brand)", fontWeight: 700, fontSize: 12 }}>{o.orderNumber || "—"}</td>
+                      <td style={{ padding: "8px 8px", fontWeight: 600 }}>@{o.user.username}</td>
+                      <td style={{ padding: "8px 8px", color: "var(--muted-text)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {o.items.map((i: any) => `${i.qty}× ${i.name}`).join(", ")}
+                      </td>
+                      <td style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700 }}>{fmt$(o.totalCents)}</td>
+                      <td style={{ padding: "8px 8px", textAlign: "center" }}>
+                        <span className={`st-${o.status}`} style={{ fontSize: 11, fontWeight: 600 }}>{o.status}</span>
+                      </td>
+                      <td style={{ padding: "8px 8px", textAlign: "right", color: "var(--muted-text)", fontSize: 12, whiteSpace: "nowrap" }}>
+                        {fmtTime(o.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {analyticsData.totalPages > 1 && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 16 }}>
+                <button className="btn sm secondary" disabled={recentPage <= 1} onClick={() => setRecentPage(p => p - 1)}>← Prev</button>
+                <span className="muted" style={{ fontSize: 13 }}>
+                  Page {analyticsData.page} of {analyticsData.totalPages}
+                  <span style={{ marginLeft: 8, fontSize: 11 }}>({analyticsData.recentTotal} orders)</span>
+                </span>
+                <button className="btn sm secondary" disabled={recentPage >= analyticsData.totalPages} onClick={() => setRecentPage(p => p + 1)}>Next →</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

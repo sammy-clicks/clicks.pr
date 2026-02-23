@@ -20,7 +20,7 @@ const PatchSchema = z.object({
   title: z.string().min(1).max(80).optional(),
   description: z.string().max(400).nullable().optional(),
   priceCents: z.number().int().min(0).optional(),
-  imageUrl: z.string().url().nullable().optional().or(z.literal("")).optional(),
+  imageUrl: z.string().nullable().optional().or(z.literal("")),
   maxRedeemsPerNightPerUser: z.number().int().min(1).max(99).optional(),
   active: z.boolean().optional(),
   // Publish a draft: set isDraft=false to go live

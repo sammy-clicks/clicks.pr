@@ -57,14 +57,15 @@ export async function GET() {
     }),
   ]);
 
-  return NextResponse.json({ active, drafts });
+  const nextCutoff = await nextCutoffDate(venueId);
+  return NextResponse.json({ active, drafts, nextCutoff: nextCutoff.toISOString() });
 }
 
 const CreateSchema = z.object({
   title: z.string().min(1).max(80),
   description: z.string().max(400).optional(),
   priceCents: z.number().int().min(0).default(0),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  imageUrl: z.string().optional().or(z.literal("")),
   maxRedeemsPerNightPerUser: z.number().int().min(1).max(99).default(1),
   isDraft: z.boolean().default(false),
 });
