@@ -28,8 +28,13 @@
 
   /* Role identity */
   --color-user:  #08daf4;
-  --color-venue: #f59f0b;
+  --color-venue: #e7a8ff;
   --color-admin: #8b5cf6;
+
+  /* Venue brand */
+  --venue-brand:     #e7a8ff;
+  --venue-brand-dim: rgba(231, 168, 255, 0.12);
+  --venue-brand-glow: rgba(231, 168, 255, 0.32);
 }
 
 /* ═══════════════════════════════════════════
@@ -63,8 +68,13 @@
 
   /* Role identity */
   --color-user:  #08daf4;
-  --color-venue: #f59f0b;
+  --color-venue: #e7a8ff;
   --color-admin: #a78bfa;
+
+  /* Venue brand */
+  --venue-brand:      #e7a8ff;
+  --venue-brand-dim:  rgba(231, 168, 255, 0.13);
+  --venue-brand-glow: rgba(231, 168, 255, 0.38);
 }
 
 /* Scrollbar — dark */
@@ -222,9 +232,10 @@ a { color: inherit; text-decoration: none; }
   color: var(--danger);
 }
 .badge.role-user  { background: var(--color-user);  color: var(--ink); border-color: var(--color-user);  font-weight: 700; }
-.badge.role-venue { background: var(--color-venue); color: var(--ink); border-color: var(--color-venue); font-weight: 700; }
+.badge.role-venue { background: var(--color-venue); color: #1a003a;    border-color: var(--color-venue); font-weight: 700; }
 .badge.role-admin { background: var(--color-admin); color: #fff;       border-color: var(--color-admin); font-weight: 700; }
 [data-theme="dark"] .badge.role-user  { color: #080c12; box-shadow: 0 0 8px var(--brand-glow); }
+[data-theme="dark"] .badge.role-venue { color: #1a003a; box-shadow: 0 0 8px var(--venue-brand-glow); }
 [data-theme="dark"] .badge.role-admin { color: #080c12; }
 
 /* ── Typography helpers ── */
@@ -272,6 +283,95 @@ h4 { font-size: 0.95rem; font-weight: 600; margin: 16px 0 8px; }
   color: var(--brand);
   background: rgba(8, 218, 244, 0.1);
   text-shadow: 0 0 12px var(--brand-glow);
+}
+
+/* ── Venue navigation ─────────────────────────────────────── */
+.nav-venue {
+  border-bottom-color: rgba(231, 168, 255, 0.22);
+  align-items: center;
+  padding-bottom: 12px;
+}
+.venue-logo {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+.venue-logo-link {
+  display: flex;
+  align-items: center;
+  margin-right: 6px;
+  opacity: 0.95;
+  transition: opacity 0.15s;
+}
+.venue-logo-link:hover { opacity: 1; }
+.venue-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-text);
+  background: transparent;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.venue-nav-item:hover {
+  color: var(--ink);
+  background: rgba(231, 168, 255, 0.08);
+}
+.venue-nav-item.active {
+  color: var(--venue-brand);
+  background: var(--venue-brand-dim);
+  font-weight: 700;
+}
+[data-theme="dark"] .venue-nav-item:hover {
+  background: rgba(231, 168, 255, 0.08);
+}
+[data-theme="dark"] .venue-nav-item.active {
+  color: var(--venue-brand);
+  background: rgba(231, 168, 255, 0.13);
+  text-shadow: 0 0 10px var(--venue-brand-glow);
+}
+.venue-nav-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+.venue-nav-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--venue-brand);
+  display: block;
+  flex-shrink: 0;
+}
+.venue-nav-avatar--placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(231, 168, 255, 0.13);
+  border: 2px solid var(--venue-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.venue-nav-item.active .venue-nav-avatar {
+  box-shadow: 0 0 0 2px var(--venue-brand);
+}
+[data-theme="dark"] .venue-nav-item.active .venue-nav-avatar {
+  box-shadow: 0 0 0 2px var(--venue-brand), 0 0 10px var(--venue-brand-glow);
 }
 
 /* ── Forms ── */
