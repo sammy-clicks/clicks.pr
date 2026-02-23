@@ -341,8 +341,8 @@ h4 { font-size: 0.95rem; font-weight: 600; margin: 16px 0 8px; }
   text-shadow: 0 0 10px var(--venue-brand-glow);
 }
 .venue-nav-icon {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
   display: block;
 }
@@ -372,6 +372,27 @@ h4 { font-size: 0.95rem; font-weight: 600; margin: 16px 0 8px; }
 }
 [data-theme="dark"] .venue-nav-item.active .venue-nav-avatar {
   box-shadow: 0 0 0 2px var(--venue-brand), 0 0 10px var(--venue-brand-glow);
+}
+
+/* ── Venue brand token override ───────────────────────────────────────────
+   All /v pages sit inside <div data-role="venue">.
+   Remapping --brand → --venue-brand makes every button, active state,
+   input focus ring, etc. automatically use #e7a8ff with zero extra work.
+   ──────────────────────────────────────────────────────────────────────── */
+[data-role="venue"] {
+  --brand:      var(--venue-brand);
+  --brand-dim:  var(--venue-brand-dim);
+  --brand-glow: var(--venue-brand-glow);
+  --brand-deep: #c87af0;
+  --accent:     var(--venue-brand);
+}
+[data-role="venue"][data-theme="dark"],
+[data-theme="dark"] [data-role="venue"] {
+  --brand:      var(--venue-brand);
+  --brand-dim:  var(--venue-brand-dim);
+  --brand-glow: var(--venue-brand-glow);
+  --brand-deep: #c87af0;
+  --accent:     var(--venue-brand);
 }
 
 /* ── Forms ── */
