@@ -86,7 +86,7 @@ export default function VenueOrders() {
     <div className="container">
       <div className="header">
         <div>
-          <h2 style={{ margin: 0 }}>Orders — {data.venueName}</h2>
+          <h2 style={{ margin: 0, color: "var(--venue-brand)", fontSize: "1.7rem" }}>Orders — {data.venueName}</h2>
           {lastPoll && (
             <span className="muted" style={{ fontSize: 12 }}>
               Updated {lastPoll.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
@@ -94,10 +94,10 @@ export default function VenueOrders() {
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--brand)" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--venue-brand)" }}>
             <span style={{
-              width: 8, height: 8, borderRadius: "50%", background: "var(--brand)",
-              display: "inline-block", boxShadow: "0 0 0 3px var(--brand-glow)",
+              width: 8, height: 8, borderRadius: "50%", background: "var(--venue-brand)",
+              display: "inline-block", boxShadow: "0 0 0 3px var(--venue-brand-glow)",
               animation: "pulse 1.4s ease-in-out infinite",
             }} />
             Live
@@ -115,13 +115,13 @@ export default function VenueOrders() {
         }}>
           <div style={{
             background: "var(--surface)", borderRadius: 20,
-            border: "1px solid rgba(8,218,244,0.3)",
-            boxShadow: "0 0 60px rgba(8,218,244,0.2)",
+            border: "1px solid rgba(231,168,255,0.3)",
+            boxShadow: "0 0 60px rgba(231,168,255,0.18)",
             padding: 28, maxWidth: 380, width: "100%", textAlign: "center",
           }}>
             <div style={{
               width: 54, height: 54, borderRadius: "50%",
-              background: "rgba(8,218,244,0.12)", border: "2px solid var(--brand)",
+              background: "rgba(231,168,255,0.12)", border: "2px solid var(--venue-brand)",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 22, margin: "0 auto 14px",
             }}>✓</div>

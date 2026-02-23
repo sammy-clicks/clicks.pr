@@ -125,14 +125,14 @@ export default function VenuePromotions() {
 
   return (
     <div className="container">
-      <Nav role="v" />
       <div className="header">
-        <h2>Promotions</h2>
+        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Promotions — {venueName}</h2>
         {isPro
           ? <button className="btn" onClick={startCreate}>+ New Promo</button>
           : <a href="/v/plan"><button className="btn secondary">⭐ Upgrade to PRO</button></a>
         }
       </div>
+      <Nav role="v" />
 
       {loading && <p className="muted">Loading…</p>}
 

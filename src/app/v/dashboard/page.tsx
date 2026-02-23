@@ -27,7 +27,7 @@ export default function VenueDashboard() {
   return (
     <div className="container">
       <div className="header">
-        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>{data.venueName}</h2>
+        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Dashboard — {data.venueName}</h2>
         <span className="badge">{open.length} open orders</span>
       </div>
       <Nav role="v" />

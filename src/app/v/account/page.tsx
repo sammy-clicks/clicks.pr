@@ -231,7 +231,9 @@ export default function VenueAccount() {
 
   return (
     <div className="container">
-      <h2>Account</h2>
+      <div className="header">
+        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Account — {venue?.name ?? user.username}</h2>
+      </div>
       <Nav role="v" />
 
       {msg.text && (
