@@ -395,6 +395,30 @@ h4 { font-size: 0.95rem; font-weight: 600; margin: 16px 0 8px; }
   --accent:     var(--venue-brand);
 }
 
+/* Primary button — light mode override for venue */
+[data-role="venue"] .btn:not(.secondary):not(.danger):not(.accent) {
+  background: var(--venue-brand);
+  border-color: var(--venue-brand);
+  color: #1a003a;
+}
+[data-role="venue"] .btn:not(.secondary):not(.danger):not(.accent):hover {
+  opacity: 1;
+  filter: brightness(1.08);
+}
+/* Secondary button — purple outline */
+[data-role="venue"] .btn.secondary {
+  border-color: rgba(231, 168, 255, 0.45);
+  color: var(--venue-brand);
+}
+[data-role="venue"] .btn.secondary:hover {
+  background: var(--venue-brand-dim);
+  border-color: var(--venue-brand);
+}
+/* Dark mode venue button already inherits via --brand remap, but ensure text contrast */
+[data-theme="dark"] [data-role="venue"] .btn:not(.secondary):not(.danger):not(.accent) {
+  color: #1a003a;
+}
+
 /* ── Forms ── */
 label { display: block; font-weight: 500; font-size: 13px; margin: 12px 0 4px; color: var(--ink-soft); }
 label:first-child { margin-top: 0; }

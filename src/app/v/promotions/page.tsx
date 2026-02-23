@@ -258,7 +258,7 @@ export default function VenuePromotions() {
             <p style={{ fontSize: 14, lineHeight: 1.6 }}>
               You are creating a promotion for <strong>{confirmInfo.venueName || "your venue"}</strong>:
             </p>
-            <div className="card" style={{ background: "#1a1a2e", marginBottom: 12 }}>
+            <div className="card" style={{ background: "var(--surface)", marginBottom: 12 }}>
               <div><strong>{confirmInfo.title}</strong></div>
               {confirmInfo.description && <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>{confirmInfo.description}</p>}
               <div style={{ marginTop: 6, fontSize: 13 }}>
