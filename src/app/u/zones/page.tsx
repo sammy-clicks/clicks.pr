@@ -12,6 +12,9 @@ function isoWeek(d: Date) {
   return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
+// week util kept for potential reuse
+void isoWeek;
+
 export default async function Zones() {
   const zones = await prisma.zone.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, isEnabled: true, disabledReason: true, imageUrl: true } });
   const since = new Date(Date.now() - 120 * 60 * 1000);
@@ -28,13 +31,11 @@ export default async function Zones() {
   const enriched = zones.map(z => ({ ...z, activeUsers: zoneActive.get(z.id) || 0 }));
   const max = Math.max(...enriched.map(z => z.activeUsers), 0);
   const result = enriched.map(z => ({ ...z, isDominant: z.activeUsers === max && max > 0 }));
-  const weekLabel = `Week ${isoWeek(new Date())} \u2022 ${new Date().getFullYear()}`;
 
   return (
     <div className="container">
       <div className="header">
         <h2>Zones</h2>
-        <span className="badge">{weekLabel}</span>
       </div>
       <Nav role="u" />
       <div className="row">

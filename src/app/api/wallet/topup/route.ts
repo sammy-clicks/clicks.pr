@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   });
 
   await prisma.walletTxn.create({
-    data: { walletId: wallet.id, type: "TOPUP", amountCents, memo: "Mock top-up (replace with Stripe)" },
+    data: { walletId: wallet.id, type: "TOPUP", amountCents, memo: "Transfer" },
   });
 
   await prisma.walletAccount.update({

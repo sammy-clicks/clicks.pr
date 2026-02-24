@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const DAILY_SEND_LIMIT_CENTS = 50_000; // $500
 
 const Schema = z.object({
-  toEmail: z.string().email(),
+  toUsername: z.string().min(2).max(50),
   dollars: z.number().positive().multipleOf(0.01),
   memo: z.string().max(120).optional(),
 });
@@ -18,11 +18,11 @@ export async function POST(req: Request) {
   if (!session || session.role !== "USER")
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { toEmail, dollars, memo } = Schema.parse(await req.json());
+  const { toUsername, dollars, memo } = Schema.parse(await req.json());
   const amountCents = Math.round(dollars * 100);
-  if (amountCents < 100) return NextResponse.json({ error: "Minimum transfer is $1.00" }, { status: 400 });
+  if (amountCents < 1000) return NextResponse.json({ error: "Minimum transfer is $10.00" }, { status: 400 });
 
-  const recipient = await prisma.user.findUnique({ where: { email: toEmail } });
+  const recipient = await prisma.user.findUnique({ where: { username: toUsername } });
   if (!recipient) return NextResponse.json({ error: "Recipient not found." }, { status: 404 });
   if (recipient.id === session.sub) return NextResponse.json({ error: "Cannot send to yourself." }, { status: 400 });
 
