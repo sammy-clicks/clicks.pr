@@ -27,6 +27,11 @@ export default function DashboardPage() {
     <div data-role="user">
       <Nav role="u" />
       <div className="container" style={{ paddingTop: 28, paddingBottom: 48 }}>
+        {/* Big logo */}
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Clicks" style={{ height: 80, width: "auto", objectFit: "contain" }} />
+        </div>
         {/* Welcome header */}
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: "1.8rem", fontWeight: 800, margin: "0 0 4px" }}>

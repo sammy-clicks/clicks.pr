@@ -69,6 +69,11 @@ export default function VenueDashboard() {
 
   return (
     <div className="container">
+      {/* Big logo hero */}
+      <div style={{ textAlign: "center", padding: "18px 0 22px" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo_venues.png" alt="Clicks Venues" style={{ height: 72, width: "auto", objectFit: "contain" }} />
+      </div>
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Dashboard — {data.venueName}</h2>
         <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--venue-brand)" }}>

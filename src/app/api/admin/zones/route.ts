@@ -17,7 +17,7 @@ export async function GET() {
   return NextResponse.json({ items });
 }
 
-const CreateSchema = z.object({ name: z.string().min(2).max(80) });
+const CreateSchema = z.object({ name: z.string().min(2).max(80), imageUrl: z.string().optional() });
 
 export async function POST(req: Request) {
   const auth = await requireRole(["ADMIN"]);
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   const existing = await prisma.zone.findUnique({ where: { name: body.name } });
   if (existing) return NextResponse.json({ error: "Zone already exists." }, { status: 409 });
 
-  const zone = await prisma.zone.create({ data: { name: body.name, isEnabled: true } });
+  const zone = await prisma.zone.create({ data: { name: body.name, isEnabled: true, imageUrl: body.imageUrl ?? null } });
   return NextResponse.json({ ok: true, zone });
 }
 
@@ -45,7 +45,7 @@ export async function PATCH(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-const RenameSchema = z.object({ id: z.string(), name: z.string().min(2).max(80) });
+const RenameSchema = z.object({ id: z.string(), name: z.string().min(2).max(80), imageUrl: z.string().optional().nullable() });
 
 export async function PUT(req: Request) {
   const auth = await requireRole(["ADMIN"]);
@@ -53,7 +53,7 @@ export async function PUT(req: Request) {
 
   try {
     const body = RenameSchema.parse(await req.json());
-    await prisma.zone.update({ where: { id: body.id }, data: { name: body.name } });
+    await prisma.zone.update({ where: { id: body.id }, data: { name: body.name, ...("imageUrl" in body ? { imageUrl: body.imageUrl ?? null } : {}) } });
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Failed" }, { status: 400 });

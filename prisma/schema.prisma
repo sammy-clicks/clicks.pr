@@ -118,11 +118,12 @@ model Municipality {
 }
 
 model Zone {
-  id           String  @id @default(cuid())
-  name         String  @unique
-  isEnabled    Boolean @default(true)
+  id             String  @id @default(cuid())
+  name           String  @unique
+  isEnabled      Boolean @default(true)
   disabledReason String?
-  venues       Venue[]
+  imageUrl       String?
+  venues         Venue[]
 }
 
 model Venue {

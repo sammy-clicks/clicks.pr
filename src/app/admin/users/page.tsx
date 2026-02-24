@@ -156,51 +156,68 @@ export default function AdminUsers() {
         />
       </div>
 
-      {!data && <p className="muted">Loading…</p>}
+      {!data && <p className="muted">Loading...</p>}
 
-      <table>
-        <thead>
-          <tr><th>Username</th><th>Name</th><th>Email</th><th>Role</th><th>Venue</th><th>Status</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
+      {data && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filtered.map((u: any) => {
             const isBanned = u.bannedUntil && new Date(u.bannedUntil) > new Date();
+            const isExpanded = banFormId === u.id;
             return (
-              <>
-                <tr key={u.id}>
-                  <td>@{u.username}</td>
-                  <td>{u.firstName} {u.lastName}</td>
-                  <td className="muted" style={{ fontSize: 12 }}>{u.email}</td>
-                  <td><span className={`badge${u.role === "ADMIN" ? " active" : ""}`}>{u.role}</span></td>
-                  <td style={{ fontSize: 12 }}>{u.managedVenue?.name || <span className="muted">—</span>}</td>
-                  <td>
-                    {isBanned
-                      ? <BanBadge until={u.bannedUntil} />
-                      : <span style={{ color: u.ghostMode ? "#aaa" : "#6f6" }}>{u.ghostMode ? "👻 Ghost" : "Active"}</span>}
-                  </td>
-                  <td>
-                    {u.role !== "ADMIN" && (
-                      isBanned
-                        ? <button className="btn sm secondary" onClick={() => { unban(u.id); setBanFormId(null); }}>Unban</button>
-                        : <button className="btn sm" style={{ background: "#c0392b" }}
-                            onClick={() => setBanFormId(banFormId === u.id ? null : u.id)}>
-                            {banFormId === u.id ? "Cancel" : "Ban"}
-                          </button>
-                    )}
-                  </td>
-                </tr>
-                {banFormId === u.id && (
-                  <tr key={`${u.id}-form`}>
-                    <td colSpan={7} style={{ padding: "0 8px 8px" }}>
-                      <BanForm userId={u.id} onDone={() => { setBanFormId(null); setMsg("Banned."); load(); }} />
-                    </td>
-                  </tr>
+              <div key={u.id} style={{
+                borderRadius: 12, background: "var(--surface)",
+                border: `1px solid ${isExpanded ? "rgba(139,92,246,0.4)" : "var(--border)"}`,
+                overflow: "hidden",
+                transition: "border-color 0.2s",
+              }}>
+                {/* Summary row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", flexWrap: "wrap" }}>
+                  {/* Avatar placeholder */}
+                  <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(139,92,246,0.15)", border: "2px solid rgba(139,92,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: 13, color: "#8b5cf6" }}>
+                    {(u.firstName?.[0] ?? u.username?.[0] ?? "?").toUpperCase()}
+                  </div>
+                  {/* Name + username */}
+                  <div style={{ flex: "1 1 140px", minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{u.firstName} {u.lastName}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>@{u.username}</div>
+                  </div>
+                  {/* Email */}
+                  <div className="muted" style={{ fontSize: 12, flex: "1 1 160px", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {u.email}
+                  </div>
+                  {/* Role badge */}
+                  <span className={`badge${u.role === "ADMIN" ? " active" : ""}`} style={{ flexShrink: 0 }}>{u.role}</span>
+                  {/* Venue */}
+                  {u.managedVenue?.name && (
+                    <span className="muted" style={{ fontSize: 11, flexShrink: 0 }}>{u.managedVenue.name}</span>
+                  )}
+                  {/* Status */}
+                  {isBanned
+                    ? <BanBadge until={u.bannedUntil} />
+                    : <span style={{ fontSize: 12, color: u.ghostMode ? "#aaa" : "#6fbf6f", flexShrink: 0 }}>{u.ghostMode ? "👻 Ghost" : "Active"}</span>
+                  }
+                  {/* Actions */}
+                  {u.role !== "ADMIN" && (
+                    isBanned
+                      ? <button className="btn sm secondary" style={{ flexShrink: 0 }} onClick={() => { unban(u.id); setBanFormId(null); }}>Unban</button>
+                      : <button className="btn sm" style={{ background: "#c0392b", flexShrink: 0 }}
+                          onClick={() => setBanFormId(isExpanded ? null : u.id)}>
+                          {isExpanded ? "Cancel" : "Ban"}
+                        </button>
+                  )}
+                </div>
+                {/* Expanded ban form */}
+                {isExpanded && (
+                  <div style={{ padding: "0 14px 12px" }}>
+                    <BanForm userId={u.id} onDone={() => { setBanFormId(null); setMsg("Banned."); load(); }} />
+                  </div>
                 )}
-              </>
+              </div>
             );
           })}
-        </tbody>
-      </table>
+          {filtered.length === 0 && data && <p className="muted">No users match.</p>}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 
 type Zone = {
   id: string; name: string; isEnabled: boolean; disabledReason?: string;
+  imageUrl?: string | null;
   venues: { id: string; name: string }[];
   _count: { venues: number };
 };
@@ -58,12 +59,16 @@ function DeleteModal({ zone, onCancel, onDeleted }: { zone: Zone; onCancel: () =
 export default function ZonesAdmin() {
   const [data, setData] = useState<{ items: Zone[] } | null>(null);
   const [newName, setNewName] = useState("");
+  const [newImage, setNewImage] = useState("");
   const [reason, setReason] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editImage, setEditImage] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Zone | null>(null);
+  const imgRef = useRef<HTMLInputElement>(null);
+  const editImgRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const r = await fetch("/api/admin/zones");
@@ -71,18 +76,37 @@ export default function ZonesAdmin() {
   }
   useEffect(() => { load(); }, []);
 
+  function pickImage(file: File, onDone: (url: string) => void) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const src = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        const ratio = Math.min(MAX / img.width, MAX / img.height, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        onDone(canvas.toDataURL("image/jpeg", 0.80));
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  }
+
   async function create() {
     if (!newName.trim()) return;
     setCreating(true); setMsg("");
     const r = await fetch("/api/admin/zones", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: newName.trim() }),
+      body: JSON.stringify({ name: newName.trim(), imageUrl: newImage || undefined }),
     });
     const j = await r.json();
     setCreating(false);
     if (!r.ok) { setMsg(j.error || "Failed"); return; }
-    setNewName(""); await load();
+    setNewName(""); setNewImage(""); await load();
   }
 
   async function toggle(id: string, isEnabled: boolean, disabledReason?: string) {
@@ -100,14 +124,14 @@ export default function ZonesAdmin() {
     const r = await fetch("/api/admin/zones", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, name: editName.trim() }),
+      body: JSON.stringify({ id, name: editName.trim(), imageUrl: editImage || null }),
     });
     const j = await r.json();
     if (!r.ok) { setMsg(j.error || "Failed"); return; }
-    setEditingId(null); setEditName(""); await load();
+    setEditingId(null); setEditName(""); setEditImage(""); await load();
   }
 
-  function startEdit(z: Zone) { setEditingId(z.id); setEditName(z.name); }
+  function startEdit(z: Zone) { setEditingId(z.id); setEditName(z.name); setEditImage(z.imageUrl || ""); }
 
   if (!data) return <div className="container"><Nav role="admin" /><p className="muted">Loading…</p></div>;
 
@@ -141,8 +165,25 @@ export default function ZonesAdmin() {
             />
           </div>
           <button className="btn" onClick={create} disabled={creating || !newName.trim()}>
-            {creating ? "Creating…" : "Create zone"}
+            {creating ? "Creating..." : "Create zone"}
           </button>
+        </div>
+        {/* Zone photo */}
+        <div style={{ marginTop: 12 }}>
+          <label style={{ marginTop: 0 }}>Zone photo (optional)</label>
+          {newImage ? (
+            <div style={{ position: "relative", marginBottom: 8, display: "inline-block" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={newImage} alt="" style={{ width: "100%", maxWidth: 320, height: 120, objectFit: "cover", borderRadius: 10 }} />
+              <button onClick={() => setNewImage("")} style={{ position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 6, color: "#fff", fontSize: 12, padding: "3px 8px", cursor: "pointer" }}>Remove</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn sm secondary" onClick={() => { imgRef.current?.setAttribute("capture","environment"); imgRef.current?.click(); }}>📷 Take Photo</button>
+              <button className="btn sm secondary" onClick={() => { imgRef.current?.removeAttribute("capture"); imgRef.current?.click(); }}>🖼️ Upload</button>
+            </div>
+          )}
+          <input ref={imgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f, setNewImage); e.target.value = ""; }} />
         </div>
         {msg && <p className="muted" style={{ color: "var(--error,#f66)", marginTop: 6 }}>{msg}</p>}
       </div>
@@ -156,14 +197,33 @@ export default function ZonesAdmin() {
             <tr key={z.id}>
               <td>
                 {editingId === z.id ? (
-                  <div className="row" style={{ gap: 6 }}>
-                    <input value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 1, minWidth: 160 }}
-                      onKeyDown={e => e.key === "Enter" && rename(z.id)} autoFocus />
-                    <button className="btn sm" onClick={() => rename(z.id)}>Save</button>
-                    <button className="btn sm secondary" onClick={() => setEditingId(null)}>✕</button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div className="row" style={{ gap: 6 }}>
+                      <input value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 1, minWidth: 160 }}
+                        onKeyDown={e => e.key === "Enter" && rename(z.id)} autoFocus />
+                      <button className="btn sm" onClick={() => rename(z.id)}>Save</button>
+                      <button className="btn sm secondary" onClick={() => setEditingId(null)}>&#x2715;</button>
+                    </div>
+                    {editImage ? (
+                      <div style={{ position: "relative", display: "inline-block" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={editImage} alt="" style={{ width: 160, height: 70, objectFit: "cover", borderRadius: 8 }} />
+                        <button onClick={() => setEditImage("")} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 4, color: "#fff", fontSize: 11, padding: "2px 6px", cursor: "pointer" }}>Remove</button>
+                      </div>
+                    ) : (
+                      <button className="btn sm secondary" style={{ width: "fit-content" }}
+                        onClick={() => { editImgRef.current?.removeAttribute("capture"); editImgRef.current?.click(); }}>
+                        🖼️ Add photo
+                      </button>
+                    )}
+                    <input ref={editImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f, setEditImage); e.target.value = ""; }} />
                   </div>
                 ) : (
                   <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                    {z.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={z.imageUrl} alt="" style={{ width: 44, height: 30, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
+                    )}
                     <strong>{z.name}</strong>
                     <button className="btn sm secondary" style={{ padding: "2px 8px", fontSize: 11 }} onClick={() => startEdit(z)}>Edit</button>
                     <button className="btn sm" style={{ padding: "2px 8px", fontSize: 11, background: "#c0392b" }} onClick={() => setDeleteTarget(z)}>Delete</button>
@@ -198,14 +258,33 @@ export default function ZonesAdmin() {
                 <tr key={z.id}>
                   <td>
                     {editingId === z.id ? (
-                      <div className="row" style={{ gap: 6 }}>
-                        <input value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 1, minWidth: 160 }}
-                          onKeyDown={e => e.key === "Enter" && rename(z.id)} autoFocus />
-                        <button className="btn sm" onClick={() => rename(z.id)}>Save</button>
-                        <button className="btn sm secondary" onClick={() => setEditingId(null)}>✕</button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div className="row" style={{ gap: 6 }}>
+                          <input value={editName} onChange={e => setEditName(e.target.value)} style={{ flex: 1, minWidth: 160 }}
+                            onKeyDown={e => e.key === "Enter" && rename(z.id)} autoFocus />
+                          <button className="btn sm" onClick={() => rename(z.id)}>Save</button>
+                          <button className="btn sm secondary" onClick={() => setEditingId(null)}>&#x2715;</button>
+                        </div>
+                        {editImage ? (
+                          <div style={{ position: "relative", display: "inline-block" }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={editImage} alt="" style={{ width: 160, height: 70, objectFit: "cover", borderRadius: 8 }} />
+                            <button onClick={() => setEditImage("")} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: 4, color: "#fff", fontSize: 11, padding: "2px 6px", cursor: "pointer" }}>Remove</button>
+                          </div>
+                        ) : (
+                          <button className="btn sm secondary" style={{ width: "fit-content" }}
+                            onClick={() => { editImgRef.current?.removeAttribute("capture"); editImgRef.current?.click(); }}>
+                            🖼️ Add photo
+                          </button>
+                        )}
+                        <input ref={editImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f, setEditImage); e.target.value = ""; }} />
                       </div>
                     ) : (
                       <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                        {z.imageUrl && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={z.imageUrl} alt="" style={{ width: 44, height: 30, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
+                        )}
                         {z.name}
                         <button className="btn sm secondary" style={{ padding: "2px 8px", fontSize: 11 }} onClick={() => startEdit(z)}>Edit</button>
                         <button className="btn sm" style={{ padding: "2px 8px", fontSize: 11, background: "#c0392b" }} onClick={() => setDeleteTarget(z)}>Delete</button>

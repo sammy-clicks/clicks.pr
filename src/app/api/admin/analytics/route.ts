@@ -140,14 +140,14 @@ export async function GET(req: Request) {
     orders:   bucket(allOrders,   r => r.createdAt),
   };
 
-  // Revenue (window-based, for chart reference)
-  const revenueTotal = allOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0);
-  const revenueToday = allOrders
-    .filter(o => o.createdAt >= dayAgo)
+  // Gross orders revenue (window-based)
+  const grossOrdersCents = completedOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0);
+  const grossOrdersTodayCents = completedOrders
+    .filter(o => o.completedAt && o.completedAt >= dayAgo)
     .reduce((s, o) => s + (o.totalCents ?? 0), 0);
 
   // Commission revenue breakdown (all-time, Clicks' earnings)
-  const orderCommissionCents    = Math.round(completedOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0) * 0.15);
+  const orderCommissionCents    = Math.round(grossOrdersCents * 0.15);
   const promoCommissionCents    = Math.round(paidRedemptions.reduce((s, r) => s + r.paidCents, 0) * 0.15);
   const subscriptionRevenueCents = subscriptionPayments.reduce((s, p) => s + p.amountCents, 0);
   const totalRevenueCents       = orderCommissionCents + promoCommissionCents + subscriptionRevenueCents;
@@ -157,6 +157,7 @@ export async function GET(req: Request) {
   const promoCommToday   = Math.round(paidRedemptions.filter(r => r.createdAt >= todayStart).reduce((s, r) => s + r.paidCents, 0) * 0.15);
   const subRevToday      = subscriptionPayments.filter(p => p.paidAt >= todayStart).reduce((s, p) => s + p.amountCents, 0);
   const todayRevenueCents = orderCommToday + promoCommToday + subRevToday;
+  const grossPromosCents  = paidRedemptions.reduce((s, r) => s + r.paidCents, 0);
 
   // Shape active promotions
   const activePromos = activePromotions.map(p => ({
@@ -213,10 +214,8 @@ export async function GET(req: Request) {
     allTime,
     totals: { users: totalUsers, venues: totalVenues, proVenues, orders: totalOrders, activeNow },
     revenue: {
-      // Window-based gross (for backward compat)
-      totalCents: revenueTotal,
-      todayCents: revenueToday,
-      // Clicks' actual earnings (commissions + subscriptions)
+      grossOrdersCents,
+      grossPromosCents,
       orderCommissionCents,
       promoCommissionCents,
       subscriptionRevenueCents,

@@ -206,32 +206,35 @@ export default function VenueMenu() {
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {catItems.map((m: Item) => (
                 <div key={m.id} style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  padding: "10px 12px", borderRadius: 10,
-                  background: "var(--surface)", opacity: m.isAvailable ? 1 : 0.55,
+                  borderRadius: 10, background: "var(--surface)",
+                  opacity: m.isAvailable ? 1 : 0.55,
                   border: "1px solid var(--border)",
+                  padding: "10px 12px",
                 }}>
-                  {m.imageUrl
-                    ? <img src={m.imageUrl} alt={m.name} style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
-                    : <div style={{ width: 48, height: 48, borderRadius: 8, background: "var(--venue-brand-dim)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-                        {m.isAlcohol ? "🍺" : "🧃"}
+                  {/* Top row: image + info */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    {m.imageUrl
+                      ? <img src={m.imageUrl} alt={m.name} style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                      : <div style={{ width: 44, height: 44, borderRadius: 8, background: "var(--venue-brand-dim)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                          {m.isAlcohol ? "🍺" : "🧃"}
+                        </div>
+                    }
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{m.name}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>
+                        ${(m.priceCents / 100).toFixed(2)} &middot; {m.isAlcohol ? "Alcohol" : "Non-alc"} &middot; {m.isAvailable ? "Available" : "Off"}
                       </div>
-                  }
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {m.name}
-                    </div>
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      ${(m.priceCents / 100).toFixed(2)} · {m.isAlcohol ? "Alcohol" : "Non-alc"} · {m.isAvailable ? "Available" : "Off"}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    <button className="btn sm secondary" onClick={() => openEdit(m)}>Edit</button>
+                  {/* Bottom row: action buttons */}
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button className="btn sm secondary" style={{ flex: "1 1 60px" }} onClick={() => openEdit(m)}>Edit</button>
                     <button
-                      className={`btn sm ${m.isAvailable ? "secondary" : ""}`}
+                      className={`btn sm${m.isAvailable ? " secondary" : ""}`}
+                      style={{ flex: "1 1 80px" }}
                       onClick={() => toggleAvail(m.id, !m.isAvailable)}
                     >{m.isAvailable ? "Disable" : "Enable"}</button>
-                    <button className="btn sm danger" onClick={() => deleteItem(m.id)}>Del</button>
+                    <button className="btn sm danger" style={{ flex: "1 1 50px" }} onClick={() => deleteItem(m.id)}>Delete</button>
                   </div>
                 </div>
               ))}

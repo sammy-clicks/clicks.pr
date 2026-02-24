@@ -13,7 +13,7 @@ function isoWeek(d: Date) {
 }
 
 export default async function Zones() {
-  const zones = await prisma.zone.findMany({ orderBy: { name: "asc" } });
+  const zones = await prisma.zone.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, isEnabled: true, disabledReason: true, imageUrl: true } });
   const since = new Date(Date.now() - 120 * 60 * 1000);
   const counts = await prisma.checkIn.groupBy({
     by: ["venueId"],
@@ -39,17 +39,54 @@ export default async function Zones() {
       <Nav role="u" />
       <div className="row">
         {result.map(z => (
-          <div key={z.id} className="card" style={{ flex: "1 1 280px", opacity: z.isEnabled ? 1 : 0.5 }}>
-            <div className="header">
-              <strong>{z.name}</strong>
-              {z.isDominant && <span className="badge">&#128293; Live</span>}
-            </div>
-            <p className="muted">{z.activeUsers} active</p>
-            {!z.isEnabled && <p className="muted">{z.disabledReason || "Disabled"}</p>}
+          <div key={z.id} style={{ flex: "1 1 280px", opacity: z.isEnabled ? 1 : 0.5 }}>
             {z.isEnabled ? (
-              <Link className="btn" href={`/u/zone/${z.id}`}>Explore</Link>
+              <Link href={`/u/zone/${z.id}`} style={{ textDecoration: "none", display: "block" }}>
+                <div style={{
+                  position: "relative", borderRadius: 16, overflow: "hidden",
+                  height: 160, background: z.imageUrl ? "#111" : "var(--surface)",
+                  border: "1.5px solid var(--border)",
+                  boxShadow: z.isDominant ? "0 0 0 2px #08daf4, 0 8px 24px rgba(8,218,244,0.2)" : "none",
+                  transition: "transform 0.15s, box-shadow 0.15s",
+                  cursor: "pointer",
+                }}>
+                  {z.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={z.imageUrl} alt={z.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+                  )}
+                  {/* Gradient overlay */}
+                  <div style={{ position: "absolute", inset: 0, background: z.imageUrl ? "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)" : "transparent" }} />
+                  {/* Content */}
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <strong style={{ fontSize: 17, fontWeight: 800, color: z.imageUrl ? "#fff" : "var(--ink)", textShadow: z.imageUrl ? "0 1px 4px rgba(0,0,0,0.6)" : undefined }}>
+                        {z.name}
+                      </strong>
+                      {z.isDominant && <span className="badge" style={{ fontSize: 11 }}>&#128293; Live</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: z.imageUrl ? "rgba(255,255,255,0.75)" : "var(--muted-text)", marginTop: 3 }}>
+                      {z.activeUsers} active
+                    </div>
+                  </div>
+                  {!z.imageUrl && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "50%" }}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--muted-text)" strokeWidth="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    </div>
+                  )}
+                </div>
+              </Link>
             ) : (
-              <span className="badge">Disabled</span>
+              <div style={{
+                borderRadius: 16, overflow: "hidden",
+                height: 120, background: "var(--surface)",
+                border: "1.5px solid var(--border)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 6,
+              }}>
+                <strong style={{ fontSize: 15 }}>{z.name}</strong>
+                <span className="badge">Disabled</span>
+                {z.disabledReason && <p className="muted" style={{ fontSize: 12, margin: 0 }}>{z.disabledReason}</p>}
+              </div>
             )}
           </div>
         ))}

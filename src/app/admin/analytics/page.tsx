@@ -67,10 +67,10 @@ export default function AdminAnalytics() {
       <div className="header">
         <h2>Analytics</h2>
         <div className="row" style={{ gap: 6 }}>
-          {[7, 14, 30, 90, 0].map(d => (
+          {[1, 7, 14, 30, 90, 0].map(d => (
             <button key={d} className={`btn${days === d ? "" : " secondary"}`}
               onClick={() => changeRange(d)} disabled={loading}>
-              {d === 0 ? "All" : `${d}d`}
+              {d === 0 ? "All" : d === 1 ? "24h" : `${d}d`}
             </button>
           ))}
           <button className="btn secondary" onClick={() => load(days)} disabled={loading}>↺</button>
@@ -91,22 +91,18 @@ export default function AdminAnalytics() {
             <Stat label="Active now"     value={data.totals.activeNow} sub="checked-in last 2h" />
           </div>
 
-          <h3>Revenue ({days === 0 ? "all-time" : `${days}d`} window)</h3>
+          <h3>Revenue &mdash; {days === 0 ? "all-time" : days === 1 ? "last 24h" : `last ${days}d`}</h3>
           <div className="row">
-            <Stat label="Gross orders revenue"  value={$$(data.revenue.totalCents)} />
-            <Stat label="Revenue today"  value={$$(data.revenue.todayCents)} />
-          </div>
-
-          <h3>Clicks Earnings (all-time commissions)</h3>
-          <div className="row">
-            <Stat label="Order commission (15%)"  value={$$(data.revenue.orderCommissionCents)}   sub="15% of completed orders" />
-            <Stat label="Promo commission (15%)"  value={$$(data.revenue.promoCommissionCents)}   sub="15% of paid promos" />
-            <Stat label="Subscriptions (100%)"    value={$$(data.revenue.subscriptionRevenueCents)} sub="$49/mo PRO plans" />
-            <Stat label="Total Clicks revenue"    value={$$(data.revenue.totalRevenueCents)}       sub={`Today: ${$$(data.revenue.todayRevenueCents)}`} />
+            <Stat label="Gross Orders Revenue"  value={$$(data.revenue.grossOrdersCents)} sub="total completed orders value" />
+            <Stat label="Our Cut (15%)"          value={$$(data.revenue.orderCommissionCents)} sub="15% of gross orders" />
+            <Stat label="Gross Promo Revenue"    value={$$(data.revenue.grossPromosCents)} sub="paid promo redemptions" />
+            <Stat label="Promo Cut (15%)"        value={$$(data.revenue.promoCommissionCents)} sub="15% of promo revenue" />
+            <Stat label="Subscription Revenue"  value={$$(data.revenue.subscriptionRevenueCents)} sub="PRO plan payments" />
+            <Stat label="Total Clicks Revenue"  value={$$(data.revenue.totalRevenueCents)} sub={`Today: ${$$(data.revenue.todayRevenueCents)}`} />
           </div>
 
           {/* ── Daily charts ───────────────────────────────────────────── */}
-          <h3>Last {days === 0 ? "12 months" : `${days} days`}</h3>
+          <h3>Last {days === 0 ? "12 months" : days === 1 ? "24 hours" : `${days} days`}</h3>
           <div className="row" style={{ flexWrap: "wrap", gap: 16 }}>
 
             <div className="card" style={{ flex: "1 1 260px" }}>
@@ -142,7 +138,7 @@ export default function AdminAnalytics() {
           {/* ── Top clickers ───────────────────────────────────────────── */}
           {data.topClickers.length > 0 && (
             <>
-              <h3>Top Clickers ({days === 0 ? "all-time" : `${days}d`})</h3>
+              <h3>Top Clickers &mdash; {days === 0 ? "all-time" : days === 1 ? "24h" : `${days}d`}</h3>
               <table>
                 <thead><tr><th>#</th><th>Username</th><th>Clicks</th><th>Bar</th></tr></thead>
                 <tbody>
