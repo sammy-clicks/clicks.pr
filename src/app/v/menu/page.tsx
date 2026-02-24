@@ -148,7 +148,7 @@ export default function VenueMenu() {
   }
 
   return (
-    <PinGate>
+    <PinGate alwaysPrompt>
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Menu — {data.venueName}</h2>

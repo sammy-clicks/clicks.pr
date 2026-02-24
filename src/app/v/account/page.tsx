@@ -235,7 +235,7 @@ export default function VenueAccount() {
   );
 
   return (
-    <PinGate>
+    <PinGate alwaysPrompt>
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.6rem" }}>Account</h2>
@@ -342,13 +342,10 @@ export default function VenueAccount() {
       {/* 3  Venue photo + Preview */}
       {venue && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-            <div>
-              <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>Venue Photo</div>
-              <div className="muted" style={{ fontSize: 12 }}>Shown to customers. Recommended 600400.</div>
-            </div>
-            <button className="btn sm secondary" style={{ fontSize: 11, flexShrink: 0, marginLeft: 10 }} onClick={() => setShowPreview(p => !p)}>
-              {showPreview ? "Hide preview" : " Customer view"}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em" }}>Venue Photo</div>
+            <button className="btn sm secondary" style={{ fontSize: 11 }} onClick={() => setShowPreview(p => !p)}>
+              {showPreview ? "Hide preview" : "Customer view"}
             </button>
           </div>
 
@@ -373,21 +370,23 @@ export default function VenueAccount() {
             </div>
           )}
 
-          {venueImageUrl
-            ? <img src={venueImageUrl} alt="Venue" style={{ width: "100%", maxWidth: 360, height: 200, objectFit: "cover", borderRadius: 10, marginBottom: 12 }} />
-            : <div style={{ width: "100%", maxWidth: 360, height: 110, background: "rgba(255,255,255,0.04)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, border: "2px dashed rgba(255,255,255,0.1)" }}>
-                <span className="muted" style={{ fontSize: 13 }}>No photo yet</span>
-              </div>
-          }
-          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-            <button className="btn sm secondary" onClick={() => venueImgRef.current?.click()}>
-               {venueImageUrl ? "Change" : "Upload"}
-            </button>
-            {venueImageUrl && <button className="btn sm secondary" onClick={() => setVenueImageUrl("")}>Remove</button>}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }}>
+            {venueImageUrl
+              ? <img src={venueImageUrl} alt="Venue" style={{ width: "100%", maxWidth: 360, height: 200, objectFit: "cover", borderRadius: 10 }} />
+              : <div style={{ width: "100%", maxWidth: 360, height: 110, background: "rgba(255,255,255,0.04)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "2px dashed rgba(255,255,255,0.1)" }}>
+                  <span className="muted" style={{ fontSize: 13 }}>No photo yet</span>
+                </div>
+            }
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn sm secondary" onClick={() => venueImgRef.current?.click()}>
+                {venueImageUrl ? "Change" : "Upload"}
+              </button>
+              {venueImageUrl && <button className="btn sm secondary" onClick={() => setVenueImageUrl("")}>Remove</button>}
+            </div>
+            <input ref={venueImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleVenueImgChange} />
+            {venueImageUrl !== (venue.venueImageUrl ?? "") && <div style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>New photo selected &mdash; not saved yet.</div>}
+            <button className="btn" onClick={saveVenueImage} disabled={saving}>Save venue photo</button>
           </div>
-          <input ref={venueImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleVenueImgChange} />
-          {venueImageUrl !== (venue.venueImageUrl ?? "") && <div style={{ marginBottom: 12, padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>New photo selected  not saved yet.</div>}
-          <button className="btn" onClick={saveVenueImage} disabled={saving}>Save venue photo</button>
         </div>
       )}
 

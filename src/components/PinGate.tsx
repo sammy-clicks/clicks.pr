@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 const PIN_KEY     = "venue_pin";
 const SESSION_KEY = "venue_pin_unlocked";
 
-interface Props { children: React.ReactNode }
+interface Props { children: React.ReactNode; alwaysPrompt?: boolean; }
 
-export function PinGate({ children }: Props) {
+export function PinGate({ children, alwaysPrompt = false }: Props) {
   const [pin,        setPin]        = useState<string | null>(null);
   const [unlocked,   setUnlocked]   = useState(false);
   const [input,      setInput]      = useState("");
@@ -18,14 +18,14 @@ export function PinGate({ children }: Props) {
     const stored   = localStorage.getItem(PIN_KEY);
     const session  = sessionStorage.getItem(SESSION_KEY);
     setPin(stored);
-    if (!stored || session === "1") setUnlocked(true);
+    if (!stored || (!alwaysPrompt && session === "1")) setUnlocked(true);
     setReady(true);
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
   function tryUnlock() {
     if (input === pin) {
-      sessionStorage.setItem(SESSION_KEY, "1");
+      if (!alwaysPrompt) sessionStorage.setItem(SESSION_KEY, "1");
       setUnlocked(true);
     } else {
       setShake(true);
@@ -70,7 +70,7 @@ export function PinGate({ children }: Props) {
             if (v.length === 4) {
               // auto-submit when 4 digits are entered
               if (v === pin!) {
-                sessionStorage.setItem(SESSION_KEY, "1");
+                if (!alwaysPrompt) sessionStorage.setItem(SESSION_KEY, "1");
                 setUnlocked(true);
               } else {
                 setShake(true);

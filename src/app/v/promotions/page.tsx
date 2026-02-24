@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { PinGate } from "@/components/PinGate";
 
@@ -61,6 +61,7 @@ export default function VenuePromotions() {
   const [loading, setLoading] = useState(true);
   const [nextCutoff, setNextCutoff] = useState<string | null>(null);
   const [itemSearch, setItemSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const [rPromos, rPlan] = await Promise.all([
@@ -84,6 +85,7 @@ export default function VenuePromotions() {
 
   function startCreate() {
     setEditId(null); setForm({ ...EMPTY_FORM }); setItemSearch(""); setShowForm(true);
+    setTimeout(() => searchRef.current?.focus(), 120);
   }
   function startEdit(p: Promo) {
     setEditId(p.id);
@@ -128,6 +130,9 @@ export default function VenuePromotions() {
         m.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
         (m.category ?? "").toLowerCase().includes(itemSearch.toLowerCase()))
     : menuItems;
+  const groupedItems: Record<string, MenuItem[]> = {};
+  for (const m of filteredMenuItems) { const cat = m.category || "Menu"; if (!groupedItems[cat]) groupedItems[cat] = []; groupedItems[cat].push(m); }
+  const groupedCats = Object.keys(groupedItems).sort();
 
   async function saveDraft() {
     if (!form.title.trim()) { alert("Please enter a promotion title."); return; }
@@ -205,7 +210,7 @@ export default function VenuePromotions() {
     if (!items || items.length === 0) return null;
     return (
       <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-        {items.map(i => `${i.qty}\u00d7 ${i.name}`).join(" + ")}
+        {items.map(i => `${i.qty}x ${i.name}`).join(" + ")}
       </div>
     );
   }
@@ -213,15 +218,15 @@ export default function VenuePromotions() {
   if (error) return <div className="container"><Nav role="v" /><p className="muted">{error}</p></div>;
 
   return (
-    <PinGate>
+    <PinGate alwaysPrompt>
     <div className="container">
       <div className="header">
-        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Promotions \u2014 {venueName}</h2>
+        <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Promotions &mdash; {venueName}</h2>
         {isPro === false && !loading && <a href="/v/plan"><button className="btn secondary">\u2b50 Upgrade to PRO</button></a>}
       </div>
       <Nav role="v" />
 
-      {loading && <p className="muted">Loading\u2026</p>}
+      {loading && <p className="muted">Loading...</p>}
 
       {isPro === false && !loading && (
         <div className="card" style={{ textAlign: "center", padding: 32 }}>
@@ -256,12 +261,12 @@ export default function VenuePromotions() {
                       <ItemsLine items={items} />
                       {items.length > 0 && regTotal > 0 && (
                         <p className="muted" style={{ fontSize: 11, margin: "3px 0 0" }}>
-                          Regular {$$(regTotal)} \u2192 Promo {$$(p.priceCents)}
+                          Regular {$$(regTotal)} &rarr; Promo {$$(p.priceCents)}
                           {regTotal > p.priceCents && <span style={{ color: "#22c55e", marginLeft: 6 }}>Save {$$(regTotal - p.priceCents)}</span>}
                         </p>
                       )}
                       <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                        Expires {fmtExpiry(p.expiresAt)} \u00b7 max {p.maxRedeemsPerNightPerUser} redeem{p.maxRedeemsPerNightPerUser !== 1 ? "s" : ""}/user/night
+                        Expires {fmtExpiry(p.expiresAt)} &middot; max {p.maxRedeemsPerNightPerUser} redeem{p.maxRedeemsPerNightPerUser !== 1 ? "s" : ""}/user/night
                       </p>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -327,10 +332,10 @@ export default function VenuePromotions() {
                 <div key={item.menuItemId} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, padding: "8px 10px", borderRadius: 8, background: "rgba(231,168,255,0.06)", border: "1px solid rgba(231,168,255,0.2)" }}>
                   <span style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>{item.name}</span>
                   <span className="muted" style={{ fontSize: 12, minWidth: 52 }}>{$$(item.qty * item.priceCents)}</span>
-                  <button className="btn sm secondary" onClick={() => setItemQty(item.menuItemId, item.qty - 1)}>\u2212</button>
+                  <button className="btn sm secondary" onClick={() => setItemQty(item.menuItemId, item.qty - 1)} style={{ width: 28, height: 28, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>&minus;</button>
                   <span style={{ minWidth: 20, textAlign: "center", fontWeight: 700 }}>{item.qty}</span>
-                  <button className="btn sm secondary" onClick={() => setItemQty(item.menuItemId, item.qty + 1)}>+</button>
-                  <button onClick={() => removeItem(item.menuItemId)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px" }}>\u00d7</button>
+                  <button className="btn sm secondary" onClick={() => setItemQty(item.menuItemId, item.qty + 1)} style={{ width: 28, height: 28, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                  <button onClick={() => removeItem(item.menuItemId)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 4px" }}>&times;</button>
                 </div>
               ))}
 
@@ -348,26 +353,53 @@ export default function VenuePromotions() {
                 <p className="muted" style={{ fontSize: 13 }}>No menu items found. Add items to your menu first.</p>
               ) : (
                 <>
-                  <input className="input" placeholder="Search items\u2026" value={itemSearch}
+                  <input
+                    ref={searchRef}
+                    className="input"
+                    placeholder="Search..."
+                    value={itemSearch}
                     onChange={e => setItemSearch(e.target.value)}
-                    style={{ marginBottom: 8, fontSize: 13, padding: "6px 10px" }} />
-                  <div style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
-                    {filteredMenuItems.map(m => {
-                      const added = form.items.find(i => i.menuItemId === m.id);
-                      return (
-                        <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 8, background: "rgba(255,255,255,0.03)" }}>
-                          <span style={{ flex: 1, fontSize: 13 }}>
-                            {m.name}
-                            {m.category && <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>{m.category}</span>}
-                          </span>
-                          <span className="badge" style={{ fontSize: 11 }}>{$$(m.priceCents)}</span>
-                          <button className="btn sm" onClick={() => addItem(m)} style={{ fontSize: 11, padding: "3px 8px" }}>
-                            {added ? `+1 (${added.qty})` : "Add"}
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {filteredMenuItems.length === 0 && <p className="muted" style={{ fontSize: 12 }}>No items match.</p>}
+                    style={{ marginBottom: 8, fontSize: 13, padding: "6px 10px" }}
+                  />
+                  <div style={{ maxHeight: 260, overflowY: "auto", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+                    {groupedCats.map(cat => (
+                      <div key={cat}>
+                        {groupedCats.length > 1 && (
+                          <div style={{ padding: "6px 12px 3px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--muted-text)", background: "rgba(255,255,255,0.02)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                            {cat}
+                          </div>
+                        )}
+                        {groupedItems[cat].map(m => {
+                          const bundled = form.items.find(i => i.menuItemId === m.id);
+                          return (
+                            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: "1px solid rgba(255,255,255,0.04)", background: bundled ? "rgba(231,168,255,0.05)" : "transparent" }}>
+                              {m.imageUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={m.imageUrl} alt={m.name} style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />
+                              ) : (
+                                <div style={{ width: 36, height: 36, borderRadius: 6, background: "rgba(255,255,255,0.06)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                                  {m.isAlcohol ? "🍺" : "🍽️"}
+                                </div>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name}</div>
+                                <div className="muted" style={{ fontSize: 11 }}>{$$(m.priceCents)}</div>
+                              </div>
+                              {bundled ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                                  <button className="btn sm secondary" onClick={() => setItemQty(m.id, bundled.qty - 1)} style={{ width: 28, height: 28, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>&minus;</button>
+                                  <span style={{ minWidth: 20, textAlign: "center", fontWeight: 700, fontSize: 14 }}>{bundled.qty}</span>
+                                  <button className="btn sm secondary" onClick={() => setItemQty(m.id, bundled.qty + 1)} style={{ width: 28, height: 28, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                                </div>
+                              ) : (
+                                <button className="btn sm" onClick={() => addItem(m)} style={{ flexShrink: 0, padding: "4px 12px", fontSize: 12 }}>Add</button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                    {filteredMenuItems.length === 0 && <p className="muted" style={{ fontSize: 13, padding: "12px 16px", margin: 0 }}>No items match.</p>}
                   </div>
                 </>
               )}
@@ -399,10 +431,10 @@ export default function VenuePromotions() {
 
             <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
               <button className="btn" onClick={requestPublish} disabled={saving || !form.title || form.items.length === 0}>
-                {saving ? "\u2026" : editId ? "Update & Publish" : "Publish Now"}
+                {saving ? "..." : editId ? "Update & Publish" : "Publish Now"}
               </button>
               <button className="btn secondary" onClick={saveDraft} disabled={saving || !form.title}>
-                {saving ? "\u2026" : "Save as Draft"}
+                {saving ? "..." : "Save as Draft"}
               </button>
               <button className="btn secondary" onClick={cancelForm} disabled={saving}>Cancel</button>
             </div>
@@ -419,12 +451,12 @@ export default function VenuePromotions() {
               Create this promotion for <strong>{confirmInfo.venueName || "your venue"}</strong>?
             </p>
             <div className="card" style={{ background: "var(--surface)", marginBottom: 12 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>{confirmInfo.title}</div>
+              <h4 style={{ margin: "0 0 8px", fontWeight: 700 }}>{confirmInfo.title}</h4>
               {confirmInfo.items && confirmInfo.items.length > 0 && (
                 <div>
                   {confirmInfo.items.map(i => (
                     <div key={i.menuItemId} style={{ fontSize: 13, color: "var(--muted-text)", marginBottom: 2 }}>
-                      {i.qty}\u00d7 {i.name} <span style={{ marginLeft: 8 }}>{$$(i.qty * i.priceCents)}</span>
+                      {i.qty}&times; {i.name} <span style={{ marginLeft: 8 }}>{$$(i.qty * i.priceCents)}</span>
                     </div>
                   ))}
                   <div style={{ fontSize: 12, marginTop: 6, color: "var(--muted-text)", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 6 }}>
@@ -445,7 +477,7 @@ export default function VenuePromotions() {
             <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>It will be automatically deleted at that time.</p>
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
               <button className="btn" onClick={confirmPublish} disabled={publishing}>
-                {publishing ? "Publishing\u2026" : "Confirm & Publish"}
+                {publishing ? "Publishing..." : "Confirm & Publish"}
               </button>
               <button className="btn secondary" onClick={() => setConfirmInfo(null)} disabled={publishing}>Cancel</button>
             </div>
