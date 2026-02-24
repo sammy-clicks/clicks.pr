@@ -4,6 +4,86 @@ import { Nav } from "@/components/Nav";
 
 function fmt(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 
+const TXN_STATUS_LABEL: Record<string, string> = {
+  TOPUP: "Paid", TRANSFER_OUT: "Sent", TRANSFER_IN: "Received", REFUND: "Refunded", ADJUSTMENT: "Adjusted",
+};
+
+function TxnDetailModal({ txn, onClose }: { txn: any; onClose: () => void }) {
+  const isOut = txn.type === "TRANSFER_OUT";
+  const isIn  = txn.type === "TRANSFER_IN";
+  const amtColor = isOut ? "#f66" : isIn ? "#2ecc71" : "var(--ink)";
+  const amtPrefix = isOut ? "−" : "+";
+  const date = new Date(txn.createdAt);
+  const fullDate = date.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const fullTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  const statusLabel = TXN_STATUS_LABEL[txn.type] ?? "Complete";
+  const typeLabel   = TXN_LABEL[txn.type] ?? txn.type;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div onClick={onClose} style={{
+        position: "fixed", inset: 0, zIndex: 1400,
+        background: "rgba(0,0,0,0.75)", backdropFilter: "blur(5px)",
+      }} />
+
+      {/* Bottom sheet */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1410,
+        background: "var(--surface)", borderRadius: "22px 22px 0 0",
+        padding: "0 0 env(safe-area-inset-bottom,28px)",
+        boxShadow: "0 -8px 40px rgba(0,0,0,0.55)",
+      }}>
+        {/* Drag handle */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "14px 0 4px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)" }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 20px 0" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--muted-text)" }}>
+            Transaction Details
+          </span>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted-text)", fontSize: 22, lineHeight: 1, padding: 4 }}>✕</button>
+        </div>
+
+        {/* Big amount */}
+        <div style={{ textAlign: "center", padding: "20px 20px 16px" }}>
+          <div style={{ fontSize: 44, fontWeight: 900, letterSpacing: -2, color: amtColor, lineHeight: 1 }}>
+            {amtPrefix}{fmt(txn.amountCents)}
+          </div>
+          <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
+            background: "rgba(46,204,113,0.13)", borderRadius: 20, padding: "4px 14px" }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#2ecc71" }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#2ecc71" }}>{statusLabel}</span>
+          </div>
+        </div>
+
+        {/* Detail rows */}
+        <div style={{ margin: "0 20px 20px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)", overflow: "hidden" }}>
+          {[
+            { label: "Type",   value: `${TXN_ICON[txn.type] ?? ""} ${typeLabel}` },
+            { label: "Date",   value: fullDate },
+            { label: "Time",   value: fullTime },
+            ...(txn.memo && txn.memo !== "Transfer" ? [{ label: "Memo", value: txn.memo }] : []),
+            { label: "Status", value: statusLabel },
+            { label: "Ref",    value: txn.id.slice(0, 18).toUpperCase() },
+          ].map((row, i, arr) => (
+            <div key={row.label} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+              padding: "13px 16px", gap: 12,
+              borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none",
+            }}>
+              <span style={{ fontSize: 12, color: "var(--muted-text)", fontWeight: 600, flexShrink: 0 }}>{row.label}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, textAlign: "right", wordBreak: "break-all" }}>{row.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function Avatar({ username, avatarUrl, size = 34 }: { username: string; avatarUrl?: string | null; size?: number }) {
   return avatarUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -23,6 +103,7 @@ const TXN_LABEL: Record<string, string> = { TOPUP: "Transfer", TRANSFER_OUT: "Se
 export default function Wallet() {
   const [data, setData]           = useState<any>(null);
   const [buddyIds, setBuddyIds]   = useState<Set<string>>(new Set());
+  const [selectedTxn, setSelectedTxn] = useState<any>(null);
   const [topupAmt, setTopupAmt]   = useState(10);
   const [recipient, setRecipient] = useState<{ id: string; username: string; avatarUrl?: string | null } | null>(null);
   const [search, setSearch]       = useState("");
@@ -183,9 +264,12 @@ export default function Wallet() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {data.txns.map((t: any) => (
-            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 14,
+            <div key={t.id} onClick={() => setSelectedTxn(t)}
+              style={{ display: "flex", alignItems: "center", gap: 14,
               padding: "13px 16px", background: "var(--surface)", borderRadius: 14,
-              border: "1px solid var(--border)" }}>
+              border: "1px solid var(--border)", cursor: "pointer", transition: "background 0.15s" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "var(--surface)")}>
               <div style={{ fontSize: 22, width: 28, textAlign: "center", flexShrink: 0 }}>
                 {TXN_ICON[t.type] ?? ""}
               </div>
@@ -207,6 +291,11 @@ export default function Wallet() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Transaction Detail Modal */}
+      {selectedTxn && (
+        <TxnDetailModal txn={selectedTxn} onClose={() => setSelectedTxn(null)} />
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 ﻿"use client";
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, ReactNode } from "react";
 import { Nav } from "@/components/Nav";
 
 function isoWeek(d: Date) {
@@ -9,6 +9,18 @@ function isoWeek(d: Date) {
   dt.setUTCDate(dt.getUTCDate() + 4 - day);
   const y = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
   return Math.ceil((((dt.getTime() - y.getTime()) / 86400000) + 1) / 7);
+}
+
+/** Renders a greeting string with "week N" / "Week N" highlighted in accent color and emojis stripped. */
+function renderGreeting(text: string, week: number): ReactNode[] {
+  const clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "").trim();
+  const re = new RegExp(`(week\\s+${week})`, "gi");
+  const parts = clean.split(re);
+  return parts.map((p, i) =>
+    re.test(p)
+      ? <span key={i} style={{ color: "#08daf4" }}>{p}</span>
+      : p
+  );
 }
 
 const CROWD: Record<number, { label: string; color: string }> = {
@@ -45,6 +57,7 @@ export default function DashboardPage() {
   const [loaded, setLoaded]         = useState(false);
   const [feed, setFeed]             = useState<any>(null);
   const [clicked, setClicked]       = useState<Record<string, boolean>>({});
+  const [clickedAt, setClickedAt]   = useState<Record<string, number>>({});
   const [modalVenue, setModalVenue] = useState<any>(null);
   const week                        = isoWeek(new Date());
   const year                        = new Date().getFullYear();
@@ -72,6 +85,7 @@ export default function DashboardPage() {
   async function click(venueId: string) {
     if (clicked[venueId]) return;
     setClicked(c => ({ ...c, [venueId]: true }));
+    setClickedAt(c => ({ ...c, [venueId]: Date.now() }));
     await fetch("/api/clicks", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -79,14 +93,18 @@ export default function DashboardPage() {
     });
     // refresh click counts after 1s
     setTimeout(() => loadFeed(), 1200);
-    // reset cooldown indicator after 15s
-    setTimeout(() => setClicked(c => { const n = { ...c }; delete n[venueId]; return n; }), 15000);
+    // reset cooldown after 15s
+    setTimeout(() => {
+      setClicked(c => { const n = { ...c }; delete n[venueId]; return n; });
+      setClickedAt(c => { const n = { ...c }; delete n[venueId]; return n; });
+    }, 15000);
   }
 
   const hot: any[] = feed?.hot ?? [];
 
   return (
     <div data-role="user">
+      <style>{`@keyframes cooldownBar { from { width: 100%; } to { width: 0%; } }`}</style>
       <Nav role="u" />
       <div className="container" style={{ paddingTop: 24, paddingBottom: 56 }}>
 
@@ -99,11 +117,11 @@ export default function DashboardPage() {
         {/* Greeting — only renders once profile loads, no flash */}
         {loaded && (
           <div style={{ marginBottom: 28, paddingLeft: 2 }}>
-            <h1 style={{ fontSize: "2.1rem", fontWeight: 900, margin: "0 0 8px", lineHeight: 1.15 }}>
+            <h1 style={{ fontSize: "2.1rem", fontWeight: 900, margin: "0 0 6px", lineHeight: 1.15 }}>
               Hey{firstName ? `, ${firstName}` : ""} 👋
             </h1>
-            <p style={{ fontSize: 15, color: "var(--muted-text)", margin: 0, lineHeight: 1.6 }}>
-              {greeting}
+            <p style={{ fontSize: "1.9rem", fontWeight: 900, color: "var(--muted-text)", margin: 0, lineHeight: 1.2 }}>
+              {renderGreeting(greeting, week)}
             </p>
           </div>
         )}
@@ -128,12 +146,15 @@ export default function DashboardPage() {
                 const emoji = VENUE_EMOJI[v.type?.toLowerCase()] ?? VENUE_EMOJI.default;
                 const isClicked = clicked[v.id];
                 return (
-                  <div key={v.id} onClick={() => setModalVenue(v)}
+                  <div key={v.id} onClick={() => click(v.id)}
                     style={{ flexShrink: 0, width: 200, borderRadius: 16, overflow: "hidden",
-                    border: "1.5px solid var(--border)",
+                    border: isClicked ? "1.5px solid #08daf4" : "1.5px solid var(--border)",
                     background: v.venueImageUrl ? "#111" : "var(--surface)",
-                    boxShadow: v.isBoosted ? "0 0 0 2px #08daf4, 0 6px 20px rgba(8,218,244,0.2)" : "none",
-                    cursor: "pointer" }}>
+                    boxShadow: isClicked
+                      ? "0 0 0 3px rgba(8,218,244,0.45), 0 6px 28px rgba(8,218,244,0.35)"
+                      : v.isBoosted ? "0 0 0 2px #08daf4, 0 6px 20px rgba(8,218,244,0.2)" : "none",
+                    cursor: "pointer", transition: "box-shadow 0.3s, border-color 0.3s",
+                    position: "relative" }}>
                     {/* Venue image or emoji */}
                     <div style={{ position: "relative", height: 110, background: v.venueImageUrl ? undefined : "linear-gradient(135deg, #1a1a2e, #2d2d44)",
                       display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -174,13 +195,11 @@ export default function DashboardPage() {
 
                       {/* Actions */}
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <button onClick={() => click(v.id)}
+                        <button onClick={(e) => { e.stopPropagation(); setModalVenue(v); }}
                           style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                            background: isClicked ? "rgba(8,218,244,0.15)" : "var(--accent)",
-                            border: isClicked ? "1.5px solid var(--accent)" : "none",
-                            color: isClicked ? "var(--accent)" : "#000", cursor: isClicked ? "default" : "pointer",
-                            transition: "all 0.2s" }}>
-                          {isClicked ? " Clicked" : " Click"}
+                            background: "var(--surface)", border: "1.5px solid var(--border)",
+                            color: "var(--ink)", cursor: "pointer", transition: "all 0.2s" }}>
+                          Open
                         </button>
                         {/* Maps icon */}
                         <a
@@ -195,6 +214,16 @@ export default function DashboardPage() {
                           <img src="/maps.png" alt="Maps" style={{ width: 20, height: 20, objectFit: "contain" }} />
                         </a>
                       </div>
+
+                      {/* Cooldown meter */}
+                      {isClicked && (
+                        <div style={{ marginTop: 8, height: 4, borderRadius: 4, background: "rgba(8,218,244,0.18)", overflow: "hidden" }}>
+                          <div key={clickedAt[v.id]} style={{
+                            height: "100%", background: "#08daf4", borderRadius: 4,
+                            animation: "cooldownBar 15s linear forwards",
+                          }} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
