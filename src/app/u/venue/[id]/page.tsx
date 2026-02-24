@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { useOrderTracker } from "@/components/OrderTrackerContext";
+import { useCart } from "@/components/CartContext";
 
 type MenuItem = {
   id: string;
@@ -28,8 +29,32 @@ export default function Venue({ params }: { params: { id: string } }) {
   const [msg, setMsg] = useState("");
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const { cart, addItem, setQty: ctxSetQty, clearCart, totalCents } = useCart();
   const { setActiveOrder } = useOrderTracker();
+
+  // Helper — add or update qty in cart
+  function adjustItem(m: MenuItem, newQty: number) {
+    if (!data) return;
+    if (newQty <= 0) {
+      ctxSetQty(m.id, 0);
+      return;
+    }
+    const already = cart?.items.find(i => i.menuItemId === m.id);
+    if (already) {
+      ctxSetQty(m.id, newQty);
+    } else {
+      addItem(params.id, data.venue.name, data.venue.lat ?? 0, data.venue.lng ?? 0, {
+        menuItemId: m.id, name: m.name,
+        priceCents: m.priceCents, qty: newQty, isAlcohol: m.isAlcohol,
+      });
+    }
+  }
+
+  function getQty(id: string) {
+    return cart?.venueId === params.id
+      ? (cart.items.find(i => i.menuItemId === id)?.qty ?? 0)
+      : 0;
+  }
 
   const reload = () => fetch(`/api/venues/${params.id}`).then(r => r.json()).then(setData);
 
@@ -68,9 +93,8 @@ export default function Venue({ params }: { params: { id: string } }) {
 
   async function placeOrder() {
     setMsg("");
-    const items = Object.entries(cart)
-      .filter(([, qty]) => qty > 0)
-      .map(([menuItemId, qty]) => ({ menuItemId, qty }));
+    const venueCart = cart?.venueId === params.id ? cart.items : [];
+    const items = venueCart.filter(i => i.qty > 0).map(i => ({ menuItemId: i.menuItemId, qty: i.qty }));
     if (items.length === 0) { setMsg("Add items to cart first."); return; }
     const res = await fetch("/api/orders", {
       method: "POST",
@@ -79,7 +103,7 @@ export default function Venue({ params }: { params: { id: string } }) {
     });
     const j = await res.json();
     if (!res.ok) { setMsg(j.error || "Order failed"); return; }
-    setCart({});
+    clearCart();
     reload();
     setActiveOrder({
       orderId: j.orderId,
@@ -93,13 +117,15 @@ export default function Venue({ params }: { params: { id: string } }) {
   }
 
   function setQty(id: string, qty: number) {
-    setCart(c => ({ ...c, [id]: Math.max(0, qty) }));
+    if (!data) return;
+    const m = (data.menu as MenuItem[]).find(x => x.id === id);
+    if (!m) return;
+    adjustItem(m, Math.max(0, qty));
   }
 
   if (!data) return <div className="container"><p className="muted">Loading…</p></div>;
 
-  const cartTotal = (data.menu as MenuItem[])
-    .reduce((s, m) => s + (cart[m.id] || 0) * m.priceCents, 0);
+  const cartTotal = cart?.venueId === params.id ? totalCents : 0;
 
   // Group menu items by category
   const categoryOrder: string[] = [];
@@ -200,9 +226,9 @@ export default function Venue({ params }: { params: { id: string } }) {
                   {blocked && <p className="muted red">After cutoff</p>}
                   {m.isAvailable && !blocked && (
                     <div className="row" style={{ marginTop: 8, alignItems: "center" }}>
-                      <button className="btn sm secondary" onClick={() => setQty(m.id, (cart[m.id] || 0) - 1)}>−</button>
-                      <span style={{ minWidth: 24, textAlign: "center" }}>{cart[m.id] || 0}</span>
-                      <button className="btn sm secondary" onClick={() => setQty(m.id, (cart[m.id] || 0) + 1)}>+</button>
+                      <button className="btn sm secondary" onClick={() => setQty(m.id, getQty(m.id) - 1)}>−</button>
+                      <span style={{ minWidth: 24, textAlign: "center" }}>{getQty(m.id)}</span>
+                      <button className="btn sm secondary" onClick={() => setQty(m.id, getQty(m.id) + 1)}>+</button>
                     </div>
                   )}
                 </div>

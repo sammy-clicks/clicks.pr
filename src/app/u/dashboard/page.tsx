@@ -42,9 +42,20 @@ const SECTIONS = [
 
 export default function DashboardPage() {
   const [firstName, setFirstName]   = useState<string | null>(null);
+  const [loaded, setLoaded]         = useState(false);
   const [feed, setFeed]             = useState<any>(null);
   const [clicked, setClicked]       = useState<Record<string, boolean>>({});
+  const [modalVenue, setModalVenue] = useState<any>(null);
   const week                        = isoWeek(new Date());
+  const year                        = new Date().getFullYear();
+
+  const GREETINGS = [
+    `Week ${week} is here — make it count tonight 🔥`,
+    `It's week ${week} of ${year} — the night is yours 🌙`,
+    `Week ${week} — what's the move tonight? 🎉`,
+    `The weekend starts in your head. Week ${week} go. 🚀`,
+  ];
+  const greeting = GREETINGS[week % GREETINGS.length];
 
   const loadFeed = useCallback(async () => {
     const [profileR, feedR] = await Promise.all([
@@ -53,6 +64,7 @@ export default function DashboardPage() {
     ]);
     if (profileR?.user?.firstName) setFirstName(profileR.user.firstName);
     if (feedR) setFeed(feedR);
+    setLoaded(true);
   }, []);
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
@@ -84,18 +96,18 @@ export default function DashboardPage() {
           <img src="/logo.png" alt="Clicks" style={{ height: 72, width: "auto", objectFit: "contain" }} />
         </div>
 
-        {/* Greeting */}
-        <div style={{ marginBottom: 28, paddingLeft: 2 }}>
-          <h1 style={{ fontSize: "1.9rem", fontWeight: 900, margin: "0 0 6px", lineHeight: 1.15 }}>
-            {firstName ? `Hey, ${firstName} ` : "Welcome back "}
-          </h1>
-          <p style={{ fontSize: 15, color: "var(--muted-text)", margin: "0 0 4px" }}>
-            Welcome to <strong>week {week}</strong> of {new Date().getFullYear()}.
-          </p>
-          <p style={{ fontSize: 14, color: "var(--muted-text)", margin: 0 }}>
-            What would you like to do today?
-          </p>
-        </div>
+        {/* Greeting — only renders once profile loads, no flash */}
+        {loaded && (
+          <div style={{ marginBottom: 28, paddingLeft: 2 }}>
+            <h1 style={{ fontSize: "2.1rem", fontWeight: 900, margin: "0 0 8px", lineHeight: 1.15 }}>
+              Hey{firstName ? `, ${firstName}` : ""} 👋
+            </h1>
+            <p style={{ fontSize: 15, color: "var(--muted-text)", margin: 0, lineHeight: 1.6 }}>
+              {greeting}
+            </p>
+          </div>
+        )}
+        {!loaded && <div style={{ height: 72, marginBottom: 28 }} />}
 
         {/*  Happening Now  */}
         <div style={{ marginBottom: 32 }}>
@@ -116,10 +128,12 @@ export default function DashboardPage() {
                 const emoji = VENUE_EMOJI[v.type?.toLowerCase()] ?? VENUE_EMOJI.default;
                 const isClicked = clicked[v.id];
                 return (
-                  <div key={v.id} style={{ flexShrink: 0, width: 200, borderRadius: 16, overflow: "hidden",
+                  <div key={v.id} onClick={() => setModalVenue(v)}
+                    style={{ flexShrink: 0, width: 200, borderRadius: 16, overflow: "hidden",
                     border: "1.5px solid var(--border)",
                     background: v.venueImageUrl ? "#111" : "var(--surface)",
-                    boxShadow: v.isBoosted ? "0 0 0 2px #08daf4, 0 6px 20px rgba(8,218,244,0.2)" : "none" }}>
+                    boxShadow: v.isBoosted ? "0 0 0 2px #08daf4, 0 6px 20px rgba(8,218,244,0.2)" : "none",
+                    cursor: "pointer" }}>
                     {/* Venue image or emoji */}
                     <div style={{ position: "relative", height: 110, background: v.venueImageUrl ? undefined : "linear-gradient(135deg, #1a1a2e, #2d2d44)",
                       display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -159,7 +173,7 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Actions */}
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <button onClick={() => click(v.id)}
                           style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 13, fontWeight: 700,
                             background: isClicked ? "rgba(8,218,244,0.15)" : "var(--accent)",
@@ -168,13 +182,18 @@ export default function DashboardPage() {
                             transition: "all 0.2s" }}>
                           {isClicked ? " Clicked" : " Click"}
                         </button>
-                        <Link href={`/u/venue/${v.id}`}
-                          style={{ flex: 1, padding: "7px 0", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                            background: "var(--surface)", border: "1px solid var(--border)",
-                            color: "var(--ink)", textDecoration: "none", textAlign: "center", display: "flex",
-                            alignItems: "center", justifyContent: "center" }}>
-                          Visit
-                        </Link>
+                        {/* Maps icon */}
+                        <a
+                          href={`https://www.google.com/maps?q=${v.lat ?? 0},${v.lng ?? 0}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          style={{ display: "flex", alignItems: "center", justifyContent: "center",
+                            width: 36, height: 34, borderRadius: 8, background: "var(--surface)",
+                            border: "1px solid var(--border)", flexShrink: 0 }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src="/maps.png" alt="Maps" style={{ width: 20, height: 20, objectFit: "contain" }} />
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -183,6 +202,83 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Quick-menu modal */}
+        {modalVenue && (
+          <>
+            <div onClick={() => setModalVenue(null)} style={{
+              position: "fixed", inset: 0, zIndex: 1200,
+              background: "rgba(0,0,0,0.72)", backdropFilter: "blur(4px)",
+            }} />
+            <div style={{
+              position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1210,
+              background: "var(--surface)", borderRadius: "22px 22px 0 0",
+              padding: "0 0 env(safe-area-inset-bottom,24px)",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.5)",
+            }}>
+              {/* Drag handle */}
+              <div style={{ display: "flex", justifyContent: "center", padding: "14px 0 8px" }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)" }} />
+              </div>
+              {/* Venue banner */}
+              {modalVenue.venueImageUrl && (
+                <img src={modalVenue.venueImageUrl} alt={modalVenue.name}
+                  style={{ width: "100%", height: 140, objectFit: "cover" }} />
+              )}
+              <div style={{ padding: "16px 20px 20px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{modalVenue.name}</h2>
+                    <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--muted-text)" }}>
+                      {modalVenue.zone?.name}
+                      {modalVenue.crowdLevel > 0 && (
+                        <> · <span style={{ color: CROWD[modalVenue.crowdLevel]?.color }}>{CROWD[modalVenue.crowdLevel]?.label}</span></>
+                      )}
+                    </p>
+                  </div>
+                  <button onClick={() => setModalVenue(null)}
+                    style={{ background: "none", border: "none", cursor: "pointer",
+                      color: "var(--muted-text)", fontSize: 22, lineHeight: 1, padding: 4 }}>✕</button>
+                </div>
+
+                <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+                  {/* Click button */}
+                  <button
+                    onClick={async (e) => { e.stopPropagation(); await click(modalVenue.id); setModalVenue(null); }}
+                    style={{ flex: 1, padding: "13px 0", borderRadius: 12, fontSize: 14, fontWeight: 800,
+                      background: clicked[modalVenue.id] ? "rgba(8,218,244,0.15)" : "var(--accent)",
+                      border: clicked[modalVenue.id] ? "1.5px solid var(--accent)" : "none",
+                      color: clicked[modalVenue.id] ? "var(--accent)" : "#000",
+                      cursor: clicked[modalVenue.id] ? "default" : "pointer" }}>
+                    {clicked[modalVenue.id] ? "✓ Clicked" : "⚡ Click"}
+                  </button>
+                  {/* Maps button */}
+                  <a
+                    href={`https://www.google.com/maps?q=${modalVenue.lat ?? 0},${modalVenue.lng ?? 0}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ flex: 1, padding: "13px 0", borderRadius: 12, fontSize: 14, fontWeight: 800,
+                      background: "var(--surface)", border: "1.5px solid var(--border)",
+                      color: "var(--ink)", textDecoration: "none", textAlign: "center",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/maps.png" alt="Maps" style={{ width: 18, height: 18, objectFit: "contain" }} />
+                    Directions
+                  </a>
+                </div>
+
+                {/* Browse full menu */}
+                <Link href={`/u/venue/${modalVenue.id}`}
+                  onClick={() => setModalVenue(null)}
+                  style={{ display: "block", marginTop: 10, padding: "13px 0", borderRadius: 12,
+                    fontSize: 14, fontWeight: 700, background: "rgba(255,255,255,0.05)",
+                    border: "1px solid var(--border)", color: "var(--ink)",
+                    textDecoration: "none", textAlign: "center" }}>
+                   Browse Full Menu
+                </Link>
+              </div>
+            </div>
+          </>
+        )}
 
         {/*  Quick Links  */}
         <h2 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 800 }}>Explore</h2>
