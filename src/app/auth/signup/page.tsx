@@ -186,7 +186,7 @@ export default function Signup() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) { setMsg(data.error || "Failed"); return; }
-    window.location.href = "/u/zones";
+    window.location.href = "/u/dashboard";
   }
 
   return (

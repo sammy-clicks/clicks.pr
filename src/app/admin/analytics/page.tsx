@@ -66,17 +66,32 @@ export default function AdminAnalytics() {
     <div className="container">
       <div className="header">
         <h2>Analytics</h2>
-        <div className="row" style={{ gap: 6 }}>
-          {[1, 7, 14, 30, 90, 0].map(d => (
-            <button key={d} className={`btn${days === d ? "" : " secondary"}`}
-              onClick={() => changeRange(d)} disabled={loading}>
-              {d === 0 ? "All" : d === 1 ? "24h" : `${d}d`}
-            </button>
-          ))}
-          <button className="btn secondary" onClick={() => load(days)} disabled={loading}>↺</button>
-        </div>
+        <button className="btn secondary" onClick={() => load(days)} disabled={loading} style={{ padding: "6px 10px", fontSize: 15 }}>↺</button>
       </div>
       <Nav role="admin" />
+
+      {/* Time range selector */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 4,
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: 12, padding: 4, marginBottom: 20, width: "fit-content",
+        flexWrap: "wrap",
+      }}>
+        {[1, 7, 14, 30, 90, 0].map(d => (
+          <button key={d}
+            onClick={() => changeRange(d)}
+            disabled={loading}
+            style={{
+              padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+              border: "none", cursor: loading ? "default" : "pointer",
+              background: days === d ? "var(--accent)" : "transparent",
+              color: days === d ? "#000" : "var(--muted-text)",
+              transition: "background 0.15s, color 0.15s",
+            }}>
+            {d === 0 ? "All" : d === 1 ? "24h" : `${d}d`}
+          </button>
+        ))}
+      </div>
 
       {!data && <p className="muted">Loading…</p>}
       {data && (

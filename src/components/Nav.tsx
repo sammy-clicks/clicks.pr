@@ -14,6 +14,7 @@ interface NavLinkDef {
   external?: boolean;                  // renders <a> instead of <Link>
   isBtn?:   boolean;                   // renders <button>
   onClick?: () => void;
+  badge?:   number;                    // unread / notification count
 }
 
 /*  Shared item renderer  */
@@ -37,8 +38,18 @@ function NavItem({ def, open, active, accent, accentDim, onNav }: {
   };
 
   const label = (
-    <span style={{ opacity: 1, display: "block", overflow: "hidden", textOverflow: "ellipsis" }}>
-      {def.label}
+    <span style={{ opacity: 1, display: "flex", alignItems: "center", gap: 7, overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{def.label}</span>
+      {def.badge != null && def.badge > 0 && (
+        <span style={{
+          minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9,
+          background: accent, color: "#000", fontSize: 11, fontWeight: 800,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0, lineHeight: 1,
+        }}>
+          {def.badge > 9 ? "10+" : def.badge}
+        </span>
+      )}
     </span>
   );
 
@@ -228,7 +239,7 @@ function VenueNav({ path }: { path: string }) {
 }
 
 /*  User nav  */
-const USER_LINKS: NavLinkDef[] = [
+const USER_BASE_LINKS: Omit<NavLinkDef, "badge">[] = [
   { href: "/u/dashboard",   label: "Dashboard",   icon: "/dashboard_users.png"   },
   { href: "/u/zones",       label: "Zones",       icon: "/zones_users.png"       },
   { href: "/u/wallet",      label: "Wallet",      icon: "/wallet_users.png"      },
@@ -237,11 +248,36 @@ const USER_LINKS: NavLinkDef[] = [
   { href: "/u/vote",        label: "Vote",        icon: "/vote_users.png"        },
   { href: "/u/leaderboard", label: "Leaderboard", icon: "/leaderboard_users.png" },
   { href: "/u/summary",     label: "Summary",     icon: "/summary_users.png"     },
-  { href: "/u/account",     label: "Account",     icon: <PersonIcon color="#08daf4" /> },
 ];
 
 function UserNav({ path }: { path: string }) {
-  return <Sidebar links={USER_LINKS} path={path} logo="/logo.png" logoHref="/u/dashboard" accent="#08daf4" accentDim="rgba(8,218,244,0.12)" />;
+  const [unread, setUnread] = useState(0);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // fetch avatar
+    fetch("/api/u/profile").then(r => r.ok ? r.json() : null)
+      .then(j => { if (j?.user?.avatarUrl) setAvatarUrl(j.user.avatarUrl); }).catch(() => {});
+    // fetch unread count + poll every 30s
+    function fetchUnread() {
+      fetch("/api/u/inbox/unread").then(r => r.ok ? r.json() : { count: 0 })
+        .then(j => setUnread(j.count ?? 0)).catch(() => {});
+    }
+    fetchUnread();
+    const id = setInterval(fetchUnread, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const acctIcon = avatarUrl
+    ? <img src={avatarUrl} alt="Account" style={{ width:30, height:30, borderRadius:"50%", objectFit:"cover", border:"2px solid #08daf4", flexShrink:0 }} />  // eslint-disable-line @next/next/no-img-element
+    : <PersonIcon color="#08daf4" />;
+
+  const links: NavLinkDef[] = [
+    ...USER_BASE_LINKS.map(l => l.href === "/u/inbox" ? { ...l, badge: unread } : l),
+    { href: "/u/account", label: "Account", icon: acctIcon },
+  ];
+
+  return <Sidebar links={links} path={path} logo="/logo.png" logoHref="/u/dashboard" accent="#08daf4" accentDim="rgba(8,218,244,0.12)" />;
 }
 
 /*  Admin nav  */

@@ -14,7 +14,7 @@ export default async function RoleGate() {
       const role = (payload as any).role as string | undefined;
       if (role === "ADMIN") redirect("/admin/analytics");
       else if (role === "VENUE") redirect("/v/dashboard");
-      else redirect("/u/zones");
+      else redirect("/u/dashboard");
     } catch { /* invalid token — fall through to welcome */ }
   }
 

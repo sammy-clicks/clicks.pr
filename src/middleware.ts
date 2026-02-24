@@ -47,7 +47,7 @@ export async function middleware(req: NextRequest) {
 function roleHome(role: string): string {
   if (role === "VENUE") return "/v/dashboard";
   if (role === "ADMIN") return "/admin/analytics";
-  return "/u/zones";
+  return "/u/dashboard";
 }
 
 export const config = {

@@ -118,7 +118,7 @@ export default function Login() {
     if (!res.ok) { setMsg(data.error || "Invalid credentials"); return; }
     if (data.role === "ADMIN") window.location.href = "/admin/analytics";
     else if (data.role === "VENUE") window.location.href = "/v/dashboard";
-    else window.location.href = "/u/zones";
+    else window.location.href = "/u/dashboard";
   }
 
   return (
