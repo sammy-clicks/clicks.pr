@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   description: "Clicks — your night out, tracked.",
   manifest: "/manifest.webmanifest",
   icons: {
-    apple: "/icon.png",
-    icon: "/icon.png",
+    apple: "/icon.jpg",
+    icon: "/icon.jpg",
   },
 };
 
@@ -27,8 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
         {/* Explicit apple-touch-icon so iOS uses the full-bleed image */}
-        <link rel="apple-touch-icon" sizes="180x180" href="/icon.png" />
-        <link rel="apple-touch-icon" sizes="1024x1024" href="/icon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon.jpg" />
+        <link rel="apple-touch-icon" sizes="1024x1024" href="/icon.jpg" />
       </head>
       <body>
         <CartProvider>
