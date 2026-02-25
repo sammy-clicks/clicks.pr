@@ -11,8 +11,8 @@ export const metadata: Metadata = {
   description: "Clicks — your night out, tracked.",
   manifest: "/manifest.webmanifest",
   icons: {
-    apple: "/flow-3.png",
-    icon: "/flow-3.png",
+    apple: "/icon.png",
+    icon: "/icon.png",
   },
 };
 
