@@ -186,9 +186,10 @@ export default function VenuePage({ params }: { params: { id: string } }) {
     return sum + (p ? p.priceCents * qty : 0);
   }, 0);
   const orderTotal = cartTotal + promoTotal;
+  const hasOrder = cartTotal > 0 || Object.keys(selectedPromos).length > 0;
 
   return (
-    <div data-role="user" style={{ paddingBottom: orderTotal > 0 ? 100 : 24 }}>
+    <div data-role="user" style={{ paddingBottom: hasOrder ? 100 : 24 }}>
       <style>{`
         @keyframes fadeInUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
         .venue-tab { padding:8px 18px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer;
@@ -402,7 +403,8 @@ export default function VenuePage({ params }: { params: { id: string } }) {
             )}
 
             {sortedCats.map(cat => (
-              <div key={cat} ref={el => { sectionRefs.current[cat] = el; }} style={{ marginBottom:28 }}>
+              <div key={cat} ref={el => { sectionRefs.current[cat] = el; }}
+                style={{ marginBottom: 28, display: sortedCats.length <= 1 || activeTab === cat ? undefined : "none" }}>
                 {sortedCats.length > 1 && (
                   <h3 style={{ margin:"0 0 12px", fontSize:13, fontWeight:800,
                     color:"var(--accent)", textTransform:"uppercase", letterSpacing:1.2 }}>
@@ -471,7 +473,7 @@ export default function VenuePage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Sticky cart/order footer */}
-      {orderTotal > 0 && (
+      {hasOrder && (
         <div style={{
           position:"fixed", bottom:0, left:0, right:0, zIndex:100,
           padding:"12px 16px env(safe-area-inset-bottom,12px)",
@@ -484,7 +486,7 @@ export default function VenuePage({ params }: { params: { id: string } }) {
               style={{ width:"100%", padding:"15px 0", borderRadius:14, fontSize:15, fontWeight:900,
                 background:"var(--accent)", border:"none", color:"#000", cursor:"pointer",
                 boxShadow:"0 4px 18px rgba(8,218,244,0.32)" }}>
-              Place Order &middot; {fmt(orderTotal)}
+              {orderTotal > 0 ? `Place Order · ${fmt(orderTotal)}` : "Place Order · Free"}
             </button>
             <p style={{ margin:"6px 0 0", fontSize:11, color:"var(--muted-text)", textAlign:"center" }}>
               Wallet debited &middot; Check-in required
