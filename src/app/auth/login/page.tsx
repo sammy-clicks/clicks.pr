@@ -131,6 +131,24 @@ export default function Login() {
 
           <a href="/role" className="auth-back">&#8592; Back</a>
 
+          {/* Flow diagram */}
+          <div style={{ width: "100%", marginBottom: 22, marginTop: 4 }}>
+            <p style={{ textAlign: "center", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.45, marginBottom: 10 }}>How it works</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+              {["/flow-1.png", "/flow-2.png", "/flow-3.png"].map((src, i) => (
+                <div key={src} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                  <div style={{ borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.5)", border: "1.5px solid rgba(255,255,255,0.08)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Step ${i + 1}`} style={{ width: 96, height: "auto", display: "block" }} />
+                  </div>
+                  {i < 2 && (
+                    <div style={{ padding: "0 6px", fontSize: 16, opacity: 0.4, flexShrink: 0 }}>›</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="auth-card">
             <p className="auth-card-title">Welcome back</p>
             <p className="auth-card-sub">Log in to your Clicks account</p>
