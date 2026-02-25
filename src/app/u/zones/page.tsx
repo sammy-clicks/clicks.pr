@@ -63,7 +63,7 @@ export default async function Zones() {
                       <strong style={{ fontSize: 17, fontWeight: 800, color: z.imageUrl ? "#fff" : "var(--ink)", textShadow: z.imageUrl ? "0 1px 4px rgba(0,0,0,0.6)" : undefined }}>
                         {z.name}
                       </strong>
-                      {z.isDominant && <span className="badge" style={{ fontSize: 11 }}>&#128293; Live</span>}
+                      {z.isDominant && <span className="badge" style={{ fontSize: 11, background: "#f59e0b", color: "#000", fontWeight: 700, border: "none" }}>Most Active Zone</span>}
                     </div>
                     <div style={{ fontSize: 12, color: z.imageUrl ? "rgba(255,255,255,0.75)" : "var(--muted-text)", marginTop: 3 }}>
                       {z.activeUsers} active

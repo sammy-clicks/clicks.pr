@@ -48,6 +48,10 @@ export default function VenueAccount() {
   const [showBoostConfirm, setShowBoostConfirm] = useState(false);
   const [showWelcome, setShowWelcome]           = useState(false);
   const [showPreview, setShowPreview]           = useState(false);
+  const [cropState, setCropState] = useState<{
+    objectUrl: string; size: { w: number; h: number };
+    onDone: (d: string) => void; zoom: number;
+  } | null>(null);
 
   async function load() {
     const r = await fetch("/api/v/account");
@@ -92,10 +96,41 @@ export default function VenueAccount() {
   }
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]; if (!f) return; pickImage(f, { w: 200, h: 200 }, setAvatarUrl); e.target.value = "";
+    const f = e.target.files?.[0]; if (!f) return;
+    setCropState({ objectUrl: URL.createObjectURL(f), size: { w: 200, h: 200 }, onDone: setAvatarUrl, zoom: 1 });
+    e.target.value = "";
   }
   function handleVenueImgChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]; if (!f) return; pickImage(f, { w: 600, h: 400 }, setVenueImageUrl); e.target.value = "";
+    const f = e.target.files?.[0]; if (!f) return;
+    setCropState({ objectUrl: URL.createObjectURL(f), size: { w: 600, h: 400 }, onDone: setVenueImageUrl, zoom: 1 });
+    e.target.value = "";
+  }
+
+  function confirmCrop() {
+    if (!cropState) return;
+    const { objectUrl, size: { w, h }, zoom, onDone } = cropState;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, w, h);
+      // Center-crop to output ratio, then apply zoom
+      const srcR = img.naturalWidth / img.naturalHeight, tgtR = w / h;
+      let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+      if (srcR > tgtR) { sw = sh * tgtR; sx = (img.naturalWidth - sw) / 2; }
+      else             { sh = sw / tgtR; sy = (img.naturalHeight - sh) / 2; }
+      // Apply zoom: zoom in = show less of the image
+      const zoomedSW = sw / zoom; const zoomedSH = sh / zoom;
+      const zoomedSX = sx + (sw - zoomedSW) / 2;
+      const zoomedSY = sy + (sh - zoomedSH) / 2;
+      ctx.drawImage(img, zoomedSX, zoomedSY, zoomedSW, zoomedSH, 0, 0, w, h);
+      onDone(canvas.toDataURL("image/jpeg", 0.88));
+      URL.revokeObjectURL(objectUrl);
+      setCropState(null);
+    };
+    img.src = objectUrl;
   }
 
   async function saveAvatar() {
@@ -352,9 +387,9 @@ export default function VenueAccount() {
           {/* Preview matching u/zone/[id] exactly */}
           {showPreview && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Customer View — as seen in Zones</div>
+              <div style={{ fontSize: 11, color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10, textAlign: "center" }}>Customer View — as seen in Zones</div>
               {/* Zone-style card */}
-              <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", height: 200, background: venueImageUrl ? "#111" : "var(--surface)", border: "1.5px solid var(--border)", maxWidth: 360 }}>
+              <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", height: 200, background: venueImageUrl ? "#111" : "var(--surface)", border: "1.5px solid var(--border)", maxWidth: 360, margin: "0 auto" }}>
                 {venueImageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={venueImageUrl} alt={venue.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
@@ -485,7 +520,7 @@ export default function VenueAccount() {
           <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Plan</div>
           {venue && (
             <span className={`badge${venue.plan === "PRO" ? " active" : ""}`} style={{ fontSize: 13, padding: "3px 12px" }}>
-              {venue.plan === "PRO" ? "⭐ PRO" : "FREE"}
+              {venue.plan === "PRO" ? "PRO" : "FREE"}
             </span>
           )}
         </div>
@@ -531,6 +566,81 @@ export default function VenueAccount() {
         </div>
       )}
     </div>
+
+      {/* ── Crop / Zoom Modal ── */}
+      {cropState && (
+        <>
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.88)", zIndex: 3000 }} onClick={() => { URL.revokeObjectURL(cropState.objectUrl); setCropState(null); }} />
+          <div style={{ position: "fixed", inset: 0, zIndex: 3001, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, pointerEvents: "none" }}>
+            <div style={{ background: "var(--surface, #0f1621)", borderRadius: 20, padding: 24, maxWidth: 380, width: "100%", border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,0.6)", pointerEvents: "auto" }}>
+              <h3 style={{ margin: "0 0 4px", fontWeight: 800, fontSize: "1.1rem" }}>Adjust Photo</h3>
+              <p className="muted" style={{ margin: "0 0 14px", fontSize: 12 }}>Zoom in to frame the perfect shot.</p>
+
+              {/* Crop preview box */}
+              <div style={{
+                position: "relative",
+                width: "100%",
+                paddingBottom: `${(cropState.size.h / cropState.size.w) * 100}%`,
+                borderRadius: 12, overflow: "hidden",
+                background: "#000", marginBottom: 16,
+                border: "1.5px solid var(--border)",
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={cropState.objectUrl}
+                  alt="preview"
+                  draggable={false}
+                  style={{
+                    position: "absolute", inset: 0,
+                    width: "100%", height: "100%",
+                    objectFit: "cover",
+                    transform: `scale(${cropState.zoom})`,
+                    transformOrigin: "center",
+                    userSelect: "none",
+                  }}
+                />
+                {/* Rule-of-thirds grid */}
+                <svg
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0.35 }}
+                  viewBox="0 0 3 3" preserveAspectRatio="none"
+                >
+                  <line x1="1" y1="0" x2="1" y2="3" stroke="#fff" strokeWidth="0.05" />
+                  <line x1="2" y1="0" x2="2" y2="3" stroke="#fff" strokeWidth="0.05" />
+                  <line x1="0" y1="1" x2="3" y2="1" stroke="#fff" strokeWidth="0.05" />
+                  <line x1="0" y1="2" x2="3" y2="2" stroke="#fff" strokeWidth="0.05" />
+                </svg>
+              </div>
+
+              {/* Zoom slider */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>
+                  <span className="muted">Zoom</span>
+                  <span className="muted" style={{ fontWeight: 700 }}>{Math.round(cropState.zoom * 100)}%</span>
+                </div>
+                <input
+                  type="range" min="100" max="300" step="5"
+                  value={Math.round(cropState.zoom * 100)}
+                  onChange={e => setCropState(s => s ? { ...s, zoom: parseInt(e.target.value) / 100 } : s)}
+                  style={{ width: "100%", accentColor: "var(--venue-brand)" }}
+                />
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3, fontSize: 11 }}>
+                  <span className="muted">Wide</span>
+                  <span className="muted">Close</span>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button className="btn" style={{ flex: 1, background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }} onClick={confirmCrop}>
+                  Use this photo
+                </button>
+                <button className="btn secondary" style={{ flex: 1 }} onClick={() => { URL.revokeObjectURL(cropState.objectUrl); setCropState(null); }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </PinGate>
   );
 }

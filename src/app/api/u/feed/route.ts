@@ -45,8 +45,11 @@ export async function GET() {
     const liveCheckins = checkInMap.get(v.id) ?? 0;
     const recentClicks = clickMap.get(v.id) ?? 0;
     const isBoosted    = v.boostActiveUntil ? v.boostActiveUntil > now : false;
-    const hotness      = liveCheckins * 4 + recentClicks * 2 + v.crowdLevel + (isBoosted ? 10 : 0);
-    return { ...v, liveCheckins, recentClicks, isBoosted, hotness };
+    const boostBonus   = isBoosted ? 2 : 0;
+    // Compute crowdLevel dynamically from live check-ins (same formula as /api/venues/[id])
+    const crowdLevel   = Math.min(10, Math.max(0, Math.ceil(liveCheckins / 2) + boostBonus));
+    const hotness      = liveCheckins * 4 + recentClicks * 2 + crowdLevel + (isBoosted ? 10 : 0);
+    return { ...v, crowdLevel, liveCheckins, recentClicks, isBoosted, hotness };
   });
 
   // Sort by hotness, take top 12

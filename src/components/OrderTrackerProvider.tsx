@@ -340,7 +340,10 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
                     padding: 12, fontSize: 14, resize: "vertical", boxSizing: "border-box",
                   }}
                 />
-                <button onClick={submitIssue} disabled={issueSending || issueText.trim().length < 10} style={{
+                {issueText.trim().length > 0 && issueText.trim().length < 3 && (
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#f87171" }}>Please describe your issue (at least 3 characters).</p>
+                )}
+                <button onClick={submitIssue} disabled={issueSending || issueText.trim().length < 3} style={{
                   width: "100%", marginTop: 12, padding: 12, borderRadius: 12,
                   background: "#08daf4", border: "none", color: "#080c12",
                   fontWeight: 700, fontSize: 14, cursor: "pointer",

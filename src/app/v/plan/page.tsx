@@ -69,7 +69,6 @@ function PlanContent() {
           {/* Status banner */}
           <div className="card" style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <div>
-              <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{data.venueName}</div>
               <span className={`badge${isPro ? " active" : ""}`} style={{ fontSize: 14, padding: "4px 14px" }}>
                 {isPro ? " PRO" : "FREE"}
               </span>
@@ -136,6 +135,7 @@ function PlanContent() {
                 const r = await fetch("/api/v/plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "portal" }) });
                 const j = await r.json();
                 if (j.portalUrl) window.location.href = j.portalUrl;
+                else alert(j.error || "Unable to open billing portal. Please contact support at help@clicks.app.");
               }}>Manage subscription</button>
             </div>
           )}

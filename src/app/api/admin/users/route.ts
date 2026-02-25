@@ -22,6 +22,7 @@ export async function GET() {
       ghostMode: true,
       bannedUntil: true,
       banReason: true,
+      avatarUrl: true,
       managedVenue: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },

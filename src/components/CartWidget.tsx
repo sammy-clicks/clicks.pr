@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useCart } from "./CartContext";
 import { useOrderTracker } from "./OrderTrackerContext";
 
@@ -20,6 +21,7 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 export function CartWidget() {
   const { cart, setQty, removeItem, clearCart, totalItems, totalCents } = useCart();
   const { setActiveOrder } = useOrderTracker();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [distanceWarning, setDistanceWarning] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -89,7 +91,7 @@ export function CartWidget() {
     });
   }
 
-  if (!cart || totalItems === 0) return null;
+  if (!cart || totalItems === 0 || pathname?.startsWith("/u/venue/")) return null;
 
   return (
     <>

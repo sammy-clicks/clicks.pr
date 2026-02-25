@@ -267,8 +267,9 @@ export default function DashboardPage() {
             <div style={{
               position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1210,
               background: "var(--surface)", borderRadius: "22px 22px 0 0",
-              padding: "0 0 env(safe-area-inset-bottom,24px)",
+              paddingBottom: "env(safe-area-inset-bottom,20px)",
               boxShadow: "0 -8px 40px rgba(0,0,0,0.5)",
+              maxHeight: "90vh", overflow: "hidden",
             }}>
               {/* Drag handle — swipe down to close */}
               <div
@@ -280,73 +281,118 @@ export default function DashboardPage() {
                     setSwipeStartY(null);
                   }
                 }}
-                style={{ display: "flex", justifyContent: "center", padding: "14px 0 6px", cursor: "grab" }}>
+                style={{ display: "flex", justifyContent: "center", padding: "12px 0 6px", cursor: "grab" }}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)" }} />
               </div>
-              {/* Venue banner */}
-              {modalVenue.venueImageUrl && (
-                <img src={modalVenue.venueImageUrl} alt={modalVenue.name}
-                  style={{ width: "100%", height: 140, objectFit: "cover" }} />
-              )}
-              <div style={{ padding: "16px 20px 20px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{modalVenue.name}</h2>
-                    <p style={{ margin: "3px 0 6px", fontSize: 13, color: "var(--muted-text)" }}>{modalVenue.zone?.name}</p>
-                    {/* 10-bar crowd meter in modal */}
-                    <div style={{ display: "flex", gap: 3, marginBottom: 4, maxWidth: 160 }}>
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <div key={i} style={{
-                          flex: 1, height: 5, borderRadius: 3,
-                          background: i < modalVenue.crowdLevel
-                            ? (modalVenue.crowdLevel <= 3 ? "#2ecc71" : modalVenue.crowdLevel <= 6 ? "#f39c12" : "#e74c3c")
-                            : "rgba(255,255,255,0.1)",
-                        }} />
-                      ))}
-                    </div>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: (CROWD[modalVenue.crowdLevel] ?? CROWD[0]).color }}>
-                      {(CROWD[modalVenue.crowdLevel] ?? CROWD[0]).label}
-                    </span>
+
+              {/* Hero image */}
+              <div style={{ position: "relative", height: modalVenue.venueImageUrl ? 190 : 80, overflow: "hidden",
+                background: modalVenue.venueImageUrl ? "#111" : "linear-gradient(135deg,#1a1a2e,#2d2d44)",
+                display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {modalVenue.venueImageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={modalVenue.venueImageUrl} alt={modalVenue.name}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+                )}
+                {!modalVenue.venueImageUrl && (
+                  <span style={{ fontSize: 40, zIndex: 1 }}>
+                    {VENUE_EMOJI[modalVenue.type?.toLowerCase()] ?? VENUE_EMOJI.default}
+                  </span>
+                )}
+                {/* Gradient overlay for text legibility */}
+                {modalVenue.venueImageUrl && (
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%)" }} />
+                )}
+                {/* Venue type badge */}
+                {modalVenue.type && (
+                  <div style={{ position: "absolute", top: 12, left: 16, padding: "3px 10px", borderRadius: 20,
+                    background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.2)",
+                    fontSize: 11, fontWeight: 700, color: "#fff", backdropFilter: "blur(4px)" }}>
+                    {modalVenue.type}
                   </div>
-                  <button onClick={() => setModalVenue(null)}
-                    style={{ background: "none", border: "none", cursor: "pointer",
-                      color: "var(--muted-text)", fontSize: 22, lineHeight: 1, padding: 4 }}>✕</button>
+                )}
+                {/* Boost badge */}
+                {modalVenue.isBoosted && (
+                  <div style={{ position: "absolute", top: 12, right: modalVenue.type ? 60 : 16,
+                    background: "var(--accent)", borderRadius: 20, fontSize: 10, fontWeight: 800,
+                    padding: "3px 9px", color: "#000" }}>BOOST</div>
+                )}
+                {/* Close button */}
+                <button onClick={() => setModalVenue(null)}
+                  style={{ position: "absolute", top: 10, right: 14, width: 30, height: 30, borderRadius: "50%",
+                    background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.2)",
+                    color: "#fff", fontSize: 14, cursor: "pointer", display: "flex",
+                    alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>✕</button>
+                {/* Live checkins overlay */}
+                {modalVenue.liveCheckins > 0 && (
+                  <div style={{ position: "absolute", bottom: 10, left: 16, fontSize: 12, color: "#fff",
+                    fontWeight: 700, textShadow: "0 1px 4px rgba(0,0,0,0.7)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo.png" alt="" style={{ width: 14, height: 14, objectFit: "contain", verticalAlign: "middle", marginRight: 4 }} />
+                    {modalVenue.liveCheckins} inside
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding: "16px 20px 20px" }}>
+                {/* Name + zone */}
+                <h2 style={{ margin: "0 0 2px", fontSize: 22, fontWeight: 900, lineHeight: 1.2 }}>{modalVenue.name}</h2>
+                <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--muted-text)" }}>{modalVenue.zone?.name}</p>
+
+                {/* Crowd meter */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
+                    {Array.from({ length: 10 }, (_, i) => (
+                      <div key={i} style={{
+                        flex: 1, height: 5, borderRadius: 3,
+                        background: i < modalVenue.crowdLevel
+                          ? (modalVenue.crowdLevel <= 3 ? "#2ecc71" : modalVenue.crowdLevel <= 6 ? "#f39c12" : "#e74c3c")
+                          : "rgba(255,255,255,0.1)",
+                      }} />
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: (CROWD[modalVenue.crowdLevel] ?? CROWD[0]).color }}>
+                    {(CROWD[modalVenue.crowdLevel] ?? CROWD[0]).label}
+                    {modalVenue.crowdLevel > 0 && <span style={{ fontWeight: 400, color: "var(--muted-text)" }}> · {modalVenue.crowdLevel}/10</span>}
+                  </span>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-                  {/* Click button */}
+                {/* PRIMARY CTA */}
+                <Link href={`/u/venue/${modalVenue.id}`}
+                  onClick={() => setModalVenue(null)}
+                  style={{ display: "block", padding: "14px 0", borderRadius: 12, fontSize: 15, fontWeight: 800,
+                    background: "var(--accent)", color: "#000", textDecoration: "none", textAlign: "center",
+                    marginBottom: 10, boxShadow: "0 0 18px rgba(8,218,244,0.3)" }}>
+                  See Menu &amp; Order →
+                </Link>
+
+                {/* Secondary actions */}
+                <div style={{ display: "flex", gap: 8 }}>
                   <button
                     onClick={async (e) => { e.stopPropagation(); await click(modalVenue.id); setModalVenue(null); }}
-                    style={{ flex: 1, padding: "13px 0", borderRadius: 12, fontSize: 14, fontWeight: 800,
-                      background: clicked[modalVenue.id] ? "rgba(8,218,244,0.15)" : "var(--accent)",
-                      border: clicked[modalVenue.id] ? "1.5px solid var(--accent)" : "none",
-                      color: clicked[modalVenue.id] ? "var(--accent)" : "#000",
-                      cursor: clicked[modalVenue.id] ? "default" : "pointer" }}>
-                    {clicked[modalVenue.id] ? "✓ Clicked" : "⚡ Click"}
+                    style={{ flex: 1, padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                      background: clicked[modalVenue.id] ? "rgba(8,218,244,0.12)" : "var(--surface)",
+                      border: clicked[modalVenue.id] ? "1.5px solid var(--accent)" : "1.5px solid var(--border)",
+                      color: clicked[modalVenue.id] ? "var(--accent)" : "var(--ink)",
+                      cursor: clicked[modalVenue.id] ? "default" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo.png" alt="" style={{ width: 16, height: 16, objectFit: "contain", opacity: 0.85 }} />
+                    {clicked[modalVenue.id] ? "Clicked" : "Click"}
                   </button>
-                  {/* Maps button */}
                   <a
                     href={`https://www.google.com/maps?q=${modalVenue.lat ?? 0},${modalVenue.lng ?? 0}`}
                     target="_blank" rel="noopener noreferrer"
-                    style={{ flex: 1, padding: "13px 0", borderRadius: 12, fontSize: 14, fontWeight: 800,
+                    onClick={e => e.stopPropagation()}
+                    style={{ flex: 1, padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700,
                       background: "var(--surface)", border: "1.5px solid var(--border)",
                       color: "var(--ink)", textDecoration: "none", textAlign: "center",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/maps.png" alt="Maps" style={{ width: 18, height: 18, objectFit: "contain" }} />
+                    <img src="/maps.png" alt="Maps" style={{ width: 16, height: 16, objectFit: "contain" }} />
                     Directions
                   </a>
                 </div>
-
-                {/* Browse full menu */}
-                <Link href={`/u/venue/${modalVenue.id}`}
-                  onClick={() => setModalVenue(null)}
-                  style={{ display: "block", marginTop: 10, padding: "13px 0", borderRadius: 12,
-                    fontSize: 14, fontWeight: 700, background: "rgba(255,255,255,0.05)",
-                    border: "1px solid var(--border)", color: "var(--ink)",
-                    textDecoration: "none", textAlign: "center" }}>
-                   Browse Full Menu
-                </Link>
               </div>
             </div>
           </>

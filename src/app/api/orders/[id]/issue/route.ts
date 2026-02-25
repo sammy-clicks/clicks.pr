@@ -5,7 +5,7 @@ import { getSession } from "@/app/api/_utils";
 
 export const dynamic = 'force-dynamic';
 
-const Schema = z.object({ description: z.string().min(10).max(2000) });
+const Schema = z.object({ description: z.string().min(3).max(2000) });
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getSession();
