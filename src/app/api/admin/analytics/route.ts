@@ -81,10 +81,14 @@ export async function GET(req: Request) {
     prisma.order.findMany({ where: { createdAt: { gte: rangeStart } }, select: { createdAt: true, totalCents: true } }),
     prisma.vote.groupBy({
       by: ["venueId"],
-      where: voteYear !== null && voteWeek !== null ? { week: { year: voteYear, week: voteWeek } } : {},
+      where: voteYear !== null && voteWeek !== null
+        ? { week: { year: voteYear, week: voteWeek } }
+        : voteYear !== null
+        ? { week: { year: voteYear } }
+        : {},
       _count: { venueId: true },
       orderBy: { _count: { venueId: "desc" } },
-      take: 5,
+      take: 10,
     }),
     prisma.zone.findMany({
       select: { id: true, name: true, isEnabled: true, venues: { select: { id: true, _count: { select: { checkins: true } } } } },

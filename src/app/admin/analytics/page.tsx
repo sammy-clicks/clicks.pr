@@ -52,7 +52,8 @@ export default function AdminAnalytics() {
   async function load(d = days, vy = voteYear, vw = voteWeek) {
     setLoading(true);
     const params = new URLSearchParams({ days: String(d) });
-    if (vy && vw) { params.set("voteYear", vy); params.set("voteWeek", vw); }
+    if (vy) params.set("voteYear", vy);
+    if (vy && vw) params.set("voteWeek", vw);
     const r = await fetch(`/api/admin/analytics?${params}`);
     const j = await r.json();
     setLoading(false);
@@ -182,26 +183,50 @@ export default function AdminAnalytics() {
           )}
 
           {/* ── Weekly votes ───────────────────────────────────────────── */}
-          <h3>Votes by Week</h3>
+          <h3>Votes</h3>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+            {/* Year filter */}
             <select
-              value={voteYear && voteWeek ? `${voteYear}-${voteWeek}` : ""}
+              value={voteYear}
               onChange={e => {
-                if (!e.target.value) { setVoteYear(""); setVoteWeek(""); load(days, "", ""); return; }
-                const [y, w] = e.target.value.split("-");
-                setVoteYear(y); setVoteWeek(w); load(days, y, w);
+                const y = e.target.value;
+                setVoteYear(y);
+                setVoteWeek("");
+                load(days, y, "");
               }}
               style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)", fontSize: 13 }}
             >
-              <option value="">All-time (no week filter)</option>
-              {(data.availableWeeks ?? []).map((wk: any) => (
-                <option key={wk.id} value={`${wk.year}-${wk.week}`}>
-                  {wk.year} — Week {wk.week} ({new Date(wk.startsAt).toLocaleDateString()})
-                </option>
+              <option value="">All years</option>
+              {Array.from(new Set((data.availableWeeks ?? []).map((wk: any) => wk.year))).map((y: any) => (
+                <option key={y} value={String(y)}>{y}</option>
               ))}
             </select>
-            {voteYear && voteWeek && (
-              <span className="muted" style={{ fontSize: 12 }}>Showing week {voteWeek}, {voteYear}</span>
+
+            {/* Week filter — only relevant when a year is selected */}
+            <select
+              value={voteWeek}
+              onChange={e => {
+                const w = e.target.value;
+                setVoteWeek(w);
+                load(days, voteYear, w);
+              }}
+              disabled={!voteYear}
+              style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)", fontSize: 13, opacity: voteYear ? 1 : 0.4 }}
+            >
+              <option value="">All weeks{voteYear ? ` in ${voteYear}` : ""}</option>
+              {(data.availableWeeks ?? [])
+                .filter((wk: any) => !voteYear || String(wk.year) === voteYear)
+                .map((wk: any) => (
+                  <option key={wk.id} value={String(wk.week)}>Week {wk.week} ({new Date(wk.startsAt).toLocaleDateString()})</option>
+                ))}
+            </select>
+
+            {(voteYear || voteWeek) && (
+              <button
+                className="btn secondary"
+                style={{ fontSize: 12, padding: "5px 10px" }}
+                onClick={() => { setVoteYear(""); setVoteWeek(""); load(days, "", ""); }}
+              >Clear</button>
             )}
           </div>
           {data.topVotes.length > 0 && (
@@ -220,7 +245,7 @@ export default function AdminAnalytics() {
               </table>
             </>
           )}
-          {data.topVotes.length === 0 && <p className="muted" style={{ marginBottom: 16 }}>No votes recorded{voteYear && voteWeek ? ` for week ${voteWeek}, ${voteYear}` : ""}.</p>}
+          {data.topVotes.length === 0 && <p className="muted" style={{ marginBottom: 16 }}>No votes recorded{voteYear && voteWeek ? ` for week ${voteWeek}, ${voteYear}` : voteYear ? ` in ${voteYear}` : ""}.</p>}
 
           {/* ── Zone activity ──────────────────────────────────────────── */}
           <h3>Zone Activity (live)</h3>
