@@ -70,6 +70,7 @@ model User {
   clicks        ClickEvent[]
   votes         Vote[]
   orders        Order[] @relation("UserOrders")
+  redemptions   Redemption[]
   managedVenue  Venue?  @relation("VenueManager")
   supportCases  SupportCase[]  @relation("UserCases")
   conversations1 Conversation[] @relation("ConvUser1")
