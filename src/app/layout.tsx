@@ -26,6 +26,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){try{localStorage.setItem('theme','dark');}catch(e){}document.documentElement.setAttribute('data-theme','dark');})();`,
           }}
         />
+        {/* Explicit apple-touch-icon so iOS uses the full-bleed image */}
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon.png" />
+        <link rel="apple-touch-icon" sizes="1024x1024" href="/icon.png" />
       </head>
       <body>
         <CartProvider>
