@@ -222,7 +222,7 @@ export default function VenuePromotions() {
     <div className="container">
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Promotions &mdash; {venueName}</h2>
-        {isPro === false && !loading && <a href="/v/plan"><button className="btn secondary">\u2b50 Upgrade to PRO</button></a>}
+        {isPro === false && !loading && <a href="/v/plan"><button className="btn secondary">{"⭐"} Upgrade to PRO</button></a>}
       </div>
       <Nav role="v" />
 
@@ -230,7 +230,7 @@ export default function VenuePromotions() {
 
       {isPro === false && !loading && (
         <div className="card" style={{ textAlign: "center", padding: 32 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>\u2b50</div>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>{"⭐"}</div>
           <h3 style={{ margin: "0 0 8px" }}>PRO feature</h3>
           <p className="muted">Upgrade to PRO ($49/mo) to create and manage nightly promotions.</p>
           <a href="/v/plan"><button className="btn" style={{ marginTop: 12 }}>See Plan Details</button></a>

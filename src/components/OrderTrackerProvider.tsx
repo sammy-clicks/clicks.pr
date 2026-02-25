@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { OrderTrackerContext, ActiveOrder } from "./OrderTrackerContext";
 
 const STORAGE_KEY = "clicks_active_order";
@@ -16,6 +17,8 @@ type Popup = "none" | "completed" | "cancelled" | "issue_form" | "issue_submitte
 function fmt(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 
 export function OrderTrackerProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isUserRoute = pathname?.startsWith("/u/") || pathname === "/u";
   const [activeOrder, setActiveOrderState] = useState<ActiveOrder | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [codeVisible, setCodeVisible] = useState(false);
@@ -134,14 +137,14 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
 
   const phaseIdx = PHASES.findIndex(p => p.key === (activeOrder?.status ?? "PLACED"));
   const current = phaseIdx === -1 ? 0 : phaseIdx;
-  const showBanner = !!activeOrder && !FINAL.includes(activeOrder.status) && popup === "none";
+  const showBanner = !!activeOrder && !FINAL.includes(activeOrder.status) && popup === "none" && isUserRoute;
 
   return (
     <OrderTrackerContext.Provider value={{ activeOrder, setActiveOrder }}>
       {children}
 
       {/* ── Floating order tracker banner ── */}
-      {showBanner && (
+      {showBanner && isUserRoute && (
         <div style={{
           position: "fixed", bottom: 0, left: 0, right: 0,
           zIndex: 1000, padding: "0 12px 12px", pointerEvents: "none",

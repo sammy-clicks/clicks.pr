@@ -351,41 +351,56 @@ export default function VenueAccount() {
 
           {/* Preview matching u/zone/[id] exactly */}
           {showPreview && (
-            <div style={{ marginBottom: 16, padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <div style={{ fontSize: 11, color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>As seen in Zones</div>
-              <div className="card" style={{ maxWidth: 340, marginBottom: 0 }}>
-                <div className="header">
-                  <strong>{venue.name}</strong>
-                  {venue.type && <span className="badge">{venue.type}</span>}
-                </div>
-                <p className="muted">{venue.description || ""}</p>
-                <p className="muted">Crowd {liveCrowd}/10</p>
-                <div className="row">
-                  <span className="btn" style={{ opacity: 0.45, cursor: "default", userSelect: "none" }}>View</span>
-                  {venue.address && (
-                    <a className="btn secondary" href={`https://www.google.com/maps?q=${encodeURIComponent(venue.address)}`} target="_blank" rel="noreferrer">Maps</a>
-                  )}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Customer View — as seen in Zones</div>
+              {/* Zone-style card */}
+              <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", height: 200, background: venueImageUrl ? "#111" : "var(--surface)", border: "1.5px solid var(--border)", maxWidth: 360 }}>
+                {venueImageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={venueImageUrl} alt={venue.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+                )}
+                <div style={{ position: "absolute", inset: 0, background: venueImageUrl ? "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)" : "transparent" }} />
+                {!venueImageUrl && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "50%" }}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--muted-text)" strokeWidth="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  </div>
+                )}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 14px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <strong style={{ fontSize: 17, fontWeight: 800, color: venueImageUrl ? "#fff" : "var(--ink)", textShadow: venueImageUrl ? "0 1px 4px rgba(0,0,0,0.6)" : undefined }}>
+                      {venue.name}
+                    </strong>
+                    {venue.type && <span className="badge" style={{ fontSize: 11 }}>{venue.type}</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: venueImageUrl ? "rgba(255,255,255,0.75)" : "var(--muted-text)", marginTop: 4 }}>
+                    {liveCrowd === 0 ? "No activity" : `Crowd ${liveCrowd}/10`}
+                    {activeCheckins > 0 && ` · ${activeCheckins} inside`}
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }}>
-            {venueImageUrl
-              ? <img src={venueImageUrl} alt="Venue" style={{ width: "100%", maxWidth: 360, height: 200, objectFit: "cover", borderRadius: 10 }} />
-              : <div style={{ width: "100%", maxWidth: 360, height: 110, background: "rgba(255,255,255,0.04)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "2px dashed rgba(255,255,255,0.1)" }}>
-                  <span className="muted" style={{ fontSize: 13 }}>No photo yet</span>
+            {!showPreview && (
+              <>
+                {venueImageUrl
+                  ? <img src={venueImageUrl} alt="Venue" style={{ width: "100%", maxWidth: 360, height: 200, objectFit: "cover", borderRadius: 10 }} />
+                  : <div style={{ width: "100%", maxWidth: 360, height: 110, background: "rgba(255,255,255,0.04)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "2px dashed rgba(255,255,255,0.1)" }}>
+                      <span className="muted" style={{ fontSize: 13 }}>No photo yet</span>
+                    </div>
+                }
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn sm secondary" onClick={() => venueImgRef.current?.click()}>
+                    {venueImageUrl ? "Change" : "Upload"}
+                  </button>
+                  {venueImageUrl && <button className="btn sm secondary" onClick={() => setVenueImageUrl("")}>Remove</button>}
                 </div>
-            }
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn sm secondary" onClick={() => venueImgRef.current?.click()}>
-                {venueImageUrl ? "Change" : "Upload"}
-              </button>
-              {venueImageUrl && <button className="btn sm secondary" onClick={() => setVenueImageUrl("")}>Remove</button>}
-            </div>
-            <input ref={venueImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleVenueImgChange} />
-            {venueImageUrl !== (venue.venueImageUrl ?? "") && <div style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>New photo selected &mdash; not saved yet.</div>}
-            <button className="btn" onClick={saveVenueImage} disabled={saving}>Save venue photo</button>
+                <input ref={venueImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleVenueImgChange} />
+                {venueImageUrl !== (venue.venueImageUrl ?? "") && <div style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>New photo selected &mdash; not saved yet.</div>}
+                <button className="btn" onClick={saveVenueImage} disabled={saving}>Save venue photo</button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -462,6 +477,23 @@ export default function VenueAccount() {
       <div className="card" style={{ marginBottom: 40 }}>
         <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Session</div>
         <a className="btn secondary" href="/api/auth/logout">Log out</a>
+      </div>
+
+      {/* Plan & Billing */}
+      <div className="card" style={{ marginBottom: 40, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Plan</div>
+          {venue && (
+            <span className={`badge${venue.plan === "PRO" ? " active" : ""}`} style={{ fontSize: 13, padding: "3px 12px" }}>
+              {venue.plan === "PRO" ? "⭐ PRO" : "FREE"}
+            </span>
+          )}
+        </div>
+        <a href="/v/plan">
+          <button className="btn" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }}>
+            {venue?.plan === "PRO" ? "Manage Plan" : "See Plans"}
+          </button>
+        </a>
       </div>
 
       {/* Modals */}

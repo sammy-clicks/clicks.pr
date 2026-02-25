@@ -1,6 +1,6 @@
 ﻿"use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -73,15 +73,16 @@ function NavItem({ def, open, active, accent, accentDim, onNav }: {
 
 /*  Core Sidebar  */
 interface SidebarProps {
-  links:     NavLinkDef[];
-  path:      string;
-  logo:      string;
-  logoHref:  string;
-  accent:    string;
-  accentDim: string;
+  links:       NavLinkDef[];
+  path:        string;
+  logo:        string;
+  logoHref:    string;
+  accent:      string;
+  accentDim:   string;
+  totalBadge?: number;
 }
 
-function Sidebar({ links, path, logo, logoHref, accent, accentDim }: SidebarProps) {
+function Sidebar({ links, path, logo, logoHref, accent, accentDim, totalBadge = 0 }: SidebarProps) {
   const [open,    setOpen]    = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -115,6 +116,15 @@ function Sidebar({ links, path, logo, logoHref, accent, accentDim }: SidebarProp
           ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         }
+        {!open && totalBadge > 0 && (
+          <span style={{
+            position: "absolute", top: -4, right: -4,
+            minWidth: 17, height: 17, padding: "0 4px",
+            borderRadius: 9, background: accent, color: "#000",
+            fontSize: 10, fontWeight: 800, lineHeight: "17px",
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+          }}>{totalBadge > 9 ? "10+" : totalBadge}</span>
+        )}
       </button>
 
       {/*  Backdrop  */}
@@ -217,12 +227,10 @@ const VENUE_BASE_LINKS: NavLinkDef[] = [
 
 function VenueNav({ path }: { path: string }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [hasPIN,    setHasPIN]    = useState(false);
 
   useEffect(() => {
     fetch("/api/v/account").then(r => r.json())
       .then(j => { if (j.user?.avatarUrl) setAvatarUrl(j.user.avatarUrl); }).catch(() => {});
-    setHasPIN(!!localStorage.getItem("venue_pin"));
   }, []);
 
   const acctIcon = avatarUrl
@@ -232,7 +240,6 @@ function VenueNav({ path }: { path: string }) {
   const links: NavLinkDef[] = [
     ...VENUE_BASE_LINKS,
     { href: "/v/account", label: "Account", icon: acctIcon },
-    ...(hasPIN ? [{ href: "#", label: "Lock app", icon: <LockIcon color="#e7a8ff" />, isBtn: true, onClick: () => window.location.reload() }] : []),
   ];
 
   return <Sidebar links={links} path={path} logo="/logo_venues.png" logoHref="/v/dashboard" accent="#e7a8ff" accentDim="rgba(231,168,255,0.13)" />;
@@ -250,34 +257,135 @@ const USER_BASE_LINKS: Omit<NavLinkDef, "badge">[] = [
   { href: "/u/summary",     label: "Summary",     icon: "/summary_users.png"     },
 ];
 
+type Banner = { key: string; text: string; href: string; accent: string };
+
 function UserNav({ path }: { path: string }) {
-  const [unread, setUnread] = useState(0);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [unread,       setUnread]       = useState(0);          // inbox
+  const [buddyPending, setBuddyPending] = useState(0);          // buddy requests
+  const [walletNew,    setWalletNew]    = useState(0);          // new wallet transfers
+  const [avatarUrl,    setAvatarUrl]    = useState<string | null>(null);
+  const [banner,       setBanner]       = useState<Banner | null>(null);
+  const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevInbox   = useRef(0);
+  const prevBuddy   = useRef(0);
+  const prevWallet  = useRef(0);
+
+  function showBanner(b: Banner) {
+    setBanner(b);
+    if (bannerTimer.current) clearTimeout(bannerTimer.current);
+    bannerTimer.current = setTimeout(() => setBanner(null), 5000);
+  }
 
   useEffect(() => {
     // fetch avatar
     fetch("/api/u/profile").then(r => r.ok ? r.json() : null)
       .then(j => { if (j?.user?.avatarUrl) setAvatarUrl(j.user.avatarUrl); }).catch(() => {});
-    // fetch unread count + poll every 30s
-    function fetchUnread() {
-      fetch("/api/u/inbox/unread").then(r => r.ok ? r.json() : { count: 0 })
-        .then(j => setUnread(j.count ?? 0)).catch(() => {});
+
+    const WALLET_KEY = "clicks_wallet_last_seen";
+
+    async function poll() {
+      // inbox unread
+      try {
+        const j = await fetch("/api/u/inbox/unread").then(r => r.ok ? r.json() : { count: 0 });
+        const c = j.count ?? 0;
+        if (c > prevInbox.current && prevInbox.current >= 0) {
+          showBanner({ key: "inbox", text: "💬 New message in your Inbox", href: "/u/inbox", accent: "#08daf4" });
+        }
+        prevInbox.current = c;
+        setUnread(c);
+      } catch { /* ignore */ }
+
+      // buddies pending
+      try {
+        const j = await fetch("/api/buddies").then(r => r.ok ? r.json() : { requests: [] });
+        const c = (j.requests ?? []).length;
+        if (c > prevBuddy.current) {
+          showBanner({ key: "buddies", text: `👥 You have ${c} buddy request${c !== 1 ? "s" : ""}`, href: "/u/buddies", accent: "#a78bfa" });
+        }
+        prevBuddy.current = c;
+        setBuddyPending(c);
+      } catch { /* ignore */ }
+
+      // wallet new transfers
+      try {
+        const lastSeen = parseInt(localStorage.getItem(WALLET_KEY) || "0", 10);
+        const j = await fetch("/api/wallet").then(r => r.ok ? r.json() : { txns: [] });
+        const newTransfers = (j.txns ?? []).filter(
+          (t: any) => t.type === "TRANSFER_IN" && new Date(t.createdAt).getTime() > lastSeen
+        );
+        const c = newTransfers.length;
+        if (c > prevWallet.current && lastSeen > 0) {
+          showBanner({ key: "wallet", text: `💸 You received money in your Wallet`, href: "/u/wallet", accent: "#2ecc71" });
+        }
+        prevWallet.current = c;
+        setWalletNew(c);
+        // Update last seen to now so next poll won't re-trigger
+        if (c > 0 && lastSeen === 0) localStorage.setItem(WALLET_KEY, String(Date.now()));
+      } catch { /* ignore */ }
     }
-    fetchUnread();
-    const id = setInterval(fetchUnread, 30_000);
-    return () => clearInterval(id);
+
+    poll();
+    const id = setInterval(poll, 30_000);
+    return () => { clearInterval(id); if (bannerTimer.current) clearTimeout(bannerTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Mark wallet as seen when user visits /u/wallet
+  useEffect(() => {
+    if (path === "/u/wallet") {
+      localStorage.setItem("clicks_wallet_last_seen", String(Date.now()));
+      setWalletNew(0);
+      prevWallet.current = 0;
+    }
+    if (path === "/u/buddies") {
+      setBuddyPending(0);
+      prevBuddy.current = 0;
+    }
+  }, [path]);
 
   const acctIcon = avatarUrl
     ? <img src={avatarUrl} alt="Account" style={{ width:30, height:30, borderRadius:"50%", objectFit:"cover", border:"2px solid #08daf4", flexShrink:0 }} />  // eslint-disable-line @next/next/no-img-element
     : <PersonIcon color="#08daf4" />;
 
   const links: NavLinkDef[] = [
-    ...USER_BASE_LINKS.map(l => l.href === "/u/inbox" ? { ...l, badge: unread } : l),
+    ...USER_BASE_LINKS.map(l => {
+      if (l.href === "/u/inbox")   return { ...l, badge: unread };
+      if (l.href === "/u/buddies") return { ...l, badge: buddyPending };
+      if (l.href === "/u/wallet")  return { ...l, badge: walletNew };
+      return l;
+    }),
     { href: "/u/account", label: "Account", icon: acctIcon },
   ];
 
-  return <Sidebar links={links} path={path} logo="/logo.png" logoHref="/u/dashboard" accent="#08daf4" accentDim="rgba(8,218,244,0.12)" />;
+  const totalBadge = unread + buddyPending + walletNew;
+
+  return (
+    <>
+      <Sidebar links={links} path={path} logo="/logo.png" logoHref="/u/dashboard" accent="#08daf4" accentDim="rgba(8,218,244,0.12)" totalBadge={totalBadge} />
+
+      {/* Toast banner */}
+      {banner && (
+        <Link href={banner.href} onClick={() => setBanner(null)} style={{ textDecoration: "none" }}>
+          <div style={{
+            position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)",
+            zIndex: 1300, maxWidth: 340, width: "calc(100% - 32px)",
+            background: "var(--surface)", borderRadius: 14,
+            border: `1.5px solid ${banner.accent}66`,
+            boxShadow: `0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px ${banner.accent}22`,
+            padding: "12px 16px", display: "flex", alignItems: "center", gap: 10,
+            cursor: "pointer",
+            animation: "slideDown 0.3s ease",
+          }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: banner.accent, flexShrink: 0, boxShadow: `0 0 6px ${banner.accent}` }} />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{banner.text}</span>
+            <button onClick={e => { e.preventDefault(); setBanner(null); }}
+              style={{ marginLeft: "auto", background: "none", border: "none", fontSize: 16, color: "var(--muted-text)", cursor: "pointer", padding: 0, lineHeight: 1 }}>✕</button>
+          </div>
+        </Link>
+      )}
+      <style>{`@keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }`}</style>
+    </>
+  );
 }
 
 /*  Admin nav  */

@@ -172,10 +172,12 @@ export default function AdminUsers() {
               }}>
                 {/* Summary row */}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", flexWrap: "wrap" }}>
-                  {/* Avatar placeholder */}
-                  <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(139,92,246,0.15)", border: "2px solid rgba(139,92,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: 13, color: "#8b5cf6" }}>
+                {/* Avatar */}
+                  {u.avatarUrl
+                    ? <img src={u.avatarUrl} alt={u.username} style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid rgba(139,92,246,0.4)" }} />
+                    : <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(139,92,246,0.15)", border: "2px solid rgba(139,92,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: 13, color: "#8b5cf6" }}>
                     {(u.firstName?.[0] ?? u.username?.[0] ?? "?").toUpperCase()}
-                  </div>
+                  </div>}
                   {/* Name + username */}
                   <div style={{ flex: "1 1 140px", minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{u.firstName} {u.lastName}</div>

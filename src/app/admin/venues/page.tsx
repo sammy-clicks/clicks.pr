@@ -184,10 +184,10 @@ export default function VenuesAdmin() {
           </div>
           <div style={{ flex: 1 }}>
             <label>Plan</label>
-            <select value={form.plan} onChange={e => setF("plan", e.target.value)}>
+            <select value={form.plan} disabled style={{ opacity: 0.6 }}>
               <option value="FREE">FREE</option>
-              <option value="PRO">PRO</option>
             </select>
+            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>Plans are upgraded by venues only.</div>
           </div>
         </div>
         <div className="row">
@@ -233,10 +233,8 @@ export default function VenuesAdmin() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <label>Plan</label>
-                    <select value={editForm.plan} onChange={e => setEF("plan", e.target.value)}>
-                      <option value="FREE">FREE</option>
-                      <option value="PRO">PRO</option>
-                    </select>
+                    <input value={editForm.plan} disabled style={{ opacity: 0.6, background: "var(--surface)" }} />
+                    <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>Upgrades via venue portal only.</div>
                   </div>
                 </div>
                 <label>Address</label><input value={editForm.address} onChange={e => setEF("address", e.target.value)} />
@@ -281,9 +279,6 @@ export default function VenuesAdmin() {
                 <p className="muted">Manager: {v.manager ? `${v.manager.firstName} ${v.manager.lastName}` : "Unassigned"}</p>
                 <div className="row" style={{ marginTop: 8 }}>
                   <button className="btn sm secondary" onClick={() => startEdit(v)}>Edit</button>
-                  <button className="btn sm secondary" onClick={() => setPlan(v.id, v.plan === "FREE" ? "PRO" : "FREE")}>
-                    {v.plan === "FREE" ? "-> PRO" : "-> FREE"}
-                  </button>
                   <a href={`/admin/venues/${v.id}`}>
                     <button className="btn sm secondary">Finances</button>
                   </a>

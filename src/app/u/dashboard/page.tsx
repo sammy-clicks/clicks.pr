@@ -175,7 +175,7 @@ export default function DashboardPage() {
                       {/* Live check-ins */}
                       {v.liveCheckins > 0 && (
                         <div style={{ position: "absolute", bottom: 7, left: 9, fontSize: 11, color: "#fff", fontWeight: 700 }}>
-                           {v.liveCheckins} inside
+                           {v.liveCheckins} Clicker{v.liveCheckins !== 1 ? "s" : ""} inside
                         </div>
                       )}
                     </div>
@@ -185,12 +185,27 @@ export default function DashboardPage() {
                       <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.name}</div>
                       <div style={{ fontSize: 11, color: "var(--muted-text)", marginBottom: 6 }}>{v.zone?.name}</div>
 
-                      {/* Crowd + clicks row */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: crowd.color }}> {crowd.label}</span>
-                        {v.recentClicks > 0 && (
-                          <span style={{ fontSize: 11, color: "var(--muted-text)" }}> {v.recentClicks}</span>
-                        )}
+                      {/* Crowd meter + clicks row */}
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ display: "flex", gap: 2, marginBottom: 4 }}>
+                          {Array.from({ length: 10 }, (_, i) => (
+                            <div key={i} style={{
+                              flex: 1, height: 5, borderRadius: 3,
+                              background: i < v.crowdLevel
+                                ? (v.crowdLevel <= 3 ? "#2ecc71" : v.crowdLevel <= 6 ? "#f39c12" : "#e74c3c")
+                                : "rgba(255,255,255,0.1)",
+                              transition: "background 0.3s",
+                            }} />
+                          ))}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          {v.crowdLevel > 0
+                            ? <span style={{ fontSize: 10, fontWeight: 600, color: crowd.color }}>{crowd.label}</span>
+                            : <span style={{ fontSize: 10, color: "var(--muted-text)" }}>No activity</span>}
+                          {v.recentClicks > 0 && (
+                            <span style={{ fontSize: 10, color: "var(--muted-text)" }}>⚡ {v.recentClicks}</span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Actions */}
