@@ -86,6 +86,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       priceCents: p.priceCents,
       imageUrl: p.imageUrl ?? null,
       expiresAt: p.expiresAt?.toISOString() ?? null,
+      maxRedeemsPerNightPerUser: p.maxRedeemsPerNightPerUser,
+      items: JSON.parse((p.items as string) ?? "[]"),
     })),
   });
 }

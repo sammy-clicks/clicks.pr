@@ -24,12 +24,17 @@ function renderGreeting(text: string, week: number): ReactNode[] {
 }
 
 const CROWD: Record<number, { label: string; color: string }> = {
-  0: { label: "No data",  color: "#666" },
-  1: { label: "Quiet",    color: "#2ecc71" },
-  2: { label: "Moderate", color: "#a8d926" },
-  3: { label: "Busy",     color: "#f39c12" },
-  4: { label: "Packed",   color: "#e67e22" },
-  5: { label: "Full",     color: "#e74c3c" },
+  0:  { label: "No activity", color: "#666"    },
+  1:  { label: "Quiet",       color: "#2ecc71" },
+  2:  { label: "Quiet",       color: "#2ecc71" },
+  3:  { label: "Moderate",    color: "#a8d926" },
+  4:  { label: "Moderate",    color: "#f39c12" },
+  5:  { label: "Busy",        color: "#f39c12" },
+  6:  { label: "Busy",        color: "#e67e22" },
+  7:  { label: "Packed",      color: "#e67e22" },
+  8:  { label: "Packed",      color: "#e74c3c" },
+  9:  { label: "Full",        color: "#e74c3c" },
+  10: { label: "Full",        color: "#c0392b" },
 };
 
 const VENUE_EMOJI: Record<string, string> = {
@@ -59,6 +64,7 @@ export default function DashboardPage() {
   const [clicked, setClicked]       = useState<Record<string, boolean>>({});
   const [clickedAt, setClickedAt]   = useState<Record<string, number>>({});
   const [modalVenue, setModalVenue] = useState<any>(null);
+  const [swipeStartY, setSwipeStartY] = useState<number | null>(null);
   const week                        = isoWeek(new Date());
   const year                        = new Date().getFullYear();
 
@@ -203,7 +209,11 @@ export default function DashboardPage() {
                             ? <span style={{ fontSize: 10, fontWeight: 600, color: crowd.color }}>{crowd.label}</span>
                             : <span style={{ fontSize: 10, color: "var(--muted-text)" }}>No activity</span>}
                           {v.recentClicks > 0 && (
-                            <span style={{ fontSize: 10, color: "var(--muted-text)" }}>⚡ {v.recentClicks}</span>
+                            <span style={{ fontSize: 10, color: "var(--muted-text)", display: "flex", alignItems: "center", gap: 3 }}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src="/logo.png" alt="" style={{ width: 12, height: 12, objectFit: "contain" }} />
+                              {v.recentClicks}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -260,8 +270,17 @@ export default function DashboardPage() {
               padding: "0 0 env(safe-area-inset-bottom,24px)",
               boxShadow: "0 -8px 40px rgba(0,0,0,0.5)",
             }}>
-              {/* Drag handle */}
-              <div style={{ display: "flex", justifyContent: "center", padding: "14px 0 8px" }}>
+              {/* Drag handle — swipe down to close */}
+              <div
+                onTouchStart={(e) => setSwipeStartY(e.touches[0].clientY)}
+                onTouchEnd={(e) => {
+                  if (swipeStartY !== null) {
+                    const dy = e.changedTouches[0].clientY - swipeStartY;
+                    if (dy > 55) setModalVenue(null);
+                    setSwipeStartY(null);
+                  }
+                }}
+                style={{ display: "flex", justifyContent: "center", padding: "14px 0 6px", cursor: "grab" }}>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)" }} />
               </div>
               {/* Venue banner */}
@@ -270,15 +289,24 @@ export default function DashboardPage() {
                   style={{ width: "100%", height: 140, objectFit: "cover" }} />
               )}
               <div style={{ padding: "16px 20px 20px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
                     <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900 }}>{modalVenue.name}</h2>
-                    <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--muted-text)" }}>
-                      {modalVenue.zone?.name}
-                      {modalVenue.crowdLevel > 0 && (
-                        <> · <span style={{ color: CROWD[modalVenue.crowdLevel]?.color }}>{CROWD[modalVenue.crowdLevel]?.label}</span></>
-                      )}
-                    </p>
+                    <p style={{ margin: "3px 0 6px", fontSize: 13, color: "var(--muted-text)" }}>{modalVenue.zone?.name}</p>
+                    {/* 10-bar crowd meter in modal */}
+                    <div style={{ display: "flex", gap: 3, marginBottom: 4, maxWidth: 160 }}>
+                      {Array.from({ length: 10 }, (_, i) => (
+                        <div key={i} style={{
+                          flex: 1, height: 5, borderRadius: 3,
+                          background: i < modalVenue.crowdLevel
+                            ? (modalVenue.crowdLevel <= 3 ? "#2ecc71" : modalVenue.crowdLevel <= 6 ? "#f39c12" : "#e74c3c")
+                            : "rgba(255,255,255,0.1)",
+                        }} />
+                      ))}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: (CROWD[modalVenue.crowdLevel] ?? CROWD[0]).color }}>
+                      {(CROWD[modalVenue.crowdLevel] ?? CROWD[0]).label}
+                    </span>
                   </div>
                   <button onClick={() => setModalVenue(null)}
                     style={{ background: "none", border: "none", cursor: "pointer",

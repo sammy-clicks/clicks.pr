@@ -18,7 +18,7 @@ function fmt(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 
 export function OrderTrackerProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isUserRoute = pathname?.startsWith("/u/") || pathname === "/u";
+  const isUserRoute = !pathname || pathname.startsWith("/u/") || pathname === "/u";
   const [activeOrder, setActiveOrderState] = useState<ActiveOrder | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [codeVisible, setCodeVisible] = useState(false);
@@ -144,7 +144,7 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
       {children}
 
       {/* ── Floating order tracker banner ── */}
-      {showBanner && isUserRoute && (
+      {showBanner && (
         <div style={{
           position: "fixed", bottom: 0, left: 0, right: 0,
           zIndex: 1000, padding: "0 12px 12px", pointerEvents: "none",

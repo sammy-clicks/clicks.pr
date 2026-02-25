@@ -59,9 +59,11 @@ export async function GET() {
 }
 
 const ItemSchema = z.object({ menuItemId: z.string(), qty: z.number().int().min(1) });
+const PromoSchema = z.object({ promotionId: z.string(), qty: z.number().int().min(1) });
 const PostSchema = z.object({
   venueId: z.string(),
-  items: z.array(ItemSchema).min(1),
+  items: z.array(ItemSchema).default([]),
+  promotions: z.array(PromoSchema).optional().default([]),
 });
 
 export async function POST(req: Request) {
@@ -70,6 +72,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = PostSchema.parse(await req.json());
+  if (body.items.length === 0 && body.promotions.length === 0)
+    return NextResponse.json({ error: "Add at least one item or promotion." }, { status: 400 });
 
   // Must be checked in at venue
   const checkIn = await prisma.checkIn.findFirst({
@@ -103,7 +107,7 @@ export async function POST(req: Request) {
   if (wantsAlcohol && !isAlcoholAllowed(startMins, cutoffMins))
     return NextResponse.json({ error: "Alcohol service is not available at this time." }, { status: 403 });
 
-  // Compute total
+  // Compute total — menu items
   const itemMap = new Map(menuItems.map(m => [m.id, m]));
   let totalCents = 0;
   const orderItems = body.items.map(i => {
@@ -111,6 +115,23 @@ export async function POST(req: Request) {
     totalCents += m.priceCents * i.qty;
     return { menuItemId: m.id, name: m.name, priceCents: m.priceCents, qty: i.qty, isAlcohol: m.isAlcohol };
   });
+
+  // Compute total — promotions
+  let promoOrderItems: any[] = [];
+  if (body.promotions.length > 0) {
+    const promotionIds = body.promotions.map(p => p.promotionId);
+    const promos = await prisma.promotion.findMany({
+      where: { id: { in: promotionIds }, venueId: body.venueId, active: true, isDraft: false },
+    });
+    if (promos.length !== promotionIds.length)
+      return NextResponse.json({ error: "One or more promotions are unavailable." }, { status: 400 });
+    const promoMap = new Map(promos.map(p => [p.id, p]));
+    for (const pi of body.promotions) {
+      const p = promoMap.get(pi.promotionId)!;
+      totalCents += p.priceCents * pi.qty;
+      promoOrderItems.push({ menuItemId: p.id, name: p.title, priceCents: p.priceCents, qty: pi.qty, isAlcohol: false });
+    }
+  }
 
   // Daily send limit
   const dayStart = new Date();
@@ -146,7 +167,7 @@ export async function POST(req: Request) {
         userId: session.sub,
         venueId: body.venueId,
         totalCents,
-        items: { create: orderItems },
+        items: { create: [...orderItems, ...promoOrderItems] },
       },
     }),
     prisma.walletTxn.create({

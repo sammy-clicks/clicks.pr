@@ -187,9 +187,9 @@ export default function Wallet() {
 
       <div className="row" style={{ alignItems: "flex-start", gap: 14 }}>
 
-        {/* Transfers */}
+        {/* Add Funds */}
         <div className="card" style={{ flex: "1 1 240px" }}>
-          <h3 style={{ margin: "0 0 14px", fontSize: 16 }}>Transfers</h3>
+          <h3 style={{ margin: "0 0 14px", fontSize: 16 }}>Add Funds</h3>
           <label style={{ fontSize: 12 }}>Amount ($, min $10)</label>
           <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
             {[10, 20, 50, 100].map(v => (
@@ -204,7 +204,7 @@ export default function Wallet() {
           </div>
           <input type="number" value={topupAmt} min={10} step={5}
             onChange={e => setTopupAmt(parseInt(e.target.value || "10", 10))} />
-          <button className="btn" style={{ marginTop: 12, width: "100%" }} onClick={topup}>Transfer</button>
+          <button className="btn" style={{ marginTop: 12, width: "100%" }} onClick={topup}>Add Funds</button>
         </div>
 
         {/* Send to Friend */}

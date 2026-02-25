@@ -1,9 +1,22 @@
-
-"use client";
-import { useEffect, useState } from "react";
+﻿"use client";
+import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { useOrderTracker } from "@/components/OrderTrackerContext";
 import { useCart } from "@/components/CartContext";
+
+const CROWD: Record<number, { label: string; color: string }> = {
+  0:  { label: "No activity", color: "#666"    },
+  1:  { label: "Quiet",       color: "#2ecc71" },
+  2:  { label: "Quiet",       color: "#2ecc71" },
+  3:  { label: "Moderate",    color: "#a8d926" },
+  4:  { label: "Moderate",    color: "#f39c12" },
+  5:  { label: "Busy",        color: "#f39c12" },
+  6:  { label: "Busy",        color: "#e67e22" },
+  7:  { label: "Packed",      color: "#e67e22" },
+  8:  { label: "Packed",      color: "#e74c3c" },
+  9:  { label: "Full",        color: "#e74c3c" },
+  10: { label: "Full",        color: "#c0392b" },
+};
 
 type MenuItem = {
   id: string;
@@ -15,6 +28,8 @@ type MenuItem = {
   imageUrl?: string | null;
 };
 
+type PromoItem = { menuItemId: string; name: string; qty: number; priceCents: number };
+
 type Promotion = {
   id: string;
   title: string;
@@ -22,23 +37,52 @@ type Promotion = {
   priceCents: number;
   imageUrl?: string | null;
   expiresAt?: string | null;
+  maxRedeemsPerNightPerUser: number;
+  items?: PromoItem[];
 };
 
-export default function Venue({ params }: { params: { id: string } }) {
-  const [data, setData] = useState<any>(null);
-  const [msg, setMsg] = useState("");
-  const [lat, setLat] = useState<number | null>(null);
-  const [lng, setLng] = useState<number | null>(null);
+function fmt(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
+
+export default function VenuePage({ params }: { params: { id: string } }) {
+  const [data, setData]           = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<string>("");
+  const [msg, setMsg]             = useState<{ text: string; ok: boolean } | null>(null);
+  const [lat, setLat]             = useState<number | null>(null);
+  const [lng, setLng]             = useState<number | null>(null);
+  const [selectedPromos, setSelectedPromos] = useState<Record<string, number>>({});
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { cart, addItem, setQty: ctxSetQty, clearCart, totalCents } = useCart();
   const { setActiveOrder } = useOrderTracker();
 
-  // Helper — add or update qty in cart
+  const reload = () =>
+    fetch(`/api/venues/${params.id}`)
+      .then(r => r.json())
+      .then((d: any) => {
+        setData(d);
+        setActiveTab(prev => {
+          if (prev) return prev;
+          const cats = Array.from(new Set((d.menu as MenuItem[]).map((m: MenuItem) => m.category || "Menu")));
+          return (cats[0] as string) ?? "";
+        });
+      });
+
+  useEffect(() => { reload(); }, [params.id]);
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      p => { setLat(p.coords.latitude); setLng(p.coords.longitude); },
+      () => {}
+    );
+  }, []);
+
+  function getQty(id: string) {
+    return cart?.venueId === params.id
+      ? (cart.items.find(i => i.menuItemId === id)?.qty ?? 0)
+      : 0;
+  }
+
   function adjustItem(m: MenuItem, newQty: number) {
     if (!data) return;
-    if (newQty <= 0) {
-      ctxSetQty(m.id, 0);
-      return;
-    }
+    if (newQty <= 0) { ctxSetQty(m.id, 0); return; }
     const already = cart?.items.find(i => i.menuItemId === m.id);
     if (already) {
       ctxSetQty(m.id, newQty);
@@ -50,60 +94,56 @@ export default function Venue({ params }: { params: { id: string } }) {
     }
   }
 
-  function getQty(id: string) {
-    return cart?.venueId === params.id
-      ? (cart.items.find(i => i.menuItemId === id)?.qty ?? 0)
-      : 0;
+  function togglePromo(promoId: string, max: number) {
+    setSelectedPromos(prev => {
+      const cur = prev[promoId] ?? 0;
+      if (max === 1) {
+        if (cur > 0) { const n = { ...prev }; delete n[promoId]; return n; }
+        return { ...prev, [promoId]: 1 };
+      }
+      if (cur >= max) return prev;
+      return { ...prev, [promoId]: cur + 1 };
+    });
   }
 
-  const reload = () => fetch(`/api/venues/${params.id}`).then(r => r.json()).then(setData);
-
-  useEffect(() => { reload(); }, [params.id]);
-  useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      p => { setLat(p.coords.latitude); setLng(p.coords.longitude); },
-      () => {}
-    );
-  }, []);
+  function decrementPromo(promoId: string) {
+    setSelectedPromos(prev => {
+      const cur = prev[promoId] ?? 0;
+      if (cur <= 1) { const n = { ...prev }; delete n[promoId]; return n; }
+      return { ...prev, [promoId]: cur - 1 };
+    });
+  }
 
   async function checkIn() {
-    setMsg("");
+    setMsg(null);
     const res = await fetch("/api/checkin", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ venueId: params.id, lat, lng }),
     });
     const j = await res.json();
-    if (!res.ok) { setMsg(j.error || "Failed"); return; }
-    setMsg("Checked in!");
+    if (!res.ok) { setMsg({ text: j.error || "Check-in failed", ok: false }); return; }
+    setMsg({ text: "Checked in!", ok: true });
     reload();
   }
 
-  async function clickIt() {
-    setMsg("");
-    const res = await fetch("/api/clicks", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ venueId: params.id }),
-    });
-    const j = await res.json();
-    if (!res.ok) { setMsg(j.error || "Failed"); return; }
-    setMsg("Click sent!");
-  }
-
   async function placeOrder() {
-    setMsg("");
+    setMsg(null);
     const venueCart = cart?.venueId === params.id ? cart.items : [];
     const items = venueCart.filter(i => i.qty > 0).map(i => ({ menuItemId: i.menuItemId, qty: i.qty }));
-    if (items.length === 0) { setMsg("Add items to cart first."); return; }
+    const promotions = Object.entries(selectedPromos).map(([promotionId, qty]) => ({ promotionId, qty }));
+    if (items.length === 0 && promotions.length === 0) {
+      setMsg({ text: "Add items or a promotion first.", ok: false }); return;
+    }
     const res = await fetch("/api/orders", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ venueId: params.id, items }),
+      body: JSON.stringify({ venueId: params.id, items, promotions }),
     });
     const j = await res.json();
-    if (!res.ok) { setMsg(j.error || "Order failed"); return; }
+    if (!res.ok) { setMsg({ text: j.error || "Order failed", ok: false }); return; }
     clearCart();
+    setSelectedPromos({});
     reload();
     setActiveOrder({
       orderId: j.orderId,
@@ -114,20 +154,18 @@ export default function Venue({ params }: { params: { id: string } }) {
       status: "PLACED",
       totalCents: j.totalCents ?? 0,
     });
+    setMsg({ text: "Order placed!", ok: true });
   }
 
-  function setQty(id: string, qty: number) {
-    if (!data) return;
-    const m = (data.menu as MenuItem[]).find(x => x.id === id);
-    if (!m) return;
-    adjustItem(m, Math.max(0, qty));
-  }
+  if (!data) return (
+    <div data-role="user">
+      <Nav role="u" />
+      <div style={{ padding: "60px 24px", textAlign: "center" }}>
+        <p style={{ color: "var(--muted-text)" }}>Loading...</p>
+      </div>
+    </div>
+  );
 
-  if (!data) return <div className="container"><p className="muted">Loading…</p></div>;
-
-  const cartTotal = cart?.venueId === params.id ? totalCents : 0;
-
-  // Group menu items by category
   const categoryOrder: string[] = [];
   const byCategory: Record<string, MenuItem[]> = {};
   for (const m of data.menu as MenuItem[]) {
@@ -141,110 +179,317 @@ export default function Venue({ params }: { params: { id: string } }) {
     : categoryOrder;
 
   const promotions: Promotion[] = data.promotions ?? [];
+  const crowd     = CROWD[data.crowdLevel] ?? CROWD[0];
+  const cartTotal = cart?.venueId === params.id ? totalCents : 0;
+  const promoTotal = Object.entries(selectedPromos).reduce((sum, [pid, qty]) => {
+    const p = promotions.find(x => x.id === pid);
+    return sum + (p ? p.priceCents * qty : 0);
+  }, 0);
+  const orderTotal = cartTotal + promoTotal;
 
   return (
-    <div className="container">
-      <div className="header">
-        <h2>{data.venue.name}</h2>
-        <span className="badge">{data.crowdLevel}/10 crowd</span>
-      </div>
+    <div data-role="user" style={{ paddingBottom: orderTotal > 0 ? 100 : 24 }}>
+      <style>{`
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+        .venue-tab { padding:8px 18px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer;
+          border:1.5px solid var(--border); white-space:nowrap; transition:all 0.18s;
+          background:transparent; color:var(--muted-text); }
+        .venue-tab.active { background:var(--accent); color:#000; border-color:var(--accent); }
+        .venue-tab:hover:not(.active) { border-color:rgba(8,218,244,0.4); color:var(--ink); }
+        .mi-card { display:flex; gap:12px; padding:12px; background:var(--surface);
+          border:1px solid var(--border); border-radius:16px; transition:box-shadow 0.2s;
+          animation:fadeInUp 0.22s ease; }
+        .mi-card:hover { box-shadow:0 4px 20px rgba(8,218,244,0.08); }
+        .qty-btn { width:32px; height:32px; border-radius:8px; display:flex; align-items:center;
+          justify-content:center; font-weight:800; font-size:18px; cursor:pointer; transition:all 0.15s; }
+        .qty-minus { border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+        .qty-plus  { border:none; background:var(--accent); color:#000; }
+        .qty-plus:disabled { background:rgba(255,255,255,0.08); color:var(--muted-text); cursor:default; }
+      `}</style>
+
       <Nav role="u" />
 
-      {data.venue.venueImageUrl && (
-        <img
-          src={data.venue.venueImageUrl}
-          alt={data.venue.name}
-          style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 12, marginBottom: 12 }}
-        />
-      )}
-
-      <p className="muted">{data.venue.type} · {data.venue.address}</p>
-      {data.alcoholBlocked && (
-        <p className="muted red">Alcohol service has ended for this venue.</p>
-      )}
-
-      <div className="row" style={{ marginBottom: 16 }}>
-        <button className="btn" onClick={checkIn}>Check in</button>
-        <button className="btn secondary" onClick={clickIt}>Click</button>
-        <a className="btn secondary" href={`https://www.google.com/maps?q=${data.venue.lat},${data.venue.lng}`} target="_blank">Maps</a>
-      </div>
-      {msg && <p className="muted">{msg}</p>}
-
-      {promotions.length > 0 && (
-        <>
-          <h3 style={{ marginTop: 24 }}>Promotions</h3>
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            {promotions.map((p) => (
-              <div key={p.id} className="card" style={{ flex: "1 1 260px" }}>
-                {p.imageUrl && (
-                  <img src={p.imageUrl} alt={p.title}
-                    style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} />
-                )}
-                <div className="header">
-                  <strong>{p.title}</strong>
-                  <span className="badge" style={{ color: "#08daf4" }}>
-                    {p.priceCents === 0 ? "Free" : `$${(p.priceCents / 100).toFixed(2)}`}
-                  </span>
-                </div>
-                {p.description && <p className="muted" style={{ margin: "4px 0" }}>{p.description}</p>}
-                {p.expiresAt && (
-                  <p className="muted" style={{ fontSize: 12 }}>
-                    Expires {new Date(p.expiresAt).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <h3 style={{ marginTop: 24 }}>Menu</h3>
-      {data.menu.length === 0 && <p className="muted">No menu items yet.</p>}
-
-      {sortedCats.map((cat) => (
-        <div key={cat}>
-          {(sortedCats.length > 1 || cat !== "Menu") && (
-            <h4 style={{ margin: "16px 0 8px", color: "#08daf4", textTransform: "uppercase", fontSize: 13, letterSpacing: 1 }}>
-              {cat}
-            </h4>
+      {/* Hero  landscape */}
+      {data.venue.venueImageUrl ? (
+        <div style={{ width:"100%", height:220, position:"relative", overflow:"hidden", background:"#0a0a0f" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={data.venue.venueImageUrl} alt={data.venue.name}
+            style={{ width:"100%", height:"100%", objectFit:"cover", objectPosition:"center" }} />
+          <div style={{ position:"absolute", inset:0,
+            background:"linear-gradient(to top, rgba(8,10,18,0.92) 0%, rgba(0,0,0,0.1) 60%)" }} />
+          {data.boostActive && (
+            <div style={{ position:"absolute", top:12, right:12, background:"var(--accent)",
+              color:"#000", padding:"4px 12px", borderRadius:8, fontSize:11, fontWeight:800 }}>BOOST</div>
           )}
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            {byCategory[cat].map((m) => {
-              const blocked = m.isAlcohol && data.alcoholBlocked;
-              return (
-                <div key={m.id} className="card" style={{ flex: "1 1 200px", opacity: m.isAvailable && !blocked ? 1 : 0.5 }}>
-                  {m.imageUrl && (
-                    <img src={m.imageUrl} alt={m.name}
-                      style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 8, marginBottom: 8 }} />
-                  )}
-                  <div className="header">
-                    <strong>{m.name}</strong>
-                    <span className="badge">${(m.priceCents / 100).toFixed(2)}</span>
-                  </div>
-                  <p className="muted">{m.isAlcohol ? "Alcohol" : "Non-alcoholic"}</p>
-                  {!m.isAvailable && <p className="muted red">Unavailable</p>}
-                  {blocked && <p className="muted red">After cutoff</p>}
-                  {m.isAvailable && !blocked && (
-                    <div className="row" style={{ marginTop: 8, alignItems: "center" }}>
-                      <button className="btn sm secondary" onClick={() => setQty(m.id, getQty(m.id) - 1)}>−</button>
-                      <span style={{ minWidth: 24, textAlign: "center" }}>{getQty(m.id)}</span>
-                      <button className="btn sm secondary" onClick={() => setQty(m.id, getQty(m.id) + 1)}>+</button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div style={{ position:"absolute", bottom:14, left:16, right:60 }}>
+            <h1 style={{ margin:0, fontSize:24, fontWeight:900, color:"#fff", lineHeight:1.1 }}>
+              {data.venue.name}
+            </h1>
+            <p style={{ margin:"4px 0 0", fontSize:12, color:"rgba(255,255,255,0.65)" }}>
+              {data.venue.type} &middot; {data.venue.address}
+            </p>
           </div>
         </div>
-      ))}
+      ) : (
+        <div style={{ padding:"24px 16px 8px" }}>
+          <h1 style={{ margin:0, fontSize:26, fontWeight:900 }}>{data.venue.name}</h1>
+          <p style={{ margin:"4px 0 0", fontSize:13, color:"var(--muted-text)" }}>
+            {data.venue.type} &middot; {data.venue.address}
+          </p>
+        </div>
+      )}
 
-      {cartTotal > 0 && (
-        <div className="card" style={{ marginTop: 16 }}>
-          <div className="header">
-            <strong>Order total: ${(cartTotal / 100).toFixed(2)}</strong>
-            <button className="btn" onClick={placeOrder}>Place Order</button>
+      <div style={{ padding:"0 16px" }}>
+
+        {/* Crowd + actions */}
+        <div style={{ paddingTop:data.venue.venueImageUrl ? 14 : 6, paddingBottom:4 }}>
+          <div style={{ display:"flex", gap:3, marginBottom:5 }}>
+            {Array.from({ length:10 }, (_, i) => (
+              <div key={i} style={{
+                flex:1, height:6, borderRadius:3,
+                background: i < data.crowdLevel
+                  ? (data.crowdLevel <= 3 ? "#2ecc71" : data.crowdLevel <= 6 ? "#f39c12" : "#e74c3c")
+                  : "rgba(255,255,255,0.08)",
+                transition:"background 0.3s",
+              }} />
+            ))}
           </div>
-          <p className="muted">Wallet will be debited. Must be checked in to order.</p>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+            <span style={{ fontSize:12, fontWeight:600, color:crowd.color }}>{crowd.label}</span>
+            {data.alcoholBlocked && (
+              <span style={{ fontSize:11, color:"#f66", fontWeight:700 }}>Alcohol cutoff</span>
+            )}
+          </div>
+          <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+            <button onClick={checkIn}
+              style={{ flex:1, padding:"11px 0", borderRadius:12, fontSize:13, fontWeight:700,
+                background:"var(--accent)", border:"none", color:"#000", cursor:"pointer" }}>
+              Check In
+            </button>
+            <a href={`https://www.google.com/maps?q=${data.venue.lat ?? 0},${data.venue.lng ?? 0}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ flex:1, padding:"11px 0", borderRadius:12, fontSize:13, fontWeight:700,
+                background:"var(--surface)", border:"1.5px solid var(--border)", color:"var(--ink)",
+                textDecoration:"none", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/maps.png" alt="" style={{ width:18, height:18, objectFit:"contain" }} />
+              Directions
+            </a>
+          </div>
+        </div>
+
+        {msg && (
+          <div style={{ marginBottom:14, padding:"10px 16px", borderRadius:12,
+            background: msg.ok ? "rgba(46,204,113,0.1)" : "rgba(255,80,80,0.1)",
+            border:`1px solid ${msg.ok ? "rgba(46,204,113,0.25)" : "rgba(255,80,80,0.25)"}`,
+            color: msg.ok ? "#2ecc71" : "#f66", fontWeight:600, fontSize:14 }}>
+            {msg.text}
+          </div>
+        )}
+
+        {/* Promotions */}
+        {promotions.length > 0 && (
+          <div style={{ marginBottom:30 }}>
+            <h2 style={{ margin:"0 0 14px", fontSize:18, fontWeight:800 }}>Promotions</h2>
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {promotions.map(p => {
+                const qty        = selectedPromos[p.id] ?? 0;
+                const isSelected = qty > 0;
+                const isMaxed    = qty >= p.maxRedeemsPerNightPerUser;
+                const regTotal   = p.items?.reduce((s, i) => s + i.qty * i.priceCents, 0) ?? 0;
+                return (
+                  <div key={p.id} style={{
+                    background:"var(--surface)",
+                    border:`1.5px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
+                    borderRadius:16, overflow:"hidden",
+                    boxShadow: isSelected ? "0 0 0 2px rgba(8,218,244,0.18)" : "none",
+                    transition:"all 0.2s",
+                  }}>
+                    {p.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.imageUrl} alt={p.title}
+                        style={{ width:"100%", height:150, objectFit:"cover", display:"block" }} />
+                    )}
+                    <div style={{ padding:"14px 16px" }}>
+                      <div style={{ display:"flex", alignItems:"flex-start", gap:12, justifyContent:"space-between" }}>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:800, fontSize:16, marginBottom:3 }}>{p.title}</div>
+                          {p.description && (
+                            <p style={{ margin:"0 0 6px", fontSize:13, color:"var(--muted-text)", lineHeight:1.5 }}>
+                              {p.description}
+                            </p>
+                          )}
+                          {p.items && p.items.length > 0 && (
+                            <p style={{ margin:"0 0 6px", fontSize:12, color:"var(--muted-text)" }}>
+                              {p.items.map(i => `${i.qty}\u00d7 ${i.name}`).join(" + ")}
+                            </p>
+                          )}
+                          <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginTop:4 }}>
+                            <span style={{ fontSize:18, fontWeight:900,
+                              color: p.priceCents === 0 ? "#2ecc71" : "var(--ink)" }}>
+                              {p.priceCents === 0 ? "Free" : fmt(p.priceCents)}
+                            </span>
+                            {regTotal > 0 && regTotal > p.priceCents && (
+                              <span style={{ fontSize:12, color:"var(--muted-text)", textDecoration:"line-through" }}>
+                                {fmt(regTotal)}
+                              </span>
+                            )}
+                            {regTotal > 0 && regTotal > p.priceCents && (
+                              <span style={{ fontSize:11, color:"#22c55e", fontWeight:700,
+                                background:"rgba(34,197,94,0.12)", padding:"2px 8px", borderRadius:20 }}>
+                                Save {fmt(regTotal - p.priceCents)}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ marginTop:4, fontSize:11, color:"var(--muted-text)" }}>
+                            Max {p.maxRedeemsPerNightPerUser} per night
+                          </div>
+                        </div>
+                        {p.maxRedeemsPerNightPerUser === 1 ? (
+                          <button onClick={() => togglePromo(p.id, 1)}
+                            style={{ flexShrink:0, padding:"10px 20px", borderRadius:12, fontSize:13, fontWeight:700,
+                              background: isSelected ? "rgba(8,218,244,0.12)" : "var(--accent)",
+                              border: isSelected ? "1.5px solid var(--accent)" : "none",
+                              color: isSelected ? "var(--accent)" : "#000", cursor:"pointer", transition:"all 0.2s" }}>
+                            {isSelected ? "\u2713 Added" : "Add"}
+                          </button>
+                        ) : (
+                          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                            {qty > 0 && (
+                              <>
+                                <button className="qty-btn qty-minus" onClick={() => decrementPromo(p.id)}>-</button>
+                                <span style={{ minWidth:20, textAlign:"center", fontWeight:700 }}>{qty}</span>
+                              </>
+                            )}
+                            <button className="qty-btn qty-plus" disabled={isMaxed}
+                              onClick={() => !isMaxed && togglePromo(p.id, p.maxRedeemsPerNightPerUser)}>+</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Menu */}
+        {data.menu.length > 0 && (
+          <>
+            <h2 style={{ margin:"0 0 12px", fontSize:18, fontWeight:800 }}>Menu</h2>
+
+            {sortedCats.length > 1 && (
+              <div style={{
+                position:"sticky", top:56, zIndex:50,
+                background:"var(--bg, #080c12)",
+                margin:"0 -16px", padding:"8px 16px 10px",
+                borderBottom:"1px solid rgba(255,255,255,0.05)",
+                marginBottom:16,
+              }}>
+                <div style={{ display:"flex", gap:8, overflowX:"auto", scrollbarWidth:"none" } as React.CSSProperties}>
+                  {sortedCats.map(cat => (
+                    <button key={cat} className={`venue-tab${activeTab === cat ? " active" : ""}`}
+                      onClick={() => {
+                        setActiveTab(cat);
+                        sectionRefs.current[cat]?.scrollIntoView({ behavior:"smooth", block:"start" });
+                      }}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {sortedCats.map(cat => (
+              <div key={cat} ref={el => { sectionRefs.current[cat] = el; }} style={{ marginBottom:28 }}>
+                {sortedCats.length > 1 && (
+                  <h3 style={{ margin:"0 0 12px", fontSize:13, fontWeight:800,
+                    color:"var(--accent)", textTransform:"uppercase", letterSpacing:1.2 }}>
+                    {cat}
+                  </h3>
+                )}
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {byCategory[cat].map(m => {
+                    const blocked = m.isAlcohol && data.alcoholBlocked;
+                    const unavail = !m.isAvailable || blocked;
+                    const qty     = getQty(m.id);
+                    return (
+                      <div key={m.id} className="mi-card" style={{ opacity: unavail ? 0.5 : 1 }}>
+                        {m.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.imageUrl} alt={m.name}
+                            style={{ width:82, height:82, objectFit:"cover", borderRadius:10, flexShrink:0 }} />
+                        ) : (
+                          <div style={{ width:82, height:82, borderRadius:10, flexShrink:0,
+                            background:"rgba(255,255,255,0.04)",
+                            display:"flex", alignItems:"center", justifyContent:"center", fontSize:28 }}>
+                            {m.isAlcohol ? "\ud83c\udf7a" : "\ud83c\udf7d\ufe0f"}
+                          </div>
+                        )}
+                        <div style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
+                          <div>
+                            <div style={{ fontWeight:700, fontSize:15, lineHeight:1.3, marginBottom:2 }}>{m.name}</div>
+                            {blocked && <div style={{ fontSize:11, color:"#f66", fontWeight:600 }}>After cutoff</div>}
+                            {!m.isAvailable && !blocked && (
+                              <div style={{ fontSize:11, color:"#f66", fontWeight:600 }}>Unavailable</div>
+                            )}
+                          </div>
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:6 }}>
+                            <span style={{ fontWeight:800, fontSize:15 }}>{fmt(m.priceCents)}</span>
+                            {!unavail && (
+                              qty > 0 ? (
+                                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                                  <button className="qty-btn qty-minus" onClick={() => adjustItem(m, qty - 1)}>-</button>
+                                  <span style={{ minWidth:20, textAlign:"center", fontWeight:700, fontSize:15 }}>{qty}</span>
+                                  <button className="qty-btn qty-plus" onClick={() => adjustItem(m, qty + 1)}>+</button>
+                                </div>
+                              ) : (
+                                <button onClick={() => adjustItem(m, 1)}
+                                  style={{ padding:"7px 18px", borderRadius:10, border:"none",
+                                    background:"var(--accent)", color:"#000", fontWeight:700,
+                                    cursor:"pointer", fontSize:13 }}>
+                                  Add
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {data.menu.length === 0 && promotions.length === 0 && (
+          <p style={{ color:"var(--muted-text)", textAlign:"center", paddingTop:32 }}>No menu items yet.</p>
+        )}
+
+      </div>
+
+      {/* Sticky cart/order footer */}
+      {orderTotal > 0 && (
+        <div style={{
+          position:"fixed", bottom:0, left:0, right:0, zIndex:100,
+          padding:"12px 16px env(safe-area-inset-bottom,12px)",
+          background:"rgba(8,10,18,0.97)", backdropFilter:"blur(12px)",
+          borderTop:"1px solid rgba(8,218,244,0.22)",
+          boxShadow:"0 -8px 32px rgba(8,218,244,0.1)",
+        }}>
+          <div style={{ maxWidth:640, margin:"0 auto" }}>
+            <button onClick={placeOrder}
+              style={{ width:"100%", padding:"15px 0", borderRadius:14, fontSize:15, fontWeight:900,
+                background:"var(--accent)", border:"none", color:"#000", cursor:"pointer",
+                boxShadow:"0 4px 18px rgba(8,218,244,0.32)" }}>
+              Place Order &middot; {fmt(orderTotal)}
+            </button>
+            <p style={{ margin:"6px 0 0", fontSize:11, color:"var(--muted-text)", textAlign:"center" }}>
+              Wallet debited &middot; Check-in required
+            </p>
+          </div>
         </div>
       )}
     </div>
