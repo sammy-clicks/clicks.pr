@@ -27,8 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <CartProvider>
           <OrderTrackerProvider>
             {children}
+            <CartWidget />
           </OrderTrackerProvider>
-          <CartWidget />
         </CartProvider>
         <Footer />
         <ServiceWorkerRegister />

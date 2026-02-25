@@ -240,38 +240,53 @@ export default function VenuePromotions() {
       {isPro === true && !loading && (
         <>
           {/* Active */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <h3 style={{ margin: 0 }}>Active ({active.length})</h3>
             <button className="btn" onClick={startCreate}>+ New Promo</button>
           </div>
           {active.length === 0
-            ? <p className="muted">No active promotions right now.</p>
+            ? <p className="muted" style={{ marginBottom: 20 }}>No active promotions right now.</p>
             : active.map(p => {
               const items: PromoItem[] = p.items ?? [];
               const regTotal = items.reduce((s, i) => s + i.qty * i.priceCents, 0);
+              const savings = regTotal - p.priceCents;
               return (
-                <div key={p.id} className="card" style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <strong>{p.title}</strong>
-                        <span className="badge active" style={{ fontSize: 11 }}>Live</span>
-                        {p.priceCents > 0 && <span className="badge" style={{ fontSize: 11 }}>{$$(p.priceCents)}</span>}
-                      </div>
-                      <ItemsLine items={items} />
-                      {items.length > 0 && regTotal > 0 && (
-                        <p className="muted" style={{ fontSize: 11, margin: "3px 0 0" }}>
-                          Regular {$$(regTotal)} &rarr; Promo {$$(p.priceCents)}
-                          {regTotal > p.priceCents && <span style={{ color: "#22c55e", marginLeft: 6 }}>Save {$$(regTotal - p.priceCents)}</span>}
-                        </p>
-                      )}
-                      <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-                        Expires {fmtExpiry(p.expiresAt)} &middot; max {p.maxRedeemsPerNightPerUser} redeem{p.maxRedeemsPerNightPerUser !== 1 ? "s" : ""}/user/night
-                      </p>
+                <div key={p.id} style={{ borderRadius: 14, background: "var(--surface)", border: "1px solid rgba(34,197,94,0.3)", marginBottom: 10, display: "flex", overflow: "hidden" }}>
+                  {/* Green left bar */}
+                  <div style={{ width: 4, background: "#22c55e", flexShrink: 0 }} />
+                  <div style={{ flex: 1, padding: "13px 14px 12px" }}>
+                    {/* Header row */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 800, fontSize: 15 }}>{p.title}</span>
+                      <span className="badge active" style={{ fontSize: 10 }}>Live</span>
+                      {p.priceCents > 0 && <span className="badge" style={{ fontSize: 11, fontWeight: 700 }}>{$$(p.priceCents)}</span>}
+                      {savings > 0 && <span style={{ backgroundColor: "#22c55e22", border: "1px solid #22c55e55", borderRadius: 6, padding: "2px 7px", fontSize: 10, color: "#22c55e", fontWeight: 700 }}>Save {$$(savings)}</span>}
                     </div>
-                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button className="btn sm secondary" onClick={() => startEdit(p)}>Edit</button>
-                      <button className="btn sm secondary" style={{ color: "#f55" }} onClick={() => deletePromo(p.id)}>Delete</button>
+                    {/* Items */}
+                    {items.length > 0 && (
+                      <div style={{ marginBottom: 6 }}>
+                        {items.map(i => (
+                          <span key={i.menuItemId} style={{ display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "2px 8px", fontSize: 11, marginRight: 5, marginBottom: 4 }}>
+                            {i.qty}× {i.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Pricing line */}
+                    {regTotal > 0 && p.priceCents > 0 && (
+                      <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>
+                        Regular <strong>{$$(regTotal)}</strong> → Promo <strong style={{ color: "#22c55e" }}>{$$(p.priceCents)}</strong>
+                      </div>
+                    )}
+                    {/* Footer */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
+                      <span className="muted" style={{ fontSize: 11 }}>
+                        Expires {fmtExpiry(p.expiresAt)} · max {p.maxRedeemsPerNightPerUser}/user/night
+                      </span>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn sm secondary" onClick={() => startEdit(p)}>Edit</button>
+                        <button className="btn sm secondary" style={{ color: "#f55" }} onClick={() => deletePromo(p.id)}>Delete</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -280,24 +295,37 @@ export default function VenuePromotions() {
           }
 
           {/* Drafts */}
-          <h3>Drafts ({drafts.length})</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, marginTop: 8 }}>
+            <h3 style={{ margin: 0 }}>Drafts ({drafts.length})</h3>
+          </div>
           {drafts.length === 0
             ? <p className="muted">No saved drafts.</p>
             : drafts.map(p => {
               const items: PromoItem[] = p.items ?? [];
               return (
-                <div key={p.id} className="card" style={{ marginBottom: 12, opacity: 0.85, borderStyle: "dashed" }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <strong>{p.title}</strong>
-                        <span className="badge" style={{ fontSize: 11 }}>Draft</span>
-                        {p.priceCents > 0 && <span className="muted" style={{ fontSize: 12 }}>{$$(p.priceCents)}</span>}
-                      </div>
-                      <ItemsLine items={items} />
+                <div key={p.id} style={{ borderRadius: 14, background: "var(--surface)", border: "1px dashed rgba(245,158,11,0.45)", marginBottom: 10, display: "flex", overflow: "hidden", opacity: 0.92 }}>
+                  {/* Amber left bar */}
+                  <div style={{ width: 4, background: "#f59e0b", flexShrink: 0 }} />
+                  <div style={{ flex: 1, padding: "13px 14px 12px" }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 800, fontSize: 15 }}>{p.title}</span>
+                      <span style={{ background: "#f59e0b22", border: "1px solid #f59e0b66", borderRadius: 6, padding: "2px 7px", fontSize: 10, color: "#f59e0b", fontWeight: 700 }}>Draft</span>
+                      {p.priceCents > 0 && <span className="muted" style={{ fontSize: 12 }}>{$$(p.priceCents)}</span>}
                     </div>
-                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button className="btn sm" onClick={() => requestPublishDraft(p)}>Publish</button>
+                    {/* Items */}
+                    {items.length > 0 && (
+                      <div style={{ marginBottom: 8 }}>
+                        {items.map(i => (
+                          <span key={i.menuItemId} style={{ display: "inline-block", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "2px 8px", fontSize: 11, marginRight: 5, marginBottom: 4 }}>
+                            {i.qty}× {i.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Actions */}
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn sm" style={{ background: "#f59e0b", color: "#000", fontWeight: 700 }} onClick={() => requestPublishDraft(p)}>Publish</button>
                       <button className="btn sm secondary" onClick={() => startEdit(p)}>Edit</button>
                       <button className="btn sm secondary" style={{ color: "#f55" }} onClick={() => deletePromo(p.id)}>Delete</button>
                     </div>

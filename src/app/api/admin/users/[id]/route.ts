@@ -4,6 +4,41 @@ import { prisma, requireRole } from "@/app/api/_utils";
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const auth = await requireRole(["ADMIN"]);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const user = await prisma.user.findUnique({
+    where: { id: params.id },
+    select: {
+      id: true, role: true, username: true, firstName: true, lastName: true,
+      email: true, phone: true, country: true, createdAt: true, lastActiveAt: true,
+      ghostMode: true, bannedUntil: true, banReason: true, avatarUrl: true,
+      wallet: { select: { balanceCents: true } },
+      managedVenue: { select: { id: true, name: true, plan: true } },
+      _count: { select: { clicks: true, orders: true } },
+    },
+  });
+  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const [recentOrders, buddyCount] = await Promise.all([
+    prisma.order.findMany({
+      where: { userId: params.id },
+      select: {
+        id: true, orderNumber: true, status: true, totalCents: true, createdAt: true,
+        venue: { select: { name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    prisma.buddy.count({
+      where: { OR: [{ senderId: params.id, status: "ACCEPTED" }, { receiverId: params.id, status: "ACCEPTED" }] },
+    }),
+  ]);
+
+  return NextResponse.json({ user, recentOrders, buddyCount });
+}
+
 const BanSchema = z.object({
   action: z.enum(["ban", "unban"]),
   durationDays: z.number().int().min(1).max(365).optional(), // undefined = permanent

@@ -12,7 +12,7 @@ export async function GET() {
   if (!session || session.role !== "USER") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const week = await getOrCreateCurrentWeek();
-  const venues = await prisma.venue.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" }});
+  const venues = await prisma.venue.findMany({ select: { id: true, name: true, type: true, venueImageUrl: true }, orderBy: { name: "asc" }});
 
   const grouped = await prisma.vote.groupBy({
     by: ["venueId"],
@@ -25,7 +25,12 @@ export async function GET() {
     .map(v => ({ venueId: v.id, venueName: v.name, votes: map.get(v.id) || 0 }))
     .sort((a,b)=>b.votes-a.votes);
 
-  return NextResponse.json({ week: { year: week.year, week: week.week }, venues, results });
+  const userVoteRow = await prisma.vote.findFirst({
+    where: { weekId: week.id, userId: session.sub },
+    select: { venueId: true },
+  });
+
+  return NextResponse.json({ week: { year: week.year, week: week.week }, venues, results, userVote: userVoteRow?.venueId ?? null });
 }
 
 export async function POST(req: Request) {

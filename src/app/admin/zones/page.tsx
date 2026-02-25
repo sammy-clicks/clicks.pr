@@ -179,8 +179,8 @@ export default function ZonesAdmin() {
             </div>
           ) : (
             <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn sm secondary" onClick={() => { imgRef.current?.setAttribute("capture","environment"); imgRef.current?.click(); }}>📷 Take Photo</button>
-              <button className="btn sm secondary" onClick={() => { imgRef.current?.removeAttribute("capture"); imgRef.current?.click(); }}>🖼️ Upload</button>
+              <button className="btn sm secondary" onClick={() => { imgRef.current?.setAttribute("capture","environment"); imgRef.current?.click(); }}>Take Photo</button>
+              <button className="btn sm secondary" onClick={() => { imgRef.current?.removeAttribute("capture"); imgRef.current?.click(); }}>Upload Photo</button>
             </div>
           )}
           <input ref={imgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f, setNewImage); e.target.value = ""; }} />
@@ -213,7 +213,7 @@ export default function ZonesAdmin() {
                     ) : (
                       <button className="btn sm secondary" style={{ width: "fit-content" }}
                         onClick={() => { editImgRef.current?.removeAttribute("capture"); editImgRef.current?.click(); }}>
-                        🖼️ Add photo
+                        Add Photo
                       </button>
                     )}
                     <input ref={editImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f, setEditImage); e.target.value = ""; }} />
@@ -274,7 +274,7 @@ export default function ZonesAdmin() {
                         ) : (
                           <button className="btn sm secondary" style={{ width: "fit-content" }}
                             onClick={() => { editImgRef.current?.removeAttribute("capture"); editImgRef.current?.click(); }}>
-                            🖼️ Add photo
+                            Add Photo
                           </button>
                         )}
                         <input ref={editImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files?.[0]; if (f) pickImage(f, setEditImage); e.target.value = ""; }} />

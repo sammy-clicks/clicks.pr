@@ -105,9 +105,9 @@ export async function GET(req: Request) {
       where: { status: "PAID", paidAt: { gte: rangeStart } },
       select: { amountCents: true, paidAt: true },
     }),
-    // Active promotions for admin overview
+    // Active promotions for admin overview - show all active non-draft (regardless of expiry)
     prisma.promotion.findMany({
-      where: { active: true, isDraft: false, OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] },
+      where: { active: true, isDraft: false },
       select: {
         id: true,
         title: true,
