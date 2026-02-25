@@ -96,20 +96,16 @@ export default function VenueFinances() {
           <strong>{summary.completedOrderCount} / {summary.orderCount}</strong>
         </div>
         <div className="card" style={{ padding: "10px 16px", minWidth: 140, textAlign: "center" }}>
-          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Order commissions</div>
-          <strong>{cents(summary.orderCommissionCents)}</strong>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Order revenue</div>
+          <strong>{cents(summary.orderRevenueCents)}</strong>
         </div>
         <div className="card" style={{ padding: "10px 16px", minWidth: 140, textAlign: "center" }}>
-          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Promo commissions</div>
-          <strong>{cents(summary.promoCommissionCents)}</strong>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Promo redemptions</div>
+          <strong>{summary.redemptionCount}</strong>
         </div>
         <div className="card" style={{ padding: "10px 16px", minWidth: 140, textAlign: "center" }}>
-          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Subscriptions</div>
-          <strong>{cents(summary.subscriptionRevenueCents)}</strong>
-        </div>
-        <div className="card" style={{ padding: "10px 16px", minWidth: 140, textAlign: "center", borderColor: "rgba(100,200,100,0.3)" }}>
-          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Total to Clicks</div>
-          <strong style={{ fontSize: 18 }}>{cents(summary.totalClicksRevenueCents)}</strong>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Subscriptions paid</div>
+          <strong>{summary.subscriptionCount}</strong>
         </div>
       </div>
 
@@ -124,27 +120,41 @@ export default function VenueFinances() {
           const open = expanded[key];
 
           let typeBadge: JSX.Element;
-          let amountStr: string;
+          let mainLine: JSX.Element;
+          let subLine: JSX.Element | null = null;
           let detail: JSX.Element | null = null;
 
           if (tx.kind === "order") {
             const o = tx.row;
             const isCompleted = o.status === "COMPLETED";
+            const userName = o.user?.name || o.user?.username || "—";
+            const userHandle = o.user?.username ? `@${o.user.username}` : null;
             typeBadge = (
               <span className={`badge${isCompleted ? " active" : ""}`} style={{ fontSize: 11 }}>
                 {o.status}
               </span>
             );
-            amountStr = o.totalCents != null
-              ? `${cents(o.totalCents)} (${cents(Math.round(o.totalCents * 0.15))} to Clicks)`
-              : "—";
+            mainLine = (
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                {userName}
+                {userHandle && <span className="muted" style={{ fontWeight: 400, marginLeft: 5 }}>{userHandle}</span>}
+              </span>
+            );
+            subLine = (
+              <span className="muted" style={{ fontSize: 12 }}>
+                Order #{o.orderCode ?? o.id.slice(0,8).toUpperCase()}
+                {o.totalCents != null && <span style={{ marginLeft: 8 }}>{cents(o.totalCents)}</span>}
+              </span>
+            );
             detail = (
               <div style={{ marginTop: 10, fontSize: 13, display: "grid", gap: 4 }}>
-                <div>Order code: <strong>{o.orderCode ?? "—"}</strong></div>
-                <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: "2px 0", marginTop: 4 }}>
-                  <span className="muted">Placed at</span>      <span>{fmt(o.createdAt)}</span>
-                  <span className="muted">Accepted at</span>    <span>{fmt(o.acceptedAt)}</span>
-                  <span className="muted">Ready at</span>       <span>{fmt(o.readyAt)}</span>
+                <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: "2px 0" }}>
+                  <span className="muted">Order #</span>       <span><strong>{o.orderCode ?? o.id.slice(0,8).toUpperCase()}</strong></span>
+                  <span className="muted">Customer</span>      <span>{userName}{userHandle && <span className="muted" style={{ marginLeft: 6 }}>{userHandle}</span>}</span>
+                  <span className="muted">Total</span>         <span>{o.totalCents != null ? cents(o.totalCents) : "—"}</span>
+                  <span className="muted">Placed at</span>     <span>{fmt(o.createdAt)}</span>
+                  <span className="muted">Accepted at</span>   <span>{fmt(o.acceptedAt)}</span>
+                  <span className="muted">Ready at</span>      <span>{fmt(o.readyAt)}</span>
                   {isCompleted
                     ? <><span className="muted">Completed at</span><span>{fmt(o.completedAt)}</span></>
                     : <><span className="muted">Cancelled at</span><span style={{ color: "#f88" }}>{fmt(o.cancelledAt)}</span></>
@@ -154,41 +164,63 @@ export default function VenueFinances() {
             );
           } else if (tx.kind === "subscription") {
             const s = tx.row;
+            const isPaid = s.status === "PAID";
             typeBadge = (
-              <span className={`badge${s.status === "PAID" ? " active" : ""}`} style={{ fontSize: 11 }}>
+              <span className={`badge${isPaid ? " active" : ""}`} style={{ fontSize: 11 }}>
                 Subscription {s.status}
               </span>
             );
-            amountStr = s.status === "PAID" ? cents(s.amountCents) : "—";
+            mainLine = (
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                {isPaid ? cents(s.amountCents) : "—"}
+              </span>
+            );
+            subLine = (
+              <span className="muted" style={{ fontSize: 12 }}>
+                {fmtDate(s.periodStart)} – {fmtDate(s.periodEnd)}
+              </span>
+            );
             detail = (
               <div style={{ marginTop: 10, fontSize: 13, display: "grid", gap: 4 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: "2px 0" }}>
-                  <span className="muted">Period</span>
-                  <span>{fmtDate(s.periodStart)} – {fmtDate(s.periodEnd)}</span>
-                  <span className="muted">Paid at</span>        <span>{fmt(s.paidAt)}</span>
-                  <span className="muted">Status</span>         <span>{s.status}</span>
+                  <span className="muted">Amount</span>        <span>{isPaid ? cents(s.amountCents) : "—"}</span>
+                  <span className="muted">Period</span>        <span>{fmtDate(s.periodStart)} – {fmtDate(s.periodEnd)}</span>
+                  <span className="muted">Paid at</span>       <span>{fmt(s.paidAt)}</span>
+                  <span className="muted">Status</span>        <span>{s.status}</span>
                   {s.stripeId && <><span className="muted">Stripe ID</span><span style={{ fontFamily: "monospace", fontSize: 11 }}>{s.stripeId}</span></>}
                 </div>
               </div>
             );
           } else {
             const r = tx.row;
-            const earned = r.paidCents > 0 ? Math.round(r.paidCents * 0.15) : 0;
+            const userName = r.user?.name || r.user?.username || "—";
+            const userHandle = r.user?.username ? `@${r.user.username}` : null;
             typeBadge = (
               <span className={`badge${r.paidCents > 0 ? " active" : ""}`} style={{ fontSize: 11 }}>
                 Redemption
               </span>
             );
-            amountStr = r.paidCents > 0
-              ? `${cents(r.paidCents)} paid  (${cents(earned)} to Clicks)`
-              : "Free";
+            mainLine = (
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                {userName}
+                {userHandle && <span className="muted" style={{ fontWeight: 400, marginLeft: 5 }}>{userHandle}</span>}
+              </span>
+            );
+            subLine = (
+              <span className="muted" style={{ fontSize: 12 }}>
+                {r.promotion?.title ?? "—"}
+                {r.paidCents > 0 && <span style={{ marginLeft: 8 }}>{cents(r.paidCents)}</span>}
+                {r.paidCents === 0 && <span style={{ marginLeft: 8 }}>Free</span>}
+              </span>
+            );
             detail = (
               <div style={{ marginTop: 10, fontSize: 13, display: "grid", gap: 4 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: "2px 0" }}>
-                  <span className="muted">Promotion</span>  <span>{r.promotion?.title ?? "—"}</span>
-                  <span className="muted">Venue received</span> <span>{cents(r.paidCents)}</span>
-                  <span className="muted">Clicks earned</span> <span>{cents(earned)}</span>
-                  <span className="muted">Status</span>     <span>{r.status}</span>
+                  <span className="muted">Customer</span>     <span>{userName}{userHandle && <span className="muted" style={{ marginLeft: 6 }}>{userHandle}</span>}</span>
+                  <span className="muted">Promotion</span>    <span>{r.promotion?.title ?? "—"}</span>
+                  <span className="muted">Amount paid</span>  <span>{r.paidCents > 0 ? cents(r.paidCents) : "Free"}</span>
+                  <span className="muted">Status</span>       <span>{r.status}</span>
+                  <span className="muted">Redeemed at</span>  <span>{fmt(r.createdAt)}</span>
                 </div>
               </div>
             );
@@ -201,7 +233,10 @@ export default function VenueFinances() {
                   {fmt(tx.date)}
                 </span>
                 {typeBadge}
-                <span style={{ flex: 1, fontSize: 13 }}>{amountStr}</span>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+                  {mainLine}
+                  {subLine}
+                </div>
                 <button
                   className={`btn sm${open ? "" : " secondary"}`}
                   style={{ fontSize: 11 }}

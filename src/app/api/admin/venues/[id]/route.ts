@@ -36,6 +36,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         readyAt: true,
         completedAt: true,
         cancelledAt: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+          },
+        },
       },
     }),
     prisma.subscriptionPayment.findMany({
@@ -60,19 +67,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         status: true,
         createdAt: true,
         promotion: { select: { title: true } },
+        user: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+          },
+        },
       },
     }),
   ]);
 
   // Compute lifetime totals
   const completedOrders = orders.filter(o => o.status === "COMPLETED");
-  const orderRevCents = Math.round(completedOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0) * 0.15);
-  const promoRevCents = Math.round(
-    redemptions.filter(r => r.paidCents > 0).reduce((s, r) => s + r.paidCents, 0) * 0.15,
-  );
-  const subRevCents = subscriptions
-    .filter(s => s.status === "PAID")
-    .reduce((s, p) => s + p.amountCents, 0);
+  const orderRevCents = completedOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0);
+  const paidSubs = subscriptions.filter(s => s.status === "PAID");
+  const paidRedemptions = redemptions.filter(r => r.paidCents > 0);
 
   return NextResponse.json({
     venue,
@@ -82,10 +92,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     summary: {
       orderCount: orders.length,
       completedOrderCount: completedOrders.length,
-      orderCommissionCents: orderRevCents,
-      promoCommissionCents: promoRevCents,
-      subscriptionRevenueCents: subRevCents,
-      totalClicksRevenueCents: orderRevCents + promoRevCents + subRevCents,
+      orderRevenueCents: orderRevCents,
+      redemptionCount: redemptions.length,
+      subscriptionCount: paidSubs.length,
     },
   });
 }

@@ -26,7 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `(function(){try{localStorage.setItem('theme','dark');}catch(e){}document.documentElement.setAttribute('data-theme','dark');})();`,
           }}
         />
-        {/* Explicit apple-touch-icon so iOS uses the full-bleed image */}
+        {/* iOS PWA — use touch icon instead of a page screenshot */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+        <meta name="apple-mobile-web-app-title" content="Clicks" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icon.jpg" />
         <link rel="apple-touch-icon" sizes="1024x1024" href="/icon.jpg" />
       </head>
