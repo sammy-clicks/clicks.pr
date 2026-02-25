@@ -136,8 +136,9 @@ model Venue {
   lng          Float
   // Subscription
   plan         VenuePlan @default(FREE)
-  subscriptionStartedAt DateTime?
-  subscriptionEndsAt    DateTime?
+  subscriptionStartedAt   DateTime?
+  subscriptionEndsAt      DateTime?
+  subscriptionCancelledAt DateTime?  // set when user requests downgrade; plan stays PRO until subscriptionEndsAt
   boostActiveUntil      DateTime?  // set to now+1h when Boost Hour activated
 
   municipalityId String

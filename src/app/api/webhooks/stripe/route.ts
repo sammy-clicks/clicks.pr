@@ -52,7 +52,12 @@ export async function POST(req: Request) {
       if (!venueId) break;
       await prisma.venue.update({
         where: { id: venueId },
-        data: { plan: "FREE", subscriptionEndsAt: new Date() },
+        data: { plan: "FREE", subscriptionEndsAt: new Date(), subscriptionCancelledAt: null },
+      });
+      // Move all active non-draft promotions to draft so customers can't see them
+      await prisma.promotion.updateMany({
+        where: { venueId, isDraft: false, active: true },
+        data: { isDraft: true, active: false },
       });
       break;
     }
