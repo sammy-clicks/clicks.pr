@@ -267,6 +267,7 @@ model Redemption {
   userId      String
   promotionId String
   venueId     String
+  user        User      @relation(fields: [userId], references: [id])
   promotion   Promotion @relation(fields: [promotionId], references: [id])
   createdAt   DateTime @default(now())
   status      String   @default("VALID")
