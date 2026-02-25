@@ -4,6 +4,14 @@ import { Nav } from "@/components/Nav";
 
 const OPEN_STATUSES = ["PLACED", "ACCEPTED", "PREPARING", "READY"];
 
+function customerLabel(user: any) {
+  const first = user?.firstName?.trim();
+  const last  = user?.lastName?.trim();
+  if (first && last)  return `${first} ${last[0]}.`;
+  if (first)          return first;
+  return null;
+}
+
 type CompletedInfo = { orderNumber: string; username: string; totalCents: number; items: string };
 
 export default function VenueDashboard() {
@@ -126,6 +134,11 @@ export default function VenueDashboard() {
               <div>
                 <strong>@{o.user.username}</strong>
                 {o.orderNumber && <span style={{ display: "block", fontSize: 11, color: "var(--brand)", fontWeight: 600, marginTop: 2 }}>{o.orderNumber}</span>}
+                {customerLabel(o.user) && (
+                  <span style={{ display: "block", fontSize: 12, color: "var(--muted-text)", marginTop: 2 }}>
+                    Customer: <strong style={{ color: "var(--ink)" }}>{customerLabel(o.user)}</strong>
+                  </span>
+                )}
               </div>
               <span className={`badge st-${o.status}`}>{o.status}</span>
             </div>

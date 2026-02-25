@@ -127,7 +127,9 @@ export default function VenueFinances() {
           if (tx.kind === "order") {
             const o = tx.row;
             const isCompleted = o.status === "COMPLETED";
-            const userName = o.user?.name || o.user?.username || "—";
+            const first = o.user?.firstName?.trim();
+            const last  = o.user?.lastName?.trim();
+            const userName = first && last ? `${first} ${last[0]}.` : first || o.user?.username || "—";
             const userHandle = o.user?.username ? `@${o.user.username}` : null;
             typeBadge = (
               <span className={`badge${isCompleted ? " active" : ""}`} style={{ fontSize: 11 }}>
@@ -193,7 +195,9 @@ export default function VenueFinances() {
             );
           } else {
             const r = tx.row;
-            const userName = r.user?.name || r.user?.username || "—";
+            const first = r.user?.firstName?.trim();
+            const last  = r.user?.lastName?.trim();
+            const userName = first && last ? `${first} ${last[0]}.` : first || r.user?.username || "—";
             const userHandle = r.user?.username ? `@${r.user.username}` : null;
             typeBadge = (
               <span className={`badge${r.paidCents > 0 ? " active" : ""}`} style={{ fontSize: 11 }}>
