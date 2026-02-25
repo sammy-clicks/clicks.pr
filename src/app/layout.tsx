@@ -10,13 +10,16 @@ export const metadata: Metadata = {
   title: "Clicks V1",
   description: "Clicks V1 PWA Starter",
   manifest: "/manifest.webmanifest",
+  icons: {
+    apple: "/flow-3.png",
+    icon: "/flow-3.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <link rel="apple-touch-icon" href="/flow-3.png" />
         {/* Prevent flash of wrong theme — runs before hydration */}
         <script
           dangerouslySetInnerHTML={{

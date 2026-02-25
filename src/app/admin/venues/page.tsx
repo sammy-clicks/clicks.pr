@@ -37,6 +37,7 @@ export default function VenuesAdmin() {
   const [search, setSearch] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Venue | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     name: "", type: "Bar", description: "", address: "",
     lat: "", lng: "", municipalityId: "", zoneId: "", plan: "FREE", managerId: "",
@@ -73,6 +74,7 @@ export default function VenuesAdmin() {
     if (!r.ok) { setMsg(j.error || "Failed"); return; }
     setMsg("Venue created!");
     setForm({ name: "", type: "Bar", description: "", address: "", lat: "", lng: "", municipalityId: "", zoneId: "", plan: "FREE", managerId: "" });
+    setShowCreate(false);
     load();
   }
 
@@ -146,13 +148,17 @@ export default function VenuesAdmin() {
 
       <div className="header">
         <h2>Venues ({data.venues.length})</h2>
-        {msg && <span className="muted" style={{ color: msg.includes("!") || msg === "Saved." ? "var(--green,#6f6)" : "#f66" }}>{msg}</span>}
+        <button className="btn" style={{ background: "#8b5cf6" }} onClick={() => setShowCreate(s => !s)}>
+          {showCreate ? "Hide" : "+ New Venue"}
+        </button>
       </div>
       <Nav role="admin" />
+      {msg && <p style={{ fontSize: 13, fontWeight: 600, color: msg.includes("!") || msg === "Saved." ? "#22c55e" : "#f87171", marginBottom: 12 }}>{msg}</p>}
 
-      {/* ── Create form ─────────────────────────────────── */}
-      <div className="card" style={{ marginBottom: 20 }}>
-        <h3 style={{ margin: "0 0 12px" }}>Add venue</h3>
+      {/* ── Create form ───────────────────────────────── */}
+      {showCreate && (
+        <div className="card" style={{ marginBottom: 20, borderColor: "rgba(139,92,246,0.35)" }}>
+        <h3 style={{ margin: "0 0 12px", color: "#8b5cf6" }}>Add Venue</h3>
         <div className="row">
           <div style={{ flex: 2 }}><label>Name</label><input value={form.name} onChange={e => setF("name", e.target.value)} /></div>
           <div style={{ flex: 1 }}>
@@ -203,6 +209,7 @@ export default function VenuesAdmin() {
         <textarea rows={2} value={form.description} onChange={e => setF("description", e.target.value)} />
         <button className="btn" style={{ marginTop: 12 }} onClick={create}>Create venue</button>
       </div>
+      )}
 
       {/* ── Search + list ────────────────────────────────── */}
       <input
