@@ -73,7 +73,7 @@ export default function Leaderboard() {
         <>
           {/* ── Top Zones ── */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <h3 style={{ margin: 0 }}>🔥 Live — Top Zones by Crowd</h3>
+            <h3 style={{ margin: 0 }}>Live — Top Zones by Crowd</h3>
           </div>
 
           {(!data.topZones || data.topZones.length === 0)
@@ -84,13 +84,13 @@ export default function Leaderboard() {
                   const maxCrowd = data.topZones[0]?.crowd || 1;
                   const pct = Math.max(5, Math.round((z.crowd / maxCrowd) * 100));
                   return (
-                    <div key={z.id} style={{ borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)", overflow: "hidden", display: "flex", alignItems: "stretch" }}>
+                    <div key={z.id} style={{ borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)", overflow: "hidden", display: "flex", alignItems: "center" }}>
                       {/* Left accent */}
-                      <div style={{ width: 4, background: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : "rgba(139,92,246,0.4)", flexShrink: 0 }} />
+                      <div style={{ width: 4, alignSelf: "stretch", background: i === 0 ? "#f59e0b" : i === 1 ? "#94a3b8" : "rgba(139,92,246,0.4)", flexShrink: 0 }} />
                       {/* Zone image */}
                       {z.imageUrl
-                        ? <img src={z.imageUrl} alt={z.name} style={{ width: 64, height: 64, objectFit: "cover", flexShrink: 0 }} />
-                        : <div style={{ width: 64, height: 64, background: "rgba(139,92,246,0.1)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>📍</div>
+                        ? <img src={z.imageUrl} alt={z.name} style={{ width: 60, height: 60, objectFit: "cover", flexShrink: 0, margin: "0 0 0 10px", borderRadius: 8 }} />
+                        : <div style={{ width: 60, height: 60, background: "rgba(139,92,246,0.1)", flexShrink: 0, margin: "0 0 0 10px", borderRadius: 8 }} />
                       }
                       <div style={{ flex: 1, padding: "10px 14px", minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
@@ -111,7 +111,7 @@ export default function Leaderboard() {
           }
 
           {/* ── Top Clickers ── */}
-          <h3 style={{ marginBottom: 4 }}>🏆 Top Clickers This Week</h3>
+          <h3 style={{ marginBottom: 4 }}>Top Clickers This Week</h3>
           <p className="muted" style={{ marginBottom: 14, fontSize: 12 }}>Ghost-mode users are hidden. Tap a player to view their profile.</p>
 
           {(!data.topClickers || data.topClickers.length === 0)

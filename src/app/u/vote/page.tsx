@@ -14,6 +14,7 @@ export default function Vote() {
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const [search, setSearch] = useState("");
 
   async function load() {
     const r = await fetch("/api/vote");
@@ -43,7 +44,10 @@ export default function Vote() {
     </div>
   );
 
-  const venues: any[] = data.venues ?? [];
+  const allVenues: any[] = data.venues ?? [];
+  const venues: any[] = search.trim()
+    ? allVenues.filter(v => v.name.toLowerCase().includes(search.trim().toLowerCase()))
+    : allVenues;
   const results: any[] = data.results ?? [];
   const current = venues[idx];
   const total = venues.length;
@@ -59,11 +63,18 @@ export default function Vote() {
 
       {!showResults ? (
         <>
-          <p className="muted" style={{ marginBottom: 16, fontSize: 13 }}>
-            Swipe or tap the arrows to browse venues, then vote for your favourite this week.
-          </p>
+          <div style={{ marginBottom: 14 }}>
+            <input
+              value={search}
+              onChange={e => { setSearch(e.target.value); setIdx(0); }}
+              placeholder="Search venues…"
+              style={{ width: "100%", boxSizing: "border-box" }}
+            />
+          </div>
 
-          {venues.length === 0 && <p className="muted">No venues available to vote on.</p>}
+          {venues.length === 0 && (
+            <p className="muted">{search ? `No venues match "${search}".` : "No venues available to vote on."}</p>
+          )}
 
           {current && (
             <div style={{ marginBottom: 20 }}>
