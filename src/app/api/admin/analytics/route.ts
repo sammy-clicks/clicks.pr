@@ -43,6 +43,9 @@ export async function GET(req: Request) {
   const allTime = daysParam === 0;
   const days = allTime ? 90 : Math.min(Math.max(daysParam, 1), 90);
 
+  const voteYear = searchParams.get("voteYear") ? parseInt(searchParams.get("voteYear")!) : null;
+  const voteWeek = searchParams.get("voteWeek") ? parseInt(searchParams.get("voteWeek")!) : null;
+
   const rangeStart = allTime ? new Date("2020-01-01") : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const since = new Date(Date.now() - 120 * 60 * 1000);
@@ -78,7 +81,8 @@ export async function GET(req: Request) {
     prisma.order.findMany({ where: { createdAt: { gte: rangeStart } }, select: { createdAt: true, totalCents: true } }),
     prisma.vote.groupBy({
       by: ["venueId"],
-      _count: { _all: true },
+      where: voteYear !== null && voteWeek !== null ? { week: { year: voteYear, week: voteWeek } } : {},
+      _count: { venueId: true },
       orderBy: { _count: { venueId: "desc" } },
       take: 5,
     }),
@@ -88,7 +92,7 @@ export async function GET(req: Request) {
     prisma.clickEvent.groupBy({
       by: ["userId"],
       where: { createdAt: { gte: rangeStart } },
-      _count: { _all: true },
+      _count: { userId: true },
       orderBy: { _count: { userId: "desc" } },
       take: 10,
     }),
@@ -180,7 +184,7 @@ export async function GET(req: Request) {
   const topVotes = weeklyVotes.map(v => ({
     venueId: v.venueId,
     name: venueMap.get(v.venueId) ?? "Unknown",
-    votes: v._count._all,
+    votes: v._count?.venueId ?? 0,
   }));
 
   // Top clickers with username
@@ -192,7 +196,7 @@ export async function GET(req: Request) {
   const userMap = new Map(topClickUserRows.map(u => [u.id, u.username]));
   const topClickers = topClickUsers
     .filter(u => userMap.has(u.userId))
-    .map((u, i) => ({ rank: i + 1, username: userMap.get(u.userId)!, clicks: u._count._all }));
+    .map((u, i) => ({ rank: i + 1, username: userMap.get(u.userId)!, clicks: u._count?.userId ?? 0 }));
 
   // Zone activity
   const zoneVenueMap = new Map(zoneActivity.map(z => [z.id, z.venues.map(v => v.id)]));
@@ -209,6 +213,13 @@ export async function GET(req: Request) {
     active: (zoneVenueMap.get(z.id) || []).reduce((s, vid) => s + (activeByVenue.get(vid) || 0), 0),
   }));
 
+  // Available vote weeks for the filter
+  const availableWeeks = await prisma.weekCycle.findMany({
+    orderBy: [{ year: "desc" }, { week: "desc" }],
+    take: 30,
+    select: { id: true, year: true, week: true, startsAt: true },
+  });
+
   return NextResponse.json({
     days: allTime ? 0 : days,
     allTime,
@@ -224,6 +235,8 @@ export async function GET(req: Request) {
     },
     daily,
     topVotes,
+    voteFilter: { year: voteYear, week: voteWeek },
+    availableWeeks,
     topClickers,
     zones,
     activePromotions: activePromos,

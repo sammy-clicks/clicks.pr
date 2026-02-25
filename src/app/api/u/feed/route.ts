@@ -21,6 +21,8 @@ export async function GET() {
         venueImageUrl: true,
         crowdLevel: true,
         address: true,
+        lat: true,
+        lng: true,
         boostActiveUntil: true,
         zone: { select: { id: true, name: true } },
       },

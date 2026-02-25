@@ -14,6 +14,7 @@ export default function AccountPage() {
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [saving, setSaving] = useState(false);
   const [ghost, setGhost] = useState<boolean | null>(null);
+  const [avatarFileName, setAvatarFileName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -55,6 +56,7 @@ export default function AccountPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setAvatarFileName(file.name);
     const reader = new FileReader();
     reader.onload = ev => {
       const src = ev.target?.result as string;
@@ -183,7 +185,7 @@ export default function AccountPage() {
         </div>
         </div>
         {avatarUrl && avatarUrl !== (user.avatarUrl ?? "") && (
-          <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>New photo selected — save to apply.</p>
+          <p className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{avatarFileName} ready to upload. Save changes.</p>
         )}
         <button className="btn" onClick={saveProfile} disabled={saving}>
           Save profile

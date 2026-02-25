@@ -48,6 +48,8 @@ export default function VenueAccount() {
   const [showBoostConfirm, setShowBoostConfirm] = useState(false);
   const [showWelcome, setShowWelcome]           = useState(false);
   const [showPreview, setShowPreview]           = useState(false);
+  const [avatarFileName, setAvatarFileName] = useState("");
+  const [venueFileName, setVenueFileName]   = useState("");
   const [cropState, setCropState] = useState<{
     objectUrl: string; size: { w: number; h: number };
     onDone: (d: string) => void; zoom: number;
@@ -97,11 +99,13 @@ export default function VenueAccount() {
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
+    setAvatarFileName(f.name);
     setCropState({ objectUrl: URL.createObjectURL(f), size: { w: 200, h: 200 }, onDone: setAvatarUrl, zoom: 1 });
     e.target.value = "";
   }
   function handleVenueImgChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
+    setVenueFileName(f.name);
     setCropState({ objectUrl: URL.createObjectURL(f), size: { w: 600, h: 400 }, onDone: setVenueImageUrl, zoom: 1 });
     e.target.value = "";
   }
@@ -370,7 +374,7 @@ export default function VenueAccount() {
             <button className="btn sm secondary" style={{ marginTop: 8, fontSize: 11 }} onClick={() => avatarRef.current?.click()}>Change photo</button>
           </div>
         </div>
-        {avatarUrl !== (user.avatarUrl ?? "") && <div style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>New photo selected  not saved yet.</div>}
+        {avatarUrl !== (user.avatarUrl ?? "") && <div style={{ marginTop: 10, padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>{avatarFileName} ready to upload. Save changes.</div>}
         <button className="btn" style={{ marginTop: 14 }} onClick={saveAvatar} disabled={saving}>Save photo</button>
       </div>
 
@@ -432,7 +436,7 @@ export default function VenueAccount() {
                   {venueImageUrl && <button className="btn sm secondary" onClick={() => setVenueImageUrl("")}>Remove</button>}
                 </div>
                 <input ref={venueImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleVenueImgChange} />
-                {venueImageUrl !== (venue.venueImageUrl ?? "") && <div style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>New photo selected &mdash; not saved yet.</div>}
+                {venueImageUrl !== (venue.venueImageUrl ?? "") && <div style={{ padding: "6px 12px", borderRadius: 8, background: "rgba(231,168,255,0.08)", fontSize: 12, color: "var(--venue-brand)" }}>{venueFileName} ready to upload. Save changes.</div>}
                 <button className="btn" onClick={saveVenueImage} disabled={saving}>Save venue photo</button>
               </>
             )}

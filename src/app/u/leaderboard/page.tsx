@@ -48,6 +48,7 @@ export default function Leaderboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [tab, setTab] = useState<"clickers" | "spenders">("clickers");
 
   async function load() {
     setLoading(true);
@@ -110,68 +111,140 @@ export default function Leaderboard() {
             )
           }
 
-          {/* ── Top Clickers ── */}
-          <h3 style={{ marginBottom: 4 }}>Top Clickers This Week</h3>
-          <p className="muted" style={{ marginBottom: 14, fontSize: 12 }}>Ghost-mode users are hidden. Tap a player to view their profile.</p>
+          {/* ── Top Clickers / Top Spenders tabs ── */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <button
+              onClick={() => setTab("clickers")}
+              className={tab === "clickers" ? "btn" : "btn secondary"}
+              style={{ flex: 1, fontSize: 13 }}
+            >
+              Top Clickers
+            </button>
+            <button
+              onClick={() => setTab("spenders")}
+              className={tab === "spenders" ? "btn" : "btn secondary"}
+              style={{ flex: 1, fontSize: 13 }}
+            >
+              Top Spenders
+            </button>
+          </div>
 
-          {(!data.topClickers || data.topClickers.length === 0)
-            ? <p className="muted">No clicks recorded yet this week.</p>
-            : (
-              <>
-                {/* Podium top 3 */}
-                {data.topClickers.length >= 3 && (
-                  <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "flex-end" }}>
-                    {[1, 0, 2].map(idx => {
-                      const u = data.topClickers[idx];
-                      if (!u) return null;
-                      const isFirst = idx === 0;
-                      return (
+          {tab === "clickers" && (
+            <>
+              <p className="muted" style={{ marginBottom: 14, fontSize: 12 }}>Ghost-mode users are hidden. Tap a player to view their profile.</p>
+              {(!data.topClickers || data.topClickers.length === 0)
+                ? <p className="muted">No clicks recorded yet this week.</p>
+                : (
+                  <>
+                    {data.topClickers.length >= 3 && (
+                      <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "flex-end" }}>
+                        {[1, 0, 2].map(idx => {
+                          const u = data.topClickers[idx];
+                          if (!u) return null;
+                          const isFirst = idx === 0;
+                          return (
+                            <div key={u.id} onClick={() => setSelectedUser(u)}
+                              style={{ flex: 1, borderRadius: 14, background: "var(--surface)", border: `1.5px solid ${PODIUM_COLORS[idx]}40`, padding: isFirst ? "16px 8px" : "12px 8px", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
+                              onMouseEnter={e => (e.currentTarget.style.borderColor = PODIUM_COLORS[idx])}
+                              onMouseLeave={e => (e.currentTarget.style.borderColor = `${PODIUM_COLORS[idx]}40`)}
+                            >
+                              <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: PODIUM_COLORS[idx], marginBottom: 6 }}>{PODIUM_LABELS[idx]}</div>
+                              {u.avatarUrl
+                                ? <img src={u.avatarUrl} alt={u.username} style={{ width: isFirst ? 52 : 42, height: isFirst ? 52 : 42, borderRadius: "50%", objectFit: "cover", border: `2px solid ${PODIUM_COLORS[idx]}`, margin: "0 auto 6px" }} />
+                                : <div style={{ width: isFirst ? 52 : 42, height: isFirst ? 52 : 42, borderRadius: "50%", background: `${PODIUM_COLORS[idx]}22`, border: `2px solid ${PODIUM_COLORS[idx]}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", fontWeight: 800, fontSize: isFirst ? 20 : 16, color: PODIUM_COLORS[idx] }}>
+                                    {(u.username?.[0] ?? "?").toUpperCase()}
+                                  </div>
+                              }
+                              <div style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{u.username}</div>
+                              <div style={{ color: PODIUM_COLORS[idx], fontWeight: 800, fontSize: isFirst ? 15 : 13, marginTop: 3 }}>{u.clicks}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      {data.topClickers.slice(3).map((u: any) => (
                         <div key={u.id} onClick={() => setSelectedUser(u)}
-                          style={{ flex: 1, borderRadius: 14, background: "var(--surface)", border: `1.5px solid ${PODIUM_COLORS[idx]}40`, padding: isFirst ? "16px 8px" : "12px 8px", textAlign: "center", cursor: "pointer", transition: "border-color 0.15s" }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = PODIUM_COLORS[idx])}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = `${PODIUM_COLORS[idx]}40`)}
+                          style={{ borderRadius: 12, background: "var(--surface)", border: "1px solid var(--border)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "border-color 0.15s" }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(139,92,246,0.4)")}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
                         >
-                          <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: PODIUM_COLORS[idx], marginBottom: 6 }}>{PODIUM_LABELS[idx]}</div>
+                          <span className="muted" style={{ fontSize: 13, fontWeight: 700, minWidth: 24, textAlign: "center" }}>#{u.rank}</span>
                           {u.avatarUrl
-                            ? <img src={u.avatarUrl} alt={u.username} style={{ width: isFirst ? 52 : 42, height: isFirst ? 52 : 42, borderRadius: "50%", objectFit: "cover", border: `2px solid ${PODIUM_COLORS[idx]}`, margin: "0 auto 6px" }} />
-                            : <div style={{ width: isFirst ? 52 : 42, height: isFirst ? 52 : 42, borderRadius: "50%", background: `${PODIUM_COLORS[idx]}22`, border: `2px solid ${PODIUM_COLORS[idx]}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", fontWeight: 800, fontSize: isFirst ? 20 : 16, color: PODIUM_COLORS[idx] }}>
+                            ? <img src={u.avatarUrl} alt={u.username} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid rgba(139,92,246,0.3)" }} />
+                            : <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(139,92,246,0.12)", border: "2px solid rgba(139,92,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: 14, color: "#8b5cf6" }}>
                                 {(u.username?.[0] ?? "?").toUpperCase()}
                               </div>
                           }
-                          <div style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{u.username}</div>
-                          <div style={{ color: PODIUM_COLORS[idx], fontWeight: 800, fontSize: isFirst ? 15 : 13, marginTop: 3 }}>{u.clicks}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Ranks 4+ */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  {data.topClickers.slice(3).map((u: any) => (
-                    <div key={u.id} onClick={() => setSelectedUser(u)}
-                      style={{ borderRadius: 12, background: "var(--surface)", border: "1px solid var(--border)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "border-color 0.15s" }}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(139,92,246,0.4)")}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--border)")}
-                    >
-                      <span className="muted" style={{ fontSize: 13, fontWeight: 700, minWidth: 24, textAlign: "center" }}>#{u.rank}</span>
-                      {u.avatarUrl
-                        ? <img src={u.avatarUrl} alt={u.username} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid rgba(139,92,246,0.3)" }} />
-                        : <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(139,92,246,0.12)", border: "2px solid rgba(139,92,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: 14, color: "#8b5cf6" }}>
-                            {(u.username?.[0] ?? "?").toUpperCase()}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>@{u.username}</div>
                           </div>
-                      }
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>@{u.username}</div>
-                      </div>
-                      <div style={{ fontWeight: 800, fontSize: 15, color: "#8b5cf6" }}>{u.clicks}</div>
-                      <span style={{ color: "var(--muted-text)", fontSize: 14 }}>›</span>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: "#8b5cf6" }}>{u.clicks}</div>
+                          <span style={{ color: "var(--muted-text)", fontSize: 14 }}>›</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </>
-            )
-          }
+                  </>
+                )
+              }
+            </>
+          )}
+
+          {tab === "spenders" && (
+            <>
+              <p className="muted" style={{ marginBottom: 14, fontSize: 12 }}>Top spenders on completed orders this week. Ghost-mode users are hidden.</p>
+              {(!data.topSpenders || data.topSpenders.length === 0)
+                ? <p className="muted">No completed orders this week.</p>
+                : (
+                  <>
+                    {data.topSpenders.length >= 3 && (
+                      <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "flex-end" }}>
+                        {[1, 0, 2].map(idx => {
+                          const u = data.topSpenders[idx];
+                          if (!u) return null;
+                          const isFirst = idx === 0;
+                          return (
+                            <div key={u.id}
+                              style={{ flex: 1, borderRadius: 14, background: "var(--surface)", border: `1.5px solid ${PODIUM_COLORS[idx]}40`, padding: isFirst ? "16px 8px" : "12px 8px", textAlign: "center" }}
+                            >
+                              <div style={{ fontSize: isFirst ? 14 : 12, fontWeight: 800, color: PODIUM_COLORS[idx], marginBottom: 6 }}>{PODIUM_LABELS[idx]}</div>
+                              {u.avatarUrl
+                                ? <img src={u.avatarUrl} alt={u.username} style={{ width: isFirst ? 52 : 42, height: isFirst ? 52 : 42, borderRadius: "50%", objectFit: "cover", border: `2px solid ${PODIUM_COLORS[idx]}`, margin: "0 auto 6px" }} />
+                                : <div style={{ width: isFirst ? 52 : 42, height: isFirst ? 52 : 42, borderRadius: "50%", background: `${PODIUM_COLORS[idx]}22`, border: `2px solid ${PODIUM_COLORS[idx]}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 6px", fontWeight: 800, fontSize: isFirst ? 20 : 16, color: PODIUM_COLORS[idx] }}>
+                                    {(u.username?.[0] ?? "?").toUpperCase()}
+                                  </div>
+                              }
+                              <div style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>@{u.username}</div>
+                              <div style={{ color: PODIUM_COLORS[idx], fontWeight: 800, fontSize: isFirst ? 15 : 13, marginTop: 3 }}>${(u.totalCents / 100).toFixed(2)}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                      {data.topSpenders.slice(3).map((u: any) => (
+                        <div key={u.id}
+                          style={{ borderRadius: 12, background: "var(--surface)", border: "1px solid var(--border)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 12 }}
+                        >
+                          <span className="muted" style={{ fontSize: 13, fontWeight: 700, minWidth: 24, textAlign: "center" }}>#{u.rank}</span>
+                          {u.avatarUrl
+                            ? <img src={u.avatarUrl} alt={u.username} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid rgba(245,158,11,0.3)" }} />
+                            : <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(245,158,11,0.12)", border: "2px solid rgba(245,158,11,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: 14, color: "#f59e0b" }}>
+                                {(u.username?.[0] ?? "?").toUpperCase()}
+                              </div>
+                          }
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>@{u.username}</div>
+                          </div>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: "#f59e0b" }}>${(u.totalCents / 100).toFixed(2)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )
+              }
+            </>
+          )}
         </>
       )}
 

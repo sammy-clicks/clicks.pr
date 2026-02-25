@@ -137,6 +137,7 @@ export async function GET() {
     resetAt,
     checkins: checkins.map(c => ({
       id: c.id,
+      venueId: c.venueId,
       venueName: c.venue.name,
       venueType: c.venue.type,
       startAt: c.startAt,
@@ -151,6 +152,7 @@ export async function GET() {
       itemCount: o.items.reduce((s, i) => s + i.qty, 0),
     })),
     clicks: clickCount,
+    distinctVenueCount: new Set(checkins.map(c => c.venueId)).size,
     totalSpentCents,
     orderRankAmongFriends,
     friends: friendStats,

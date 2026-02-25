@@ -7,8 +7,8 @@ import { CartWidget } from "../components/CartWidget";
 import { Footer } from "../components/Footer";
 
 export const metadata: Metadata = {
-  title: "Clicks V1",
-  description: "Clicks V1 PWA Starter",
+  title: "Clicks",
+  description: "Clicks — your night out, tracked.",
   manifest: "/manifest.webmanifest",
   icons: {
     apple: "/flow-3.png",

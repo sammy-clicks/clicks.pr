@@ -134,7 +134,7 @@ export default function Summary() {
 
             <div className="row" style={{ gap: 10, marginBottom: 20, justifyContent: "center", flexWrap: "wrap" }}>
               <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{data.checkins.length}</div>
+                <div style={{ fontSize: 28, fontWeight: 700 }}>{data.distinctVenueCount}</div>
                 <div className="muted" style={{ fontSize: 12 }}>Venues</div>
               </div>
               <div style={{ textAlign: "center" }}>
@@ -179,7 +179,7 @@ export default function Summary() {
       {/* Personal stats */}
       <div className="row" style={{ marginBottom: 20, flexWrap: "wrap" }}>
         <div className="card" style={{ flex: "1 1 130px", textAlign: "center" }}>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{data.checkins.length}</div>
+          <div style={{ fontSize: 26, fontWeight: 700 }}>{data.distinctVenueCount}</div>
           <div className="muted" style={{ fontSize: 12 }}>Venues visited</div>
         </div>
         <div className="card" style={{ flex: "1 1 130px", textAlign: "center" }}>

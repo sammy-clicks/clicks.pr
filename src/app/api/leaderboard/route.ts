@@ -45,7 +45,7 @@ export async function GET() {
   const clickCounts = await prisma.clickEvent.groupBy({
     by: ["userId"],
     where: { createdAt: { gte: weekStart } },
-    _count: { _all: true },
+    _count: { userId: true },
     orderBy: { _count: { userId: "desc" } },
     take: 20,
   });
@@ -60,8 +60,30 @@ export async function GET() {
     .filter(c => userMap.has(c.userId))
     .map((c, i) => {
       const u = userMap.get(c.userId)!;
-      return { rank: i + 1, id: u.id, username: u.username, avatarUrl: u.avatarUrl ?? null, clicks: c._count._all };
+      return { rank: i + 1, id: u.id, username: u.username, avatarUrl: u.avatarUrl ?? null, clicks: c._count?.userId ?? 0 };
     });
 
-  return NextResponse.json({ topZones, topClickers, currentUserId: session.sub });
+  // Top spenders this week
+  const spendCounts = await prisma.order.groupBy({
+    by: ["userId"],
+    where: { status: "COMPLETED", createdAt: { gte: weekStart } },
+    _sum: { totalCents: true },
+    orderBy: { _sum: { totalCents: "desc" } },
+    take: 20,
+  });
+
+  const spenderIds = spendCounts.map(s => s.userId).filter(Boolean) as string[];
+  const spenderRows = await prisma.user.findMany({
+    where: { id: { in: spenderIds }, ghostMode: false },
+    select: { id: true, username: true, avatarUrl: true },
+  });
+  const spenderMap = new Map(spenderRows.map(u => [u.id, u]));
+  const topSpenders = spendCounts
+    .filter(s => s.userId && spenderMap.has(s.userId!))
+    .map((s, i) => {
+      const u = spenderMap.get(s.userId!)!;
+      return { rank: i + 1, id: u.id, username: u.username, avatarUrl: u.avatarUrl ?? null, totalCents: s._sum?.totalCents ?? 0 };
+    });
+
+  return NextResponse.json({ topZones, topClickers, topSpenders, currentUserId: session.sub });
 }

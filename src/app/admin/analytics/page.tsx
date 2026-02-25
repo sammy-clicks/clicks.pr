@@ -46,10 +46,14 @@ export default function AdminAnalytics() {
   const [error, setError] = useState("");
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(false);
+  const [voteYear, setVoteYear] = useState<string>("");
+  const [voteWeek, setVoteWeek] = useState<string>("");
 
-  async function load(d = days) {
+  async function load(d = days, vy = voteYear, vw = voteWeek) {
     setLoading(true);
-    const r = await fetch(`/api/admin/analytics?days=${d}`);
+    const params = new URLSearchParams({ days: String(d) });
+    if (vy && vw) { params.set("voteYear", vy); params.set("voteWeek", vw); }
+    const r = await fetch(`/api/admin/analytics?${params}`);
     const j = await r.json();
     setLoading(false);
     if (!r.ok) { setError(j.error || "Unauthorized"); return; }
@@ -178,9 +182,30 @@ export default function AdminAnalytics() {
           )}
 
           {/* ── Weekly votes ───────────────────────────────────────────── */}
+          <h3>Votes by Week</h3>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+            <select
+              value={voteYear && voteWeek ? `${voteYear}-${voteWeek}` : ""}
+              onChange={e => {
+                if (!e.target.value) { setVoteYear(""); setVoteWeek(""); load(days, "", ""); return; }
+                const [y, w] = e.target.value.split("-");
+                setVoteYear(y); setVoteWeek(w); load(days, y, w);
+              }}
+              style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--ink)", fontSize: 13 }}
+            >
+              <option value="">All-time (no week filter)</option>
+              {(data.availableWeeks ?? []).map((wk: any) => (
+                <option key={wk.id} value={`${wk.year}-${wk.week}`}>
+                  {wk.year} — Week {wk.week} ({new Date(wk.startsAt).toLocaleDateString()})
+                </option>
+              ))}
+            </select>
+            {voteYear && voteWeek && (
+              <span className="muted" style={{ fontSize: 12 }}>Showing week {voteWeek}, {voteYear}</span>
+            )}
+          </div>
           {data.topVotes.length > 0 && (
             <>
-              <h3>Weekly Votes — Top 5</h3>
               <table>
                 <thead><tr><th>#</th><th>Venue</th><th>Votes</th></tr></thead>
                 <tbody>
@@ -195,6 +220,7 @@ export default function AdminAnalytics() {
               </table>
             </>
           )}
+          {data.topVotes.length === 0 && <p className="muted" style={{ marginBottom: 16 }}>No votes recorded{voteYear && voteWeek ? ` for week ${voteWeek}, ${voteYear}` : ""}.</p>}
 
           {/* ── Zone activity ──────────────────────────────────────────── */}
           <h3>Zone Activity (live)</h3>
