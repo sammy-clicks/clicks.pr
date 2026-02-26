@@ -15,17 +15,23 @@ export async function POST(req: Request) {
   try { body = Schema.parse(await req.json()); }
   catch { return NextResponse.json({ error: "Invalid email." }, { status: 400 }); }
 
-  // Always return ok to prevent email enumeration
   const user = await prisma.user.findUnique({ where: { email: body.email } });
-  if (user) {
-    const token = await new SignJWT({ type: "password-reset", userId: user.id })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("1h")
-      .sign(secret);
+  if (!user) {
+    return NextResponse.json({ error: "No account found with that email address." }, { status: 404 });
+  }
 
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://clickspr.com"}/auth/reset-password?token=${token}`;
-    await sendPasswordResetEmail(user.email!, resetUrl).catch(() => {});
+  const token = await new SignJWT({ type: "password-reset", userId: user.id })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("1h")
+    .sign(secret);
+
+  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://clickspr.com"}/auth/reset-password?token=${token}`;
+  try {
+    await sendPasswordResetEmail(user.email!, resetUrl);
+  } catch (err: any) {
+    console.error("Reset email failed:", err?.message ?? err);
+    return NextResponse.json({ error: `Email error: ${err?.message ?? "Failed to send"}` }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

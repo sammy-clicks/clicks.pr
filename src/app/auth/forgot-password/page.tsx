@@ -17,9 +17,10 @@ export default function ForgotPassword() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email }),
     });
+    const data = await res.json();
     setLoading(false);
-    if (res.ok) { setSent(true); }
-    else { setMsg("Something went wrong. Try again."); }
+    if (!res.ok) { setMsg(data.error || "Something went wrong. Try again."); return; }
+    setSent(true);
   }
 
   return (
@@ -58,7 +59,8 @@ export default function ForgotPassword() {
 
           {sent && (
             <div style={{ textAlign: "center", marginTop: 16 }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>📬</div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Clicks" style={{ height: 48, marginBottom: 16 }} />
               <p style={{ fontSize: 13, opacity: 0.65 }}>
                 Didn&apos;t receive it? Check your spam folder or{" "}
                 <button
