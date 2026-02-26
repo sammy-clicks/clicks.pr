@@ -7,7 +7,7 @@ function getResend() {
 }
 
 export async function sendOtpEmail(to: string, otp: string) {
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM,
     to,
     subject: "Your Clicks verification code",
@@ -21,10 +21,11 @@ export async function sendOtpEmail(to: string, otp: string) {
       </div>
     `,
   });
+  if (error) throw new Error(error.message);
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
-  await getResend().emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM,
     to,
     subject: "Reset your Clicks password",
@@ -38,5 +39,6 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
       </div>
     `,
   });
+  if (error) throw new Error(error.message);
 }
 

@@ -248,7 +248,8 @@ export default function Signup() {
           {step === "otp" ? (
             <>
               <div style={{ textAlign: "center", marginBottom: 20 }}>
-                <div style={{ fontSize: 42, marginBottom: 10 }}>📧</div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Clicks" style={{ height: 48, marginBottom: 16 }} />
                 <p style={{ fontSize: 14, lineHeight: 1.6, margin: 0 }}>
                   We sent a 6-digit code to<br />
                   <strong>{email}</strong>

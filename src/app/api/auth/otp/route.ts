@@ -53,9 +53,10 @@ export async function POST(req: Request) {
   // Send OTP email
   try {
     await sendOtpEmail(body.email, otp);
-  } catch (err) {
-    console.error("OTP email failed:", err);
-    return NextResponse.json({ error: "Failed to send verification email. Please try again." }, { status: 500 });
+  } catch (err: any) {
+    const detail = err?.message ?? String(err);
+    console.error("OTP email failed:", detail);
+    return NextResponse.json({ error: `Email error: ${detail}` }, { status: 500 });
   }
 
   return NextResponse.json({ pendingToken });
