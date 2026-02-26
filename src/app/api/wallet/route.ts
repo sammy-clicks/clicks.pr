@@ -24,7 +24,7 @@ export async function GET(req: Request) {
         },
       },
     }),
-    prisma.walletTransaction.count({
+    prisma.walletTxn.count({
       where: { wallet: { userId: session.sub } },
     }),
   ]);
