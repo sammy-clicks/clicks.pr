@@ -19,7 +19,7 @@ function DeleteVenueModal({ name, onCancel, onConfirm }: { name: string; onCance
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
       <div style={{ background: "var(--surface,#1a1a2e)", borderRadius: 14, padding: 28, maxWidth: 440, width: "100%" }}>
         <h3 style={{ margin: "0 0 10px", color: "#f66" }}>Delete "{name}"?</h3>
-        <p className="muted" style={{ marginBottom: 16 }}>All orders, menu items, check-ins and stats for this venue will be permanently deleted.</p>
+        <p className="muted" style={{ marginBottom: 16 }}>The venue will be moved to "Deleted Venues" and hidden from all users. Historical data is preserved.</p>
         <p className="muted" style={{ fontSize: 13 }}>Type <strong>{required}</strong> to confirm:</p>
         <input value={confirm} onChange={e => setConfirm(e.target.value)} style={{ marginTop: 6 }} autoFocus />
         <div className="row" style={{ marginTop: 14, gap: 8 }}>
@@ -295,6 +295,29 @@ export default function VenuesAdmin() {
           </div>
         ))}
       </div>
+
+      {/* ── Deleted Venues ── */}
+      {data.deletedVenues?.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800, color: "var(--muted-text)" }}>
+            🗑️ Deleted Venues ({data.deletedVenues.length})
+          </h3>
+          <div className="row" style={{ opacity: 0.55 }}>
+            {data.deletedVenues.map((v: any) => (
+              <div key={v.id} className="card" style={{ flex: "1 1 280px", borderColor: "rgba(220,38,38,0.2)", filter: "grayscale(0.3)" }}>
+                <div className="header">
+                  <strong style={{ textDecoration: "line-through" }}>{v.name}</strong>
+                  <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.3)", color: "#f87171" }}>Deleted</span>
+                </div>
+                <p className="muted" style={{ fontSize: 12 }}>{v.type} · {v.zone.name} · {v.municipality.name}</p>
+                <p className="muted" style={{ fontSize: 11 }}>
+                  Deleted {v.deletedAt ? new Date(v.deletedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

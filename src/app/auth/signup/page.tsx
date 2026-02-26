@@ -167,6 +167,9 @@ export default function Signup() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<"terms" | "privacy" | null>(null);
+  const [step, setStep] = useState<"form" | "otp">("form");
+  const [pendingToken, setPendingToken] = useState("");
+  const [otp, setOtp] = useState("");
 
   async function submit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -178,7 +181,7 @@ export default function Signup() {
     if (password !== confirm) { setMsg("Passwords do not match."); return; }
     if (!agreed) { setMsg("You must agree to the Terms of Service and Privacy Policy."); return; }
     setLoading(true);
-    const res = await fetch("/api/auth/signup", {
+    const res = await fetch("/api/auth/otp", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ username: username.trim().toLowerCase(), firstName, lastName, birthdate, email, password, country }),
@@ -186,7 +189,40 @@ export default function Signup() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) { setMsg(data.error || "Failed"); return; }
+    setPendingToken(data.pendingToken);
+    setStep("otp");
+    setMsg("");
+  }
+
+  async function submitOtp(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (otp.length !== 6) { setMsg("Enter the 6-digit code."); return; }
+    setLoading(true);
+    setMsg("");
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ pendingToken, otp }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) { setMsg(data.error || "Verification failed"); return; }
     window.location.href = "/u/dashboard";
+  }
+
+  async function resendCode() {
+    setMsg("");
+    setLoading(true);
+    const res = await fetch("/api/auth/otp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: username.trim().toLowerCase(), firstName, lastName, birthdate, email, password, country }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) { setMsg(data.error || "Failed to resend"); return; }
+    setPendingToken(data.pendingToken);
+    setMsg("New code sent!");
   }
 
   return (
@@ -209,7 +245,54 @@ export default function Signup() {
           <p className="auth-card-title">Create account</p>
           <p className="auth-card-sub">Join Clicks — Puerto Rico&apos;s nightlife radar</p>
 
-          <form onSubmit={submit} autoComplete="on" noValidate>
+          {step === "otp" ? (
+            <>
+              <div style={{ textAlign: "center", marginBottom: 20 }}>
+                <div style={{ fontSize: 42, marginBottom: 10 }}>📧</div>
+                <p style={{ fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+                  We sent a 6-digit code to<br />
+                  <strong>{email}</strong>
+                </p>
+              </div>
+              <form onSubmit={submitOtp} noValidate>
+                <label htmlFor="su-otp">Verification code</label>
+                <input
+                  id="su-otp"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={otp}
+                  onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  autoFocus
+                  style={{ textAlign: "center", letterSpacing: "0.3em", fontSize: 28, fontWeight: 700 }}
+                />
+                <button type="submit" className="auth-submit-btn" disabled={loading || otp.length !== 6}>
+                  {loading ? "Verifying…" : "Verify & Create Account"}
+                </button>
+                {msg && <p className={msg === "New code sent!" ? "auth-card-sub" : "auth-error"} style={{ textAlign: "center" }}>{msg}</p>}
+              </form>
+              <div style={{ textAlign: "center", marginTop: 14, fontSize: 13 }}>
+                Didn&apos;t receive it?{" "}
+                <button
+                  onClick={resendCode}
+                  disabled={loading}
+                  style={{ background: "none", border: "none", padding: 0, color: "#08daf4", fontWeight: 600, fontSize: "inherit", cursor: "pointer" }}
+                >
+                  Resend code
+                </button>
+                {" "}·{" "}
+                <button
+                  onClick={() => { setStep("form"); setOtp(""); setMsg(""); }}
+                  style={{ background: "none", border: "none", padding: 0, color: "var(--muted-text)", fontWeight: 600, fontSize: "inherit", cursor: "pointer" }}
+                >
+                  Go back
+                </button>
+              </div>
+            </>
+          ) : (
+            <form onSubmit={submit} autoComplete="on" noValidate>
             <div style={{ display: "flex", gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <label htmlFor="su-first">First name</label>
@@ -325,6 +408,7 @@ export default function Signup() {
             </button>
             {msg && <p className="auth-error">{msg}</p>}
           </form>
+          )}
 
           <div className="auth-card-footer" style={{ marginTop: 18 }}>
             Already have an account?{" "}

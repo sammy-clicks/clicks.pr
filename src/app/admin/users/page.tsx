@@ -51,6 +51,7 @@ function UserDetailPanel({ userId, onClose, onRefresh }: { userId: string; onClo
   const [showBanForm, setShowBanForm] = useState(false);
   const [unbanning, setUnbanning] = useState(false);
   const [msg, setMsg] = useState("");
+  const [showWalletTxns, setShowWalletTxns] = useState(false);
 
   useEffect(() => {
     fetch(`/api/admin/users/${userId}`).then(r => r.json()).then(setDetail);
@@ -90,6 +91,48 @@ function UserDetailPanel({ userId, onClose, onRefresh }: { userId: string; onClo
             const u = detail.user;
             const isBanned = u.bannedUntil && new Date(u.bannedUntil) > new Date();
             const perm = isBanned && new Date(u.bannedUntil).getFullYear() >= 2090;
+
+            // Wallet txns overlay
+            if (showWalletTxns) {
+              const txns: any[] = detail.walletTxns ?? [];
+              return (
+                <div>
+                  <button onClick={() => setShowWalletTxns(false)} style={{ background: "none", border: "none", color: "var(--muted-text)", cursor: "pointer", fontSize: 13, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
+                    ← Back to profile
+                  </button>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <h4 style={{ margin: 0 }}>Wallet Transactions</h4>
+                    <span style={{ fontWeight: 800, fontSize: 17, color: "#08daf4" }}>{$$(u.wallet?.balanceCents ?? 0)}</span>
+                  </div>
+                  {txns.length === 0 ? (
+                    <p className="muted">No transactions yet.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {txns.map((t: any) => {
+                        const positive = t.amountCents > 0;
+                        return (
+                          <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: "var(--bg, #080c12)", border: "1px solid var(--border)" }}>
+                            <div style={{ width: 34, height: 34, borderRadius: "50%", background: positive ? "rgba(34,197,94,0.1)" : "rgba(248,113,113,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14 }}>
+                              {t.type === "TOPUP" ? "💰" : t.type === "TRANSFER_OUT" ? "📤" : t.type === "TRANSFER_IN" ? "📥" : t.type === "REFUND" ? "↩️" : "✏️"}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: 13 }}>{t.type.replace(/_/g, " ")}</div>
+                              {t.memo && <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>{t.memo}</div>}
+                              <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>{fmtDate(t.createdAt)}</div>
+                            </div>
+                            <div style={{ fontWeight: 800, fontSize: 14, color: positive ? "#22c55e" : "#f87171" }}>
+                              {positive ? "+" : ""}{$$(t.amountCents)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {txns.length === 50 && <p className="muted" style={{ fontSize: 11, textAlign: "center" }}>Showing last 50 transactions</p>}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <>
                 {/* Identity */}
@@ -111,10 +154,19 @@ function UserDetailPanel({ userId, onClose, onRefresh }: { userId: string; onClo
                   </div>
                 </div>
 
-                {/* Stats */}
+                {/* Stats — balance is clickable */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 18 }}>
+                  <div
+                    onClick={() => setShowWalletTxns(true)}
+                    style={{ background: "var(--bg)", borderRadius: 10, padding: "10px 6px", textAlign: "center", border: "1px solid rgba(8,218,244,0.3)", cursor: "pointer", transition: "border-color 0.15s" }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = "#08daf4")}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(8,218,244,0.3)")}
+                    title="Click to view wallet transactions"
+                  >
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#08daf4" }}>{$$(u.wallet?.balanceCents ?? 0)}</div>
+                    <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>Balance 💳</div>
+                  </div>
                   {[
-                    { label: "Balance", value: $$(u.wallet?.balanceCents ?? 0), color: "#08daf4" },
                     { label: "Clicks", value: u._count?.clicks ?? 0, color: "#f59e0b" },
                     { label: "Orders", value: u._count?.orders ?? 0, color: "#22c55e" },
                     { label: "Buddies", value: detail.buddyCount ?? 0, color: "#8b5cf6" },
@@ -134,7 +186,7 @@ function UserDetailPanel({ userId, onClose, onRefresh }: { userId: string; onClo
                     { label: "Phone", value: u.phone || "—" },
                     { label: "Country", value: u.country || "—" },
                     { label: "Joined", value: fmtDate(u.createdAt) },
-                    { label: "Last active", value: u.lastActiveAt ? fmtDate(u.lastActiveAt) : "—" },
+                    { label: "Last active", value: u.lastActiveAt ? fmtDate(u.lastActiveAt) : `—  (joined ${fmtDate(u.createdAt)})` },
                     ...(u.managedVenue ? [{ label: "Venue", value: `${u.managedVenue.name} · ${u.managedVenue.plan}` }] : []),
                   ].map(row => (
                     <div key={row.label} style={{ display: "flex", gap: 12, marginBottom: 7, fontSize: 13 }}>

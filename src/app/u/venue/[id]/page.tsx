@@ -18,6 +18,8 @@ const CROWD: Record<number, { label: string; color: string }> = {
   10: { label: "Full",        color: "#c0392b" },
 };
 
+type MixerOption = { id: string; name: string; priceCents: number };
+
 type MenuItem = {
   id: string;
   name: string;
@@ -26,6 +28,7 @@ type MenuItem = {
   isAvailable: boolean;
   category?: string | null;
   imageUrl?: string | null;
+  mixers: MixerOption[];
 };
 
 type PromoItem = { menuItemId: string; name: string; qty: number; priceCents: number };
@@ -38,6 +41,7 @@ type Promotion = {
   imageUrl?: string | null;
   expiresAt?: string | null;
   maxRedeemsPerNightPerUser: number;
+  hasAlcohol: boolean;
   items?: PromoItem[];
 };
 
@@ -50,6 +54,8 @@ export default function VenuePage({ params }: { params: { id: string } }) {
   const [lat, setLat]             = useState<number | null>(null);
   const [lng, setLng]             = useState<number | null>(null);
   const [selectedPromos, setSelectedPromos] = useState<Record<string, number>>({});
+  const [mixerModal, setMixerModal] = useState<{ item: MenuItem } | null>(null);
+  const [orderNote,   setOrderNote]   = useState("");
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { cart, addItem, setQty: ctxSetQty, clearCart, totalCents } = useCart();
   const { setActiveOrder } = useOrderTracker();
@@ -85,13 +91,31 @@ export default function VenuePage({ params }: { params: { id: string } }) {
     if (newQty <= 0) { ctxSetQty(m.id, 0); return; }
     const already = cart?.items.find(i => i.menuItemId === m.id);
     if (already) {
+      // Already in cart — just change qty (keep existing mixer)
       ctxSetQty(m.id, newQty);
+    } else if (m.mixers.length > 0) {
+      // Has mixer options — open picker first
+      setMixerModal({ item: m });
     } else {
       addItem(params.id, data.venue.name, data.venue.lat ?? 0, data.venue.lng ?? 0, {
         menuItemId: m.id, name: m.name,
         priceCents: m.priceCents, qty: newQty, isAlcohol: m.isAlcohol,
       });
     }
+  }
+
+  function confirmMixer(mixerId: string | null) {
+    if (!mixerModal || !data) { setMixerModal(null); return; }
+    const m = mixerModal.item;
+    const mixer = mixerId ? m.mixers.find(mx => mx.id === mixerId) : null;
+    addItem(params.id, data.venue.name, data.venue.lat ?? 0, data.venue.lng ?? 0, {
+      menuItemId: m.id, name: m.name,
+      priceCents: m.priceCents + (mixer?.priceCents ?? 0),
+      qty: 1, isAlcohol: m.isAlcohol,
+      mixerId: mixer?.id,
+      mixerName: mixer?.name,
+    });
+    setMixerModal(null);
   }
 
   function togglePromo(promoId: string, max: number) {
@@ -130,7 +154,11 @@ export default function VenuePage({ params }: { params: { id: string } }) {
   async function placeOrder() {
     setMsg(null);
     const venueCart = cart?.venueId === params.id ? cart.items : [];
-    const items = venueCart.filter(i => i.qty > 0).map(i => ({ menuItemId: i.menuItemId, qty: i.qty }));
+    const items = venueCart.filter(i => i.qty > 0).map(i => ({
+      menuItemId: i.menuItemId,
+      qty: i.qty,
+      mixerId: i.mixerId,
+    }));
     const promotions = Object.entries(selectedPromos).map(([promotionId, qty]) => ({ promotionId, qty }));
     if (items.length === 0 && promotions.length === 0) {
       setMsg({ text: "Add items or a promotion first.", ok: false }); return;
@@ -138,12 +166,16 @@ export default function VenuePage({ params }: { params: { id: string } }) {
     const res = await fetch("/api/orders", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ venueId: params.id, items, promotions }),
+      body: JSON.stringify({
+        venueId: params.id, items, promotions,
+        note: orderNote.trim() || undefined,
+      }),
     });
     const j = await res.json();
     if (!res.ok) { setMsg({ text: j.error || "Order failed", ok: false }); return; }
     clearCart();
     setSelectedPromos({});
+    setOrderNote("");
     reload();
     setActiveOrder({
       orderId: j.orderId,
@@ -242,6 +274,28 @@ export default function VenuePage({ params }: { params: { id: string } }) {
 
       <div style={{ padding:"0 16px" }}>
 
+        {/* Paused venue banner */}
+        {!data.venue.isEnabled && (
+          <div style={{
+            margin: "14px 0 10px",
+            padding: "14px 16px",
+            borderRadius: 14,
+            background: "rgba(245,158,11,0.08)",
+            border: "1.5px solid rgba(245,158,11,0.35)",
+            display: "flex", alignItems: "flex-start", gap: 12,
+          }}>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>⚠️</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 14, color: "#f59e0b", marginBottom: 3 }}>
+                This venue has temporarily paused service on Clicks
+              </div>
+              <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>
+                Menu browsing is available but ordering is disabled until the venue resumes. Check back later.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Crowd + actions */}
         <div style={{ paddingTop:data.venue.venueImageUrl ? 14 : 6, paddingBottom:4 }}>
           <div style={{ display:"flex", gap:3, marginBottom:5 }}>
@@ -298,6 +352,7 @@ export default function VenuePage({ params }: { params: { id: string } }) {
                 const isSelected = qty > 0;
                 const isMaxed    = qty >= p.maxRedeemsPerNightPerUser;
                 const regTotal   = p.items?.reduce((s, i) => s + i.qty * i.priceCents, 0) ?? 0;
+                const promoBlocked = p.hasAlcohol && data.alcoholBlocked;
                 return (
                   <div key={p.id} style={{
                     background:"var(--surface)",
@@ -305,6 +360,7 @@ export default function VenuePage({ params }: { params: { id: string } }) {
                     borderRadius:16, overflow:"hidden",
                     boxShadow: isSelected ? "0 0 0 2px rgba(8,218,244,0.18)" : "none",
                     transition:"all 0.2s",
+                    opacity: promoBlocked ? 0.5 : 1,
                   }}>
                     {p.imageUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -345,8 +401,13 @@ export default function VenuePage({ params }: { params: { id: string } }) {
                           <div style={{ marginTop:4, fontSize:11, color:"var(--muted-text)" }}>
                             Max {p.maxRedeemsPerNightPerUser} per night
                           </div>
+                          {promoBlocked && (
+                            <div style={{ marginTop:4, fontSize:11, color:"#f66", fontWeight:600 }}>After cutoff</div>
+                          )}
                         </div>
-                        {p.maxRedeemsPerNightPerUser === 1 ? (
+                        {promoBlocked ? (
+                          <span style={{ fontSize:11, color:"#f66", fontWeight:600, flexShrink:0 }}>Unavailable</span>
+                        ) : p.maxRedeemsPerNightPerUser === 1 ? (
                           <button onClick={() => togglePromo(p.id, 1)}
                             style={{ flexShrink:0, padding:"10px 20px", borderRadius:12, fontSize:13, fontWeight:700,
                               background: isSelected ? "rgba(8,218,244,0.12)" : "var(--accent)",
@@ -482,6 +543,25 @@ export default function VenuePage({ params }: { params: { id: string } }) {
           boxShadow:"0 -8px 32px rgba(8,218,244,0.1)",
         }}>
           <div style={{ maxWidth:640, margin:"0 auto" }}>
+            {/* Order note input */}
+            <div style={{ marginBottom:8 }}>
+              <input
+                value={orderNote}
+                onChange={e => setOrderNote(e.target.value.slice(0, 50))}
+                placeholder="Add a note for your order… (optional)"
+                maxLength={50}
+                style={{
+                  width:"100%", boxSizing:"border-box",
+                  background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.12)",
+                  borderRadius:10, color:"var(--ink)", fontSize:13, padding:"8px 12px",
+                }}
+              />
+              {orderNote.length > 0 && (
+                <span style={{ float:"right", fontSize:11, color:"var(--muted-text)", marginTop:2 }}>
+                  {orderNote.length}/50
+                </span>
+              )}
+            </div>
             <button onClick={placeOrder}
               style={{ width:"100%", padding:"15px 0", borderRadius:14, fontSize:15, fontWeight:900,
                 background:"var(--accent)", border:"none", color:"#000", cursor:"pointer",
@@ -491,6 +571,69 @@ export default function VenuePage({ params }: { params: { id: string } }) {
             <p style={{ margin:"6px 0 0", fontSize:11, color:"var(--muted-text)", textAlign:"center" }}>
               Wallet debited &middot; Check-in required
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Mixer picker modal */}
+      {mixerModal && (
+        <div style={{
+          position:"fixed", inset:0, background:"rgba(0,0,0,0.78)", zIndex:200,
+          display:"flex", alignItems:"flex-end", justifyContent:"center", padding:"0 0 env(safe-area-inset-bottom,0)",
+        }}
+          onClick={() => setMixerModal(null)}
+        >
+          <div style={{
+            background:"var(--surface)", borderRadius:"20px 20px 0 0",
+            width:"100%", maxWidth:560, padding:"24px 20px 32px",
+            border:"1px solid var(--border)",
+          }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontWeight:800, fontSize:17, marginBottom:4 }}>
+              Choose a Mixer
+            </div>
+            <p style={{ margin:"0 0 16px", fontSize:13, color:"var(--muted-text)" }}>
+              For: <strong>{mixerModal.item.name}</strong>
+            </p>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              <button
+                onClick={() => confirmMixer(null)}
+                style={{
+                  padding:"12px 16px", borderRadius:12, textAlign:"left",
+                  background:"rgba(255,255,255,0.05)", border:"1px solid var(--border)",
+                  color:"var(--ink)", fontSize:14, cursor:"pointer", fontWeight:600,
+                }}
+              >
+                No mixer / Straight
+              </button>
+              {mixerModal.item.mixers.map(mx => (
+                <button
+                  key={mx.id}
+                  onClick={() => confirmMixer(mx.id)}
+                  style={{
+                    padding:"12px 16px", borderRadius:12, textAlign:"left",
+                    background:"rgba(255,255,255,0.05)", border:"1px solid var(--border)",
+                    color:"var(--ink)", fontSize:14, cursor:"pointer", fontWeight:600,
+                    display:"flex", justifyContent:"space-between", alignItems:"center",
+                  }}
+                >
+                  <span>{mx.name}</span>
+                  {mx.priceCents > 0
+                    ? <span style={{ color:"var(--accent)", fontSize:13 }}>+{fmt(mx.priceCents)}</span>
+                    : <span style={{ color:"#22c55e", fontSize:13 }}>Free</span>
+                  }
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setMixerModal(null)}
+              style={{
+                marginTop:16, width:"100%", padding:"11px 0", borderRadius:12,
+                background:"transparent", border:"1px solid var(--border)",
+                color:"var(--muted-text)", fontSize:14, cursor:"pointer",
+              }}
+            >Cancel</button>
           </div>
         </div>
       )}

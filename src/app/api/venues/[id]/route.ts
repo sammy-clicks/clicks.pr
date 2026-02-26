@@ -28,7 +28,12 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     where: { id: params.id },
     include: {
       municipality: true,
-      menuItems: { orderBy: [{ category: "asc" }, { name: "asc" }] },
+      menuItems: {
+        orderBy: [{ category: "asc" }, { name: "asc" }],
+        include: {
+          mixers: { where: { isAvailable: true }, orderBy: { sortOrder: "asc" } },
+        },
+      },
       promotions: {
         where: { active: true, isDraft: false, OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] },
         orderBy: { createdAt: "desc" },
@@ -53,6 +58,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   const crowdLevel = Math.min(10, Math.max(0, Math.ceil(active / 2) + boostBonus));
   const boostActive = boostBonus > 0;
 
+  // Build a quick isAlcohol lookup for promo alcohol detection
+  const alcoholItemIds = new Set(venue.menuItems.filter(m => m.isAlcohol).map(m => m.id));
+
   return NextResponse.json({
     venue: {
       id: venue.id,
@@ -64,6 +72,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       lng: venue.lng,
       plan: venue.plan,
       venueImageUrl: venue.venueImageUrl ?? null,
+      isEnabled: venue.isEnabled,
     },
     alcoholStartMins: startMins,
     alcoholCutoffMins: cutoffMins,
@@ -78,16 +87,27 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       isAvailable: m.isAvailable,
       category: m.category ?? null,
       imageUrl: m.imageUrl ?? null,
+      mixers: m.mixers.map(mx => ({
+        id: mx.id,
+        name: mx.name,
+        priceCents: mx.priceCents,
+      })),
     })),
-    promotions: venue.promotions.map(p => ({
-      id: p.id,
-      title: p.title,
-      description: p.description ?? null,
-      priceCents: p.priceCents,
-      imageUrl: p.imageUrl ?? null,
-      expiresAt: p.expiresAt?.toISOString() ?? null,
-      maxRedeemsPerNightPerUser: p.maxRedeemsPerNightPerUser,
-      items: JSON.parse((p.items as string) ?? "[]"),
-    })),
+    promotions: venue.promotions.map(p => {
+      let parsedItems: Array<{ menuItemId: string; name: string; qty: number; priceCents: number }> = [];
+      try { parsedItems = JSON.parse((p.items as string) ?? "[]"); } catch {}
+      const hasAlcohol = parsedItems.some(i => alcoholItemIds.has(i.menuItemId));
+      return {
+        id: p.id,
+        title: p.title,
+        description: p.description ?? null,
+        priceCents: p.priceCents,
+        imageUrl: p.imageUrl ?? null,
+        expiresAt: p.expiresAt?.toISOString() ?? null,
+        maxRedeemsPerNightPerUser: p.maxRedeemsPerNightPerUser,
+        hasAlcohol,
+        items: parsedItems,
+      };
+    }),
   });
 }

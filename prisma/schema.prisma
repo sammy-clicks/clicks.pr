@@ -156,6 +156,8 @@ model Venue {
   isEnabled     Boolean  @default(true) // false = paused/disabled
   pausedAt      DateTime?              // set when venue is paused
 
+  deletedAt     DateTime?              // soft delete: set when admin deletes
+
   managerId     String?  @unique
   manager       User?    @relation("VenueManager", fields: [managerId], references: [id])
 
@@ -184,6 +186,21 @@ model MenuItem {
   imageUrl  String?   // optional item photo (base64 or URL)
 
   createdAt DateTime @default(now())
+
+  mixers    Mixer[]
+}
+
+model Mixer {
+  id         String   @id @default(cuid())
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  name       String
+  priceCents Int      @default(0)   // 0 = free; > 0 = extra charge
+  isAvailable Boolean @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([menuItemId])
 }
 
 model CheckIn {
@@ -287,6 +304,7 @@ model Order {
   venue     Venue @relation("VenueOrders", fields: [venueId], references: [id])
 
   totalCents Int
+  note       String?  // customer note, max 50 chars
   createdAt DateTime @default(now())
   acceptedAt DateTime?
   readyAt DateTime?
@@ -308,6 +326,7 @@ model OrderItem {
   priceCents Int
   qty       Int
   isAlcohol Boolean
+  mixerName String?  // name of selected mixer (snapshot at order time)
 }
 
 model WeekCycle {

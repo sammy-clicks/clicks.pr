@@ -21,6 +21,9 @@ export async function GET() {
   const items = await prisma.menuItem.findMany({
     where: { venueId: venue.id },
     orderBy: [{ category: "asc" }, { name: "asc" }],
+    include: {
+      mixers: { orderBy: { sortOrder: "asc" } },
+    },
   });
   return NextResponse.json({ venueId: venue.id, venueName: venue.name, items });
 }

@@ -255,7 +255,14 @@ function PlanContent() {
                   <div style={{ padding: "14px 16px", borderRadius: 12, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.25)", marginBottom: 8, textAlign: "left" }}>
                     <div style={{ fontWeight: 700, marginBottom: 6 }}>Are you sure?</div>
                     <div className="muted" style={{ fontSize: 13, marginBottom: 14 }}>
-                      You&apos;ll keep PRO until <strong style={{ color: "var(--ink)" }}>{data.subscriptionEndsAt ? new Date(data.subscriptionEndsAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "end of current period"}</strong>.
+                      You&apos;ll keep PRO until{" "}
+                      <strong style={{ color: "var(--ink)" }}>
+                        {data.subscriptionEndsAt
+                          ? new Date(data.subscriptionEndsAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+                          : data.subscriptionStartedAt
+                            ? new Date(new Date(data.subscriptionStartedAt).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+                            : "your next billing date"}
+                      </strong>.
                       After that, active promotions will be moved to drafts and you&apos;ll switch to the Free plan.
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>

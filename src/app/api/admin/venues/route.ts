@@ -8,26 +8,35 @@ export async function GET() {
   const auth = await requireRole(["ADMIN"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const venues = await prisma.venue.findMany({
-    include: {
-      municipality: { select: { name: true } },
-      zone: { select: { name: true } },
-      manager: { select: { id: true, firstName: true, lastName: true, email: true } },
-    },
-    orderBy: { name: "asc" },
-  });
+  const [venues, deletedVenues, municipalities, zones, managers] = await Promise.all([
+    prisma.venue.findMany({
+      where: { deletedAt: null },
+      include: {
+        municipality: { select: { name: true } },
+        zone: { select: { name: true } },
+        manager: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.venue.findMany({
+      where: { deletedAt: { not: null } },
+      include: {
+        municipality: { select: { name: true } },
+        zone: { select: { name: true } },
+        manager: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+      orderBy: { deletedAt: "desc" },
+    }),
+    prisma.municipality.findMany({ orderBy: { name: "asc" } }),
+    prisma.zone.findMany({ orderBy: { name: "asc" } }),
+    prisma.user.findMany({
+      where: { role: "VENUE" },
+      select: { id: true, firstName: true, lastName: true, email: true },
+      orderBy: { firstName: "asc" },
+    }),
+  ]);
 
-  const municipalities = await prisma.municipality.findMany({ orderBy: { name: "asc" } });
-  const zones = await prisma.zone.findMany({ orderBy: { name: "asc" } });
-
-  // Users with VENUE role that don't yet manage a venue
-  const managers = await prisma.user.findMany({
-    where: { role: "VENUE" },
-    select: { id: true, firstName: true, lastName: true, email: true },
-    orderBy: { firstName: "asc" },
-  });
-
-  return NextResponse.json({ venues, municipalities, zones, managers });
+  return NextResponse.json({ venues, deletedVenues, municipalities, zones, managers });
 }
 
 const CreateSchema = z.object({
@@ -100,16 +109,10 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   try {
-    await prisma.$transaction(async tx => {
-      await tx.orderItem.deleteMany({ where: { order: { venueId: id } } });
-      await tx.order.deleteMany({ where: { venueId: id } });
-      await tx.checkIn.deleteMany({ where: { venueId: id } });
-      await tx.clickEvent.deleteMany({ where: { venueId: id } });
-      await tx.promotion.deleteMany({ where: { venueId: id } });
-      await tx.vote.deleteMany({ where: { venueId: id } });
-      await tx.weeklyPick.deleteMany({ where: { venueId: id } });
-      await tx.menuItem.deleteMany({ where: { venueId: id } });
-      await tx.venue.delete({ where: { id } });
+    // Soft delete: preserve all venue data, just mark as deleted
+    await prisma.venue.update({
+      where: { id },
+      data: { deletedAt: new Date(), isEnabled: false, managerId: null },
     });
     return NextResponse.json({ ok: true });
   } catch (e: any) {

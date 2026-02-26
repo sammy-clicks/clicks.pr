@@ -4,16 +4,27 @@ import { getSession } from "@/app/api/_utils";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getSession();
   if (!session || session.role !== "USER") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const since = new Date(Date.now() - 120 * 60 * 1000);
+  const { searchParams } = new URL(req.url);
+  const period = searchParams.get("period") ?? "7d";
 
-  // Top zones by live crowd (sum checkins per zone)
+  function getPeriodSince(): Date | null {
+    if (period === "24h") return new Date(Date.now() - 24 * 60 * 60 * 1000);
+    if (period === "7d")  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    if (period === "30d") return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return null; // lifetime
+  }
+
+  const periodSince = getPeriodSince();
+
+  // Top zones by live crowd (sum checkins per zone) — always last 2h regardless of period
+  const liveWindow = new Date(Date.now() - 120 * 60 * 1000);
   const checkinCounts = await prisma.checkIn.groupBy({
     by: ["venueId"],
-    where: { startAt: { gte: since }, endAt: null },
+    where: { startAt: { gte: liveWindow }, endAt: null },
     _count: { _all: true },
   });
 
@@ -40,11 +51,10 @@ export async function GET() {
   }
   const topZones = Array.from(zoneMap.values()).sort((a, b) => b.crowd - a.crowd).slice(0, 5);
 
-  // Top users by clicks this week
-  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  // Top users by clicks in selected period
   const clickCounts = await prisma.clickEvent.groupBy({
     by: ["userId"],
-    where: { createdAt: { gte: weekStart } },
+    where: periodSince ? { createdAt: { gte: periodSince } } : {},
     _count: { userId: true },
     orderBy: { _count: { userId: "desc" } },
     take: 20,
@@ -63,10 +73,12 @@ export async function GET() {
       return { rank: i + 1, id: u.id, username: u.username, avatarUrl: u.avatarUrl ?? null, clicks: c._count?.userId ?? 0 };
     });
 
-  // Top spenders this week
+  // Top spenders in selected period
   const spendCounts = await prisma.order.groupBy({
     by: ["userId"],
-    where: { status: "COMPLETED", createdAt: { gte: weekStart } },
+    where: periodSince
+      ? { status: "COMPLETED", createdAt: { gte: periodSince } }
+      : { status: "COMPLETED" },
     _sum: { totalCents: true },
     orderBy: { _sum: { totalCents: "desc" } },
     take: 20,
@@ -85,5 +97,5 @@ export async function GET() {
       return { rank: i + 1, id: u.id, username: u.username, avatarUrl: u.avatarUrl ?? null, totalCents: s._sum?.totalCents ?? 0 };
     });
 
-  return NextResponse.json({ topZones, topClickers, topSpenders, currentUserId: session.sub });
+  return NextResponse.json({ topZones, topClickers, topSpenders, currentUserId: session.sub, period });
 }

@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const [recentOrders, buddyCount] = await Promise.all([
+  const [recentOrders, buddyCount, walletTxns] = await Promise.all([
     prisma.order.findMany({
       where: { userId: params.id },
       select: {
@@ -34,9 +34,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     prisma.buddy.count({
       where: { OR: [{ senderId: params.id, status: "ACCEPTED" }, { receiverId: params.id, status: "ACCEPTED" }] },
     }),
+    prisma.walletTxn.findMany({
+      where: { wallet: { userId: params.id } },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      select: { id: true, type: true, amountCents: true, memo: true, createdAt: true, counterpartyUserId: true },
+    }),
   ]);
 
-  return NextResponse.json({ user, recentOrders, buddyCount });
+  return NextResponse.json({ user, recentOrders, buddyCount, walletTxns });
 }
 
 const BanSchema = z.object({

@@ -47,7 +47,17 @@ const VENUE_EMOJI: Record<string, string> = {
   default:    "",
 };
 
-const SECTIONS = [
+// Haversine distance in miles
+function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3958.8;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const SECTIONS: { href: string; icon: string | null; label: string; desc: string }[] = [
   { href: "/u/zones",       icon: "/zones_users.png",       label: "Zones",       desc: "Browse zones & check in" },
   { href: "/u/wallet",      icon: "/wallet_users.png",      label: "Wallet",      desc: "Balance & transfers" },
   { href: "/u/buddies",     icon: "/buddies_users.png",     label: "Buddies",     desc: "Friends & requests" },
@@ -55,12 +65,17 @@ const SECTIONS = [
   { href: "/u/vote",        icon: "/vote_users.png",        label: "Vote",        desc: "Vote for venues" },
   { href: "/u/leaderboard", icon: "/leaderboard_users.png", label: "Leaderboard", desc: "Top users" },
   { href: "/u/summary",     icon: "/summary_users.png",     label: "Summary",     desc: "Your activity" },
+  { href: "/u/account",     icon: null,                     label: "Account",     desc: "Profile & settings" },
 ];
 
 export default function DashboardPage() {
   const [firstName, setFirstName]   = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl]   = useState<string | null>(null);
   const [loaded, setLoaded]         = useState(false);
   const [feed, setFeed]             = useState<any>(null);
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [userLat, setUserLat]       = useState<number | null>(null);
+  const [userLng, setUserLng]       = useState<number | null>(null);
   const [clicked, setClicked]       = useState<Record<string, boolean>>({});
   const [clickedAt, setClickedAt]   = useState<Record<string, number>>({});
   const [modalVenue, setModalVenue] = useState<any>(null);
@@ -77,16 +92,26 @@ export default function DashboardPage() {
   const greeting = GREETINGS[week % GREETINGS.length];
 
   const loadFeed = useCallback(async () => {
-    const [profileR, feedR] = await Promise.all([
+    const [profileR, feedR, promoR] = await Promise.all([
       fetch("/api/u/profile").then(r => r.ok ? r.json() : null),
       fetch("/api/u/feed").then(r => r.ok ? r.json() : null),
+      fetch("/api/u/promotions").then(r => r.ok ? r.json() : null),
     ]);
     if (profileR?.user?.firstName) setFirstName(profileR.user.firstName);
+    if (profileR?.user?.avatarUrl !== undefined) setAvatarUrl(profileR.user.avatarUrl ?? null);
     if (feedR) setFeed(feedR);
+    if (promoR?.promotions) setPromotions(promoR.promotions);
     setLoaded(true);
   }, []);
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
+
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      p => { setUserLat(p.coords.latitude); setUserLng(p.coords.longitude); },
+      () => {}
+    );
+  }, []);
 
   async function click(venueId: string) {
     if (clicked[venueId]) return;
@@ -189,7 +214,14 @@ export default function DashboardPage() {
                     {/* Info */}
                     <div style={{ padding: "10px 12px 12px" }}>
                       <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{v.name}</div>
-                      <div style={{ fontSize: 11, color: "var(--muted-text)", marginBottom: 6 }}>{v.zone?.name}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, color: "var(--muted-text)" }}>{v.zone?.name}</span>
+                        {userLat !== null && userLng !== null && v.lat != null && v.lng != null && (
+                          <span style={{ fontSize: 10, color: "rgba(8,218,244,0.7)", fontWeight: 600, flexShrink: 0 }}>
+                            · {haversineMi(userLat, userLng, v.lat, v.lng).toFixed(1)} mi
+                          </span>
+                        )}
+                      </div>
 
                       {/* Crowd meter + clicks row */}
                       <div style={{ marginBottom: 8 }}>
@@ -256,6 +288,70 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Active Promotions */}
+        {promotions.length > 0 && (
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Active Promotions</h2>
+            </div>
+            <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8,
+              scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+              {[...promotions]
+                .sort((a, b) => {
+                  if (userLat === null || userLng === null) return 0;
+                  return haversineMi(userLat, userLng, a.venue.lat, a.venue.lng) -
+                         haversineMi(userLat, userLng, b.venue.lat, b.venue.lng);
+                })
+                .map((p: any) => {
+                  const dist = userLat !== null && userLng !== null && p.venue.lat != null && p.venue.lng != null
+                    ? haversineMi(userLat, userLng, p.venue.lat, p.venue.lng)
+                    : null;
+                  return (
+                    <Link key={p.id} href={`/u/venue/${p.venue.id}`} style={{ textDecoration: "none", flexShrink: 0 }}>
+                      <div style={{
+                        width: 200, borderRadius: 16, overflow: "hidden",
+                        border: "1.5px solid rgba(139,92,246,0.3)",
+                        background: p.imageUrl ? "#111" : "var(--surface)",
+                        cursor: "pointer", transition: "box-shadow 0.2s",
+                      }}
+                        onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 2px rgba(139,92,246,0.5)"}
+                        onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.boxShadow = "none"}
+                      >
+                        <div style={{ position: "relative", height: 100, background: p.imageUrl ? undefined : "linear-gradient(135deg,#1a0a2e,#2a1a44)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {p.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.imageUrl} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+                          ) : p.venue.venueImageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.venue.venueImageUrl} alt={p.venue.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, opacity: 0.55 }} />
+                          ) : null}
+                          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%)" }} />
+                          <div style={{ position: "absolute", top: 7, right: 7, background: "rgba(139,92,246,0.9)", borderRadius: 6, fontSize: 10, fontWeight: 800, padding: "2px 8px", color: "#fff" }}>
+                            {p.priceCents === 0 ? "FREE" : `$${(p.priceCents / 100).toFixed(0)}`}
+                          </div>
+                        </div>
+                        <div style={{ padding: "10px 12px 12px" }}>
+                          <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#c4b5fd" }}>{p.title}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ fontSize: 11, color: "var(--muted-text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.venue.name}</span>
+                            {dist !== null && (
+                              <span style={{ fontSize: 10, color: "rgba(8,218,244,0.7)", fontWeight: 600, flexShrink: 0 }}>{dist.toFixed(1)} mi</span>
+                            )}
+                          </div>
+                          {p.expiresAt && (
+                            <div style={{ fontSize: 10, color: "#f59e0b", marginTop: 4 }}>
+                              Expires {new Date(p.expiresAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+            </div>
+          </div>
+        )}
 
         {/* Quick-menu modal */}
         {modalVenue && (
@@ -405,25 +501,36 @@ export default function DashboardPage() {
           gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
           gap: 12,
         }}>
-          {SECTIONS.map(s => (
-            <Link key={s.href} href={s.href} style={{ textDecoration: "none" }}>
-              <div className="card" style={{
-                display: "flex", flexDirection: "column", alignItems: "center",
-                gap: 8, padding: "18px 10px", borderRadius: 16, textAlign: "center",
-                transition: "transform 0.15s, box-shadow 0.15s", cursor: "pointer",
-              }}
-                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(8,218,244,0.12)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ""; (e.currentTarget as HTMLDivElement).style.boxShadow = ""; }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={s.icon} alt={s.label} style={{ width: 46, height: 46, objectFit: "contain" }} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{s.label}</div>
-                  <div className="muted" style={{ fontSize: 10, marginTop: 2, lineHeight: 1.4 }}>{s.desc}</div>
+          {SECTIONS.map(s => {
+            const isAccount = s.label === "Account";
+            return (
+              <Link key={s.href} href={s.href} style={{ textDecoration: "none" }}>
+                <div className="card" style={{
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                  gap: 8, padding: "18px 10px", borderRadius: 16, textAlign: "center",
+                  transition: "transform 0.15s, box-shadow 0.15s", cursor: "pointer",
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(8,218,244,0.12)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = ""; (e.currentTarget as HTMLDivElement).style.boxShadow = ""; }}
+                >
+                  {isAccount ? (
+                    avatarUrl
+                      ? <img src={avatarUrl} alt="Account" style={{ width: 46, height: 46, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--accent)" }} />
+                      : <div style={{ width: 46, height: 46, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, color: "#000" }}>
+                          {firstName?.[0]?.toUpperCase() ?? "U"}
+                        </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.icon!} alt={s.label} style={{ width: 46, height: 46, objectFit: "contain" }} />
+                  )}
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{s.label}</div>
+                    <div className="muted" style={{ fontSize: 10, marginTop: 2, lineHeight: 1.4 }}>{s.desc}</div>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
 
       </div>

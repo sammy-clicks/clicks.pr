@@ -4,9 +4,11 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 export type CartItem = {
   menuItemId: string;
   name: string;
-  priceCents: number;
+  priceCents: number;   // includes mixer extra charge if any
   qty: number;
   isAlcohol: boolean;
+  mixerId?: string;     // ID of selected mixer (for order submission)
+  mixerName?: string;   // display label
 };
 
 export type Cart = {

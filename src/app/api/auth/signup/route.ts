@@ -1,51 +1,55 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { jwtVerify } from "jose";
 import { prisma } from "@/lib/prisma";
 import { signToken } from "@/lib/auth";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
+
+const secret = new TextEncoder().encode(process.env.JWT_SECRET ?? "dev-secret");
 
 const Schema = z.object({
-  username: z.string().regex(/^[a-zA-Z0-9_]{3,20}$/),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  birthdate: z.string(),
-  email: z.string().email(),
-  password: z.string().min(8),
-  country: z.enum(["PR","US"]).default("PR"),
+  pendingToken: z.string(),
+  otp: z.string().length(6),
 });
 
 export async function POST(req: Request) {
   let body: z.infer<typeof Schema>;
   try { body = Schema.parse(await req.json()); }
-  catch { return NextResponse.json({ error: "Invalid input. Username (3-20 alphanumeric/_), email, and password (min 8) are required." }, { status: 400 }); }
+  catch { return NextResponse.json({ error: "Invalid request." }, { status: 400 }); }
 
-  const birthdate = new Date(body.birthdate);
+  let payload: any;
+  try {
+    const { payload: p } = await jwtVerify(body.pendingToken, secret);
+    payload = p;
+  } catch {
+    return NextResponse.json({ error: "Verification code expired. Please start over." }, { status: 400 });
+  }
 
-  // Simple age gate: PR 18, US 21 (default)
-  const age = Math.floor((Date.now() - birthdate.getTime()) / (365.25*24*3600*1000));
-  const minAge = body.country === "PR" ? 18 : 21;
-  if (age < minAge) return NextResponse.json({ error: "Age restricted" }, { status: 403 });
+  if (payload.type !== "signup-otp")
+    return NextResponse.json({ error: "Invalid token." }, { status: 400 });
+  if (payload.otp !== body.otp)
+    return NextResponse.json({ error: "Incorrect verification code." }, { status: 400 });
 
   const [existingEmail, existingUsername] = await Promise.all([
-    prisma.user.findUnique({ where: { email: body.email } }),
-    prisma.user.findUnique({ where: { username: body.username.toLowerCase() } }),
+    prisma.user.findUnique({ where: { email: payload.email } }),
+    prisma.user.findUnique({ where: { username: (payload.username as string).toLowerCase() } }),
   ]);
   if (existingEmail) return NextResponse.json({ error: "Email already registered." }, { status: 409 });
   if (existingUsername) return NextResponse.json({ error: "Username already taken." }, { status: 409 });
 
-  const passwordHash = await bcrypt.hash(body.password, 10);
+  const passwordHash = await bcrypt.hash(payload.password as string, 10);
 
   const user = await prisma.user.create({
     data: {
       role: "USER",
-      username: body.username.toLowerCase(),
-      firstName: body.firstName,
-      lastName: body.lastName,
-      birthdate,
-      country: body.country,
-      email: body.email,
+      username: (payload.username as string).toLowerCase(),
+      firstName: payload.firstName as string,
+      lastName: payload.lastName as string,
+      birthdate: new Date(payload.birthdate as string),
+      country: payload.country as string,
+      email: payload.email as string,
       passwordHash,
       wallet: { create: {} },
     },

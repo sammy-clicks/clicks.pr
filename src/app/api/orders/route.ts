@@ -58,12 +58,17 @@ export async function GET() {
   return NextResponse.json({ orders });
 }
 
-const ItemSchema = z.object({ menuItemId: z.string(), qty: z.number().int().min(1) });
+const ItemSchema = z.object({
+  menuItemId: z.string(),
+  qty: z.number().int().min(1),
+  mixerId: z.string().optional(),  // optional selected mixer
+});
 const PromoSchema = z.object({ promotionId: z.string(), qty: z.number().int().min(1) });
 const PostSchema = z.object({
   venueId: z.string(),
   items: z.array(ItemSchema).default([]),
   promotions: z.array(PromoSchema).optional().default([]),
+  note: z.string().max(50).optional(),
 });
 
 export async function POST(req: Request) {
@@ -88,6 +93,7 @@ export async function POST(req: Request) {
     include: { municipality: true },
   });
   if (!venue) return NextResponse.json({ error: "Venue not found" }, { status: 404 });
+  if (!venue.isEnabled) return NextResponse.json({ error: "This venue is temporarily paused and not accepting orders." }, { status: 403 });
 
   // Resolve serving window for today (per-day override takes priority over municipality default)
   const { startMins, cutoffMins: muniCutoff } = getDayWindow(venue.municipality as any, prDayOfWeek());
@@ -107,13 +113,29 @@ export async function POST(req: Request) {
   if (wantsAlcohol && !isAlcoholAllowed(startMins, cutoffMins))
     return NextResponse.json({ error: "Alcohol service is not available at this time." }, { status: 403 });
 
+  // Resolve mixers for items that requested one
+  const mixerIds = body.items.map(i => i.mixerId).filter(Boolean) as string[];
+  const mixers = mixerIds.length > 0
+    ? await prisma.mixer.findMany({ where: { id: { in: mixerIds }, isAvailable: true } })
+    : [];
+  const mixerMap = new Map(mixers.map(mx => [mx.id, mx]));
+
   // Compute total — menu items
   const itemMap = new Map(menuItems.map(m => [m.id, m]));
   let totalCents = 0;
   const orderItems = body.items.map(i => {
     const m = itemMap.get(i.menuItemId)!;
-    totalCents += m.priceCents * i.qty;
-    return { menuItemId: m.id, name: m.name, priceCents: m.priceCents, qty: i.qty, isAlcohol: m.isAlcohol };
+    const mixer = i.mixerId ? mixerMap.get(i.mixerId) : undefined;
+    const effectivePriceCents = m.priceCents + (mixer?.priceCents ?? 0);
+    totalCents += effectivePriceCents * i.qty;
+    return {
+      menuItemId: m.id,
+      name: m.name,
+      priceCents: effectivePriceCents,
+      qty: i.qty,
+      isAlcohol: m.isAlcohol,
+      mixerName: mixer?.name ?? null,
+    };
   });
 
   // Compute total — promotions
@@ -125,6 +147,21 @@ export async function POST(req: Request) {
     });
     if (promos.length !== promotionIds.length)
       return NextResponse.json({ error: "One or more promotions are unavailable." }, { status: 400 });
+
+    // Alcohol check for promotions — look up all menuItemIds referenced in promo items
+    const promoItemMenuIds: string[] = promos.flatMap(p => {
+      try { return (JSON.parse((p.items as string) ?? "[]") as Array<{ menuItemId: string }>).map(x => x.menuItemId); }
+      catch { return []; }
+    });
+    if (promoItemMenuIds.length > 0 && !isAlcoholAllowed(startMins, cutoffMins)) {
+      const alcoholPromoItems = await prisma.menuItem.findMany({
+        where: { id: { in: promoItemMenuIds }, isAlcohol: true },
+        select: { id: true },
+      });
+      if (alcoholPromoItems.length > 0)
+        return NextResponse.json({ error: "Alcohol service is not available at this time." }, { status: 403 });
+    }
+
     const promoMap = new Map(promos.map(p => [p.id, p]));
     for (const pi of body.promotions) {
       const p = promoMap.get(pi.promotionId)!;
@@ -167,6 +204,7 @@ export async function POST(req: Request) {
         userId: session.sub,
         venueId: body.venueId,
         totalCents,
+        note: body.note?.trim() || null,
         items: { create: [...orderItems, ...promoOrderItems] },
       },
     }),

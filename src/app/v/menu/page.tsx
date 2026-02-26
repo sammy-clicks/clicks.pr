@@ -3,10 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/Nav";
 import { PinGate } from "@/components/PinGate";
 
+type MixerRow = { id: string; name: string; priceCents: number; isAvailable: boolean };
+
 type Item = {
   id: string; name: string; priceCents: number;
   isAlcohol: boolean; isAvailable: boolean;
   category: string | null; imageUrl: string | null;
+  mixers: MixerRow[];
 };
 
 const EMPTY_FORM = { name: "", price: "5.00", category: "", isAlcohol: false, imageUrl: "" };
@@ -25,6 +28,13 @@ export default function VenueMenu() {
   const [catInput, setCatInput]       = useState("");
   const [catMsg, setCatMsg]           = useState("");
   const [showNoCatModal, setShowNoCatModal] = useState(false);
+
+  // Mixer management
+  const [mixerOpen, setMixerOpen]   = useState<Record<string, boolean>>({});
+  const EMPTY_MX = { name: "", price: "0.00" };
+  const [mixerForm, setMixerForm]   = useState<Record<string, { name: string; price: string }>>({});
+  const [mixerMsg,  setMixerMsg]    = useState<Record<string, string>>({});
+  const [mxSaving,  setMxSaving]    = useState<Record<string, boolean>>({})
 
   const imgInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,6 +143,38 @@ export default function VenueMenu() {
     load();
   }
 
+  async function saveMixer(itemId: string) {
+    const f = mixerForm[itemId] ?? EMPTY_MX;
+    if (!f.name.trim()) { setMixerMsg(p => ({ ...p, [itemId]: "Enter a name." })); return; }
+    const priceCents = Math.round(parseFloat(f.price || "0") * 100);
+    if (isNaN(priceCents) || priceCents < 0) { setMixerMsg(p => ({ ...p, [itemId]: "Invalid price." })); return; }
+    setMxSaving(p => ({ ...p, [itemId]: true })); setMixerMsg(p => ({ ...p, [itemId]: "" }));
+    const r = await fetch(`/api/v/menu/${itemId}/mixers`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: f.name.trim(), priceCents }),
+    });
+    setMxSaving(p => ({ ...p, [itemId]: false }));
+    if (!r.ok) { const j = await r.json(); setMixerMsg(p => ({ ...p, [itemId]: j.error || "Failed" })); return; }
+    setMixerForm(p => ({ ...p, [itemId]: { ...EMPTY_MX } }));
+    load();
+  }
+
+  async function deleteMixer(itemId: string, mixerId: string) {
+    if (!window.confirm("Remove this mixer?")) return;
+    await fetch(`/api/v/menu/${itemId}/mixers/${mixerId}`, { method: "DELETE" });
+    load();
+  }
+
+  async function toggleMixerAvail(itemId: string, mixerId: string, isAvailable: boolean) {
+    await fetch(`/api/v/menu/${itemId}/mixers/${mixerId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ isAvailable }),
+    });
+    load();
+  }
+
   if (error) return <div className="container"><Nav role="v" /><p className="muted">{error}</p></div>;
   if (!data)  return <div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>;
 
@@ -235,7 +277,84 @@ export default function VenueMenu() {
                       onClick={() => toggleAvail(m.id, !m.isAvailable)}
                     >{m.isAvailable ? "Disable" : "Enable"}</button>
                     <button className="btn sm danger" style={{ flex: "1 1 50px" }} onClick={() => deleteItem(m.id)}>Delete</button>
+                    <button
+                      className="btn sm secondary"
+                      style={{ flex: "1 1 80px" }}
+                      onClick={() => setMixerOpen(p => ({ ...p, [m.id]: !p[m.id] }))}
+                    >
+                      🧃 Mixers {m.mixers.length > 0 ? `(${m.mixers.length})` : ""}
+                    </button>
                   </div>
+
+                  {/* Mixer panel */}
+                  {mixerOpen[m.id] && (
+                    <div style={{ marginTop: 10, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--venue-brand)", marginBottom: 8 }}>
+                        Mixer / Juice Options
+                      </div>
+
+                      {m.mixers.length === 0 && (
+                        <p className="muted" style={{ fontSize: 12, margin: "0 0 8px" }}>No mixers yet. Add one below.</p>
+                      )}
+
+                      {/* Mixer list */}
+                      {m.mixers.map(mx => (
+                        <div key={mx.id} style={{
+                          display: "flex", alignItems: "center", gap: 8,
+                          padding: "5px 0", borderBottom: "1px solid var(--border)",
+                          opacity: mx.isAvailable ? 1 : 0.5,
+                        }}>
+                          <span style={{ flex: 1, fontSize: 13 }}>
+                            {mx.name}
+                            {mx.priceCents > 0
+                              ? <span style={{ marginLeft: 6, color: "var(--muted-text)", fontSize: 11 }}>+${(mx.priceCents / 100).toFixed(2)}</span>
+                              : <span style={{ marginLeft: 6, color: "#22c55e", fontSize: 11 }}>Free</span>
+                            }
+                          </span>
+                          <button
+                            className="btn sm secondary"
+                            style={{ fontSize: 11, padding: "2px 8px" }}
+                            onClick={() => toggleMixerAvail(m.id, mx.id, !mx.isAvailable)}
+                          >{mx.isAvailable ? "Disable" : "Enable"}</button>
+                          <button
+                            className="btn sm danger"
+                            style={{ fontSize: 11, padding: "2px 8px" }}
+                            onClick={() => deleteMixer(m.id, mx.id)}
+                          >✕</button>
+                        </div>
+                      ))}
+
+                      {/* Add mixer form */}
+                      <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+                        <input
+                          value={mixerForm[m.id]?.name ?? ""}
+                          onChange={e => setMixerForm(p => ({ ...p, [m.id]: { ...(p[m.id] ?? EMPTY_MX), name: e.target.value } }))}
+                          placeholder="Mixer name (e.g. Coke, Sprite)"
+                          maxLength={80}
+                          style={{ flex: "2 1 120px", fontSize: 13, padding: "6px 10px" }}
+                        />
+                        <input
+                          type="number"
+                          value={mixerForm[m.id]?.price ?? "0.00"}
+                          onChange={e => setMixerForm(p => ({ ...p, [m.id]: { ...(p[m.id] ?? EMPTY_MX), price: e.target.value } }))}
+                          placeholder="Extra charge"
+                          step="0.25"
+                          min="0"
+                          style={{ flex: "1 1 80px", fontSize: 13, padding: "6px 10px" }}
+                          title="Extra charge in USD (0 = free)"
+                        />
+                        <button
+                          className="btn sm"
+                          disabled={mxSaving[m.id]}
+                          onClick={() => saveMixer(m.id)}
+                          style={{ flexShrink: 0 }}
+                        >{mxSaving[m.id] ? "…" : "+ Add"}</button>
+                      </div>
+                      {mixerMsg[m.id] && (
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--danger)" }}>{mixerMsg[m.id]}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

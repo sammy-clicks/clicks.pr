@@ -5,29 +5,85 @@ import { Nav } from "@/components/Nav";
 function fmtTime(d: string | Date) {
   return new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
-
-function fmt(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
-// Returns ms until a given UTC date
-function msUntil(d: Date) {
-  return Math.max(0, d.getTime() - Date.now());
-}
-
+function fmt(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
+function msUntil(d: Date) { return Math.max(0, d.getTime() - Date.now()); }
 function formatCountdown(ms: number) {
   const total = Math.floor(ms / 1000);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(Math.floor(total / 3600)).padStart(2, "0")}:${String(Math.floor((total % 3600) / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+function isNightPopupTime() {
+  const h = new Date(Date.now() - 4 * 60 * 60 * 1000).getUTCHours();
+  return h >= 2 && h < 4;
 }
 
-// Check if current time is between 2:00am and 4:00am PR (UTC-4)
-function isNightPopupTime() {
-  const prMs = Date.now() - 4 * 60 * 60 * 1000;
-  const h = new Date(prMs).getUTCHours();
-  return h >= 2 && h < 4;
+function FriendSheet({ friend, onClose }: { friend: any; onClose: () => void }) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 2000 }} />
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 2001,
+        background: "var(--surface)", borderRadius: "20px 20px 0 0",
+        padding: "24px 20px 40px", maxHeight: "78vh", overflowY: "auto",
+        boxShadow: "0 -8px 48px rgba(0,0,0,0.5)",
+      }}>
+        {/* drag handle */}
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 20px" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+          {friend.avatarUrl
+            ? <img src={friend.avatarUrl} alt={friend.username}
+                style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(139,92,246,0.5)", flexShrink: 0 }} />
+            : <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(139,92,246,0.15)", border: "2px solid rgba(139,92,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 800, fontSize: 20, color: "#8b5cf6" }}>
+                {(friend.username?.[0] ?? "?").toUpperCase()}
+              </div>
+          }
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: 17 }}>@{friend.username}</div>
+            {friend.ghostMode && <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>👻 In ghost mode tonight</div>}
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--muted-text)", fontSize: 22, cursor: "pointer", padding: 4 }}>✕</button>
+        </div>
+
+        {friend.ghostMode ? (
+          <p className="muted" style={{ textAlign: "center", paddingBottom: 12 }}>Activity hidden — ghost mode on.</p>
+        ) : (
+          <>
+            {friend.venuesVisited.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Venues Tonight</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {friend.venuesVisited.map((v: any, i: number) => (
+                    <div key={i} style={{ padding: "10px 14px", borderRadius: 10, background: "var(--bg, #080c12)", border: "1px solid var(--border)", fontSize: 13, fontWeight: 600 }}>
+                      📍 {v.venueName}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {friend.orders.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted-text)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Orders Tonight</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {friend.orders.map((o: any, i: number) => (
+                    <div key={i} style={{ padding: "10px 14px", borderRadius: 10, background: "var(--bg, #080c12)", border: "1px solid var(--border)" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 5 }}>🍹 {o.venueName}</div>
+                      {o.items.map((it: any, j: number) => (
+                        <div key={j} className="muted" style={{ fontSize: 12 }}>{it.qty}× {it.name}</div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {friend.venuesVisited.length === 0 && friend.orders.length === 0 && (
+              <p className="muted" style={{ textAlign: "center" }}>No activity yet tonight.</p>
+            )}
+          </>
+        )}
+      </div>
+    </>
+  );
 }
 
 export default function Summary() {
@@ -35,8 +91,7 @@ export default function Summary() {
   const [error, setError]         = useState("");
   const [countdown, setCountdown] = useState("");
   const [popupOpen, setPopupOpen] = useState(false);
-  const [buddy, setBuddy]         = useState<any>(null); // detail view for a friend
-  const [buddySection, setBuddySection] = useState<"venues" | "orders" | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<any>(null);
 
   const load = useCallback(() => {
     fetch("/api/night-summary")
@@ -44,7 +99,6 @@ export default function Summary() {
       .then(d => {
         if (d.error) { setError(d.error); return; }
         setData(d);
-        // Auto-show popup between 2am and 4am PR if not dismissed this session
         if (isNightPopupTime() && !sessionStorage.getItem("summary_popup_dismissed")) {
           setPopupOpen(true);
         }
@@ -54,7 +108,6 @@ export default function Summary() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Countdown timer
   useEffect(() => {
     if (!data?.resetAt) return;
     const tick = () => setCountdown(formatCountdown(msUntil(new Date(data.resetAt))));
@@ -66,96 +119,38 @@ export default function Summary() {
   if (error) return <div className="container"><Nav role="u" /><p style={{ color: "#f66" }}>{error}</p></div>;
   if (!data)  return <div className="container"><Nav role="u" /><p className="muted">Loading...</p></div>;
 
-  // Ghost mode: nothing social shown
   const ghostMode = data.me?.ghostMode;
-
-  // Buddy detail modal
-  if (buddy && buddySection) {
-    return (
-      <div className="container">
-        <Nav role="u" />
-        <div className="header" style={{ marginBottom: 8 }}>
-          <button className="btn sm secondary" onClick={() => { setBuddy(null); setBuddySection(null); }}>{"<"} Back</button>
-          <h3 style={{ margin: 0 }}>@{buddy.username}</h3>
-        </div>
-
-        {buddy.ghostMode ? (
-          <p className="muted">This user is in ghost mode tonight.</p>
-        ) : buddySection === "venues" ? (
-          <>
-            <h4 style={{ marginBottom: 10 }}>Venues visited</h4>
-            {buddy.venuesVisited.length === 0
-              ? <p className="muted">No venues visited yet tonight.</p>
-              : buddy.venuesVisited.map((v: any, i: number) => (
-                <div key={i} className="card" style={{ padding: "10px 14px", marginBottom: 8 }}>
-                  <strong>{v.venueName}</strong>
-                </div>
-              ))
-            }
-          </>
-        ) : (
-          <>
-            <h4 style={{ marginBottom: 10 }}>Orders tonight</h4>
-            {buddy.orders.length === 0
-              ? <p className="muted">No orders placed yet tonight.</p>
-              : buddy.orders.map((o: any, i: number) => (
-                <div key={i} className="card" style={{ padding: "10px 14px", marginBottom: 8 }}>
-                  <strong>{o.venueName}</strong>
-                  <div style={{ marginTop: 6 }}>
-                    {o.items.map((it: any, j: number) => (
-                      <div key={j} className="muted" style={{ fontSize: 13 }}>
-                        {it.qty}x {it.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            }
-          </>
-        )}
-      </div>
-    );
-  }
-
   const hasFriends = data.friends && data.friends.length > 0;
+  const visibleFriends = hasFriends ? data.friends.filter((f: any) => !f.ghostMode) : [];
+  const ghostFriends   = hasFriends ? data.friends.filter((f: any) => f.ghostMode)  : [];
 
   return (
-    <div className="container">
+    <div className="container" style={{ paddingBottom: 40 }}>
       {/* 2AM Popup */}
       {popupOpen && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 999, padding: 20,
-        }}>
-          <div className="card" style={{ maxWidth: 380, width: "100%", padding: 28, textAlign: "center" }}>
-            <h3 style={{ marginBottom: 8 }}>Hey {data.me.firstName},</h3>
-            <p style={{ marginBottom: 18, opacity: 0.8 }}>Here is your Clicks nightlife summary.</p>
-
-            <div className="row" style={{ gap: 10, marginBottom: 20, justifyContent: "center", flexWrap: "wrap" }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{data.distinctVenueCount}</div>
-                <div className="muted" style={{ fontSize: 12 }}>Venues</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{data.orders.length}</div>
-                <div className="muted" style={{ fontSize: 12 }}>Orders</div>
-              </div>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 28, fontWeight: 700 }}>{data.clicks}</div>
-                <div className="muted" style={{ fontSize: 12 }}>Clicks</div>
-              </div>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 20 }}>
+          <div className="card" style={{ maxWidth: 360, width: "100%", padding: 28, textAlign: "center" }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🌙</div>
+            <h3 style={{ marginBottom: 6 }}>Hey {data.me?.firstName},</h3>
+            <p style={{ marginBottom: 20, opacity: 0.75, fontSize: 14 }}>Here's your Clicks night summary.</p>
+            <div style={{ display: "flex", justifyContent: "center", gap: 20, marginBottom: 20 }}>
+              {[
+                { v: data.distinctVenueCount, l: "Venues" },
+                { v: data.orders.length,       l: "Orders" },
+                { v: data.clicks,               l: "Clicks" },
+              ].map(s => (
+                <div key={s.l} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 30, fontWeight: 800 }}>{s.v}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{s.l}</div>
+                </div>
+              ))}
             </div>
-
             {data.orderRankAmongFriends === 1 && data.orders.length > 0 && (
-              <div className="badge active" style={{ marginBottom: 16, display: "inline-block" }}>
-                #1 on orders among your friends tonight
-              </div>
+              <div className="badge active" style={{ marginBottom: 14, display: "inline-block" }}>#1 orders among friends tonight 🏆</div>
             )}
-
-            <button className="btn" style={{ width: "100%", marginBottom: 10 }}
+            <button className="btn" style={{ width: "100%", marginBottom: 8 }}
               onClick={() => { setPopupOpen(false); sessionStorage.setItem("summary_popup_dismissed", "1"); }}>
-              View more statistics
+              View full summary
             </button>
             <button className="btn secondary" style={{ width: "100%" }}
               onClick={() => { setPopupOpen(false); sessionStorage.setItem("summary_popup_dismissed", "1"); }}>
@@ -176,135 +171,150 @@ export default function Summary() {
       </div>
       <Nav role="u" />
 
-      {/* Personal stats */}
-      <div className="row" style={{ marginBottom: 20, flexWrap: "wrap" }}>
-        <div className="card" style={{ flex: "1 1 130px", textAlign: "center" }}>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{data.distinctVenueCount}</div>
-          <div className="muted" style={{ fontSize: 12 }}>Venues visited</div>
+      {/* ── Personal hero stats ── */}
+      <div style={{
+        borderRadius: 20, marginBottom: 20, overflow: "hidden",
+        background: "linear-gradient(135deg, rgba(139,92,246,0.12), rgba(8,218,244,0.06))",
+        border: "1px solid rgba(139,92,246,0.25)",
+      }}>
+        <div style={{ padding: "18px 20px 14px" }}>
+          <div style={{ display: "flex", gap: 0, textAlign: "center" }}>
+            {[
+              { value: data.distinctVenueCount, label: "Venues", color: "#8b5cf6" },
+              { value: data.orders.length,       label: "Orders",  color: "#22c55e" },
+              { value: data.clicks,               label: "Clicks",  color: "#08daf4" },
+            ].map((s, i, arr) => (
+              <div key={s.label} style={{ flex: 1, borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none", paddingBottom: 4 }}>
+                <div style={{ fontSize: 30, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{s.label}</div>
+                {s.label === "Orders" && data.orderRankAmongFriends > 0 && (
+                  <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>#{data.orderRankAmongFriends} in friends</div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="card" style={{ flex: "1 1 130px", textAlign: "center" }}>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{data.orders.length}</div>
-          <div className="muted" style={{ fontSize: 12 }}>Orders placed</div>
-          {data.orderRankAmongFriends > 0 && (
-            <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
-              #{data.orderRankAmongFriends} among friends
-            </div>
-          )}
-        </div>
-        <div className="card" style={{ flex: "1 1 130px", textAlign: "center" }}>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{data.clicks}</div>
-          <div className="muted" style={{ fontSize: 12 }}>Clicks tonight</div>
-        </div>
-        <div className="card" style={{ flex: "1 1 130px", textAlign: "center" }}>
-          <div style={{ fontSize: 26, fontWeight: 700 }}>{fmt(data.totalSpentCents)}</div>
-          <div className="muted" style={{ fontSize: 12 }}>Tonight spending</div>
-          <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>Only visible to you</div>
+        {/* Spending — private */}
+        <div style={{ padding: "10px 20px 14px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span className="muted" style={{ fontSize: 13 }}>Tonight spending</span>
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontWeight: 800, fontSize: 16, color: "#f59e0b" }}>{fmt(data.totalSpentCents)}</span>
+            <div className="muted" style={{ fontSize: 10, marginTop: 1 }}>Private — only visible to you</div>
+          </div>
         </div>
       </div>
 
       {/* Ghost mode notice */}
       {ghostMode && (
-        <div className="card" style={{ padding: "14px 16px", marginBottom: 20, borderColor: "rgba(255,200,100,0.3)", textAlign: "center" }}>
-          <strong style={{ fontSize: 14 }}>You are in ghost mode.</strong>
-          <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
-            Social stats and friend activity are hidden while ghost mode is active.
-            Disable it in Settings to see your friends&apos; activity.
+        <div style={{ padding: "14px 16px", borderRadius: 14, marginBottom: 20, background: "rgba(255,200,100,0.06)", border: "1px solid rgba(255,200,100,0.2)", textAlign: "center" }}>
+          <strong style={{ fontSize: 14 }}>You&apos;re in ghost mode.</strong>
+          <p className="muted" style={{ marginTop: 6, fontSize: 13, marginBottom: 10 }}>
+            Friend activity is hidden while ghost mode is on. Disable it in Settings.
           </p>
-          <a href="/u/settings"><button className="btn sm secondary" style={{ marginTop: 10 }}>Go to Settings</button></a>
+          <a href="/u/settings"><button className="btn sm secondary">Go to Settings</button></a>
         </div>
       )}
 
-      {/* Friends sections — hidden when user is in ghost mode */}
+      {/* ── Friends activity ── */}
       {!ghostMode && hasFriends && (
-        <>
-          {/* Venues visited */}
-          <h3 style={{ marginTop: 8, marginBottom: 10 }}>Venues visited</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-            {data.friends.map((f: any) => (
-              <div key={f.friendId} className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <strong>@{f.username}</strong>
-                  {f.ghostMode
-                    ? <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>in ghost mode</span>
-                    : <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>
-                        {f.venuesVisited.length === 0 ? "No venues yet" :
-                          f.venuesVisited.slice(0, 2).map((v: any) => v.venueName).join(", ")
-                          + (f.venuesVisited.length > 2 ? ` +${f.venuesVisited.length - 2}` : "")}
-                      </span>
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800 }}>
+            Friends Tonight
+            <span className="muted" style={{ fontWeight: 400, fontSize: 13, marginLeft: 8 }}>
+              {visibleFriends.length} active{ghostFriends.length > 0 ? `, ${ghostFriends.length} ghost` : ""}
+            </span>
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {data.friends.map((f: any) => {
+              const isGhost = f.ghostMode;
+              return (
+                <div key={f.friendId}
+                  onClick={() => !isGhost && setSelectedFriend(f)}
+                  style={{
+                    borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)",
+                    padding: "12px 14px", display: "flex", alignItems: "center", gap: 12,
+                    cursor: isGhost ? "default" : "pointer", opacity: isGhost ? 0.55 : 1,
+                    transition: "border-color 0.15s",
+                  }}
+                  onMouseEnter={e => { if (!isGhost) e.currentTarget.style.borderColor = "rgba(139,92,246,0.4)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
+                >
+                  {/* Avatar */}
+                  {f.avatarUrl
+                    ? <img src={f.avatarUrl} alt={f.username}
+                        style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: "2px solid rgba(139,92,246,0.35)" }} />
+                    : <div style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(139,92,246,0.12)", border: "2px solid rgba(139,92,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 800, fontSize: 16, color: "#8b5cf6" }}>
+                        {(f.username?.[0] ?? "?").toUpperCase()}
+                      </div>
                   }
-                </div>
-                {!f.ghostMode && f.venuesVisited.length > 0 && (
-                  <button className="btn sm secondary" style={{ fontSize: 11 }}
-                    onClick={() => { setBuddy(f); setBuddySection("venues"); }}>
-                    Details
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
 
-          {/* Orders placed */}
-          <h3 style={{ marginBottom: 10 }}>Orders placed</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-            {data.friends.map((f: any) => (
-              <div key={f.friendId} className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <strong>@{f.username}</strong>
-                  {f.ghostMode
-                    ? <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>in ghost mode</span>
-                    : <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>
-                        {f.ordersCount} order{f.ordersCount !== 1 ? "s" : ""}
-                      </span>
-                  }
-                </div>
-                {!f.ghostMode && f.ordersCount > 0 && (
-                  <button className="btn sm secondary" style={{ fontSize: 11 }}
-                    onClick={() => { setBuddy(f); setBuddySection("orders"); }}>
-                    Details
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+                  {/* Name */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>@{f.username}</div>
+                    {isGhost
+                      ? <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>👻 ghost mode</div>
+                      : <div style={{ display: "flex", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
+                          <span className="muted" style={{ fontSize: 11 }}>📍 {f.venuesVisited.length} venue{f.venuesVisited.length !== 1 ? "s" : ""}</span>
+                          <span className="muted" style={{ fontSize: 11 }}>🍹 {f.ordersCount} order{f.ordersCount !== 1 ? "s" : ""}</span>
+                          <span className="muted" style={{ fontSize: 11 }}>🖱️ {f.clicksCount} click{f.clicksCount !== 1 ? "s" : ""}</span>
+                        </div>
+                    }
+                  </div>
 
-          {/* Clicks tonight */}
-          <h3 style={{ marginBottom: 10 }}>Clicks tonight</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
-            {data.friends.map((f: any) => (
-              <div key={f.friendId} className="card" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                <strong style={{ flex: 1 }}>@{f.username}</strong>
-                <span className="muted" style={{ fontSize: 13 }}>
-                  {f.ghostMode ? "ghost mode" : `${f.clicksCount} click${f.clicksCount !== 1 ? "s" : ""}`}
-                </span>
-              </div>
-            ))}
+                  {!isGhost && (f.venuesVisited.length > 0 || f.ordersCount > 0) && (
+                    <span style={{ color: "var(--muted-text)", fontSize: 16 }}>›</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </>
+        </div>
       )}
 
       {!ghostMode && !hasFriends && (
-        <p className="muted">Add friends on the Buddies page to see their activity here.</p>
+        <div style={{ padding: "20px 16px", borderRadius: 14, marginBottom: 20, textAlign: "center", background: "var(--surface)", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
+          <p className="muted" style={{ marginBottom: 12, fontSize: 14 }}>Add buddies to see their activity here.</p>
+          <a href="/u/buddies"><button className="btn sm" style={{ fontWeight: 700 }}>Find Friends</button></a>
+        </div>
       )}
 
-      {/* Own checkins / orders */}
+      {/* ── My venues tonight ── */}
       {data.checkins.length > 0 && (
-        <>
-          <h3 style={{ marginBottom: 10 }}>Your venues tonight</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+        <div style={{ marginBottom: 20 }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 800 }}>My Venues Tonight</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {data.checkins.map((c: any) => (
-              <div key={c.id} className="card" style={{ padding: "10px 14px" }}>
-                <strong>{c.venueName}</strong>
-                <p className="muted" style={{ fontSize: 12, margin: "4px 0 0" }}>
-                  {c.venueType} - In {fmtTime(c.startAt)}{c.endAt ? ` - Out ${fmtTime(c.endAt)}` : " - Active"}
-                </p>
+              <div key={c.id} style={{ borderRadius: 14, background: "var(--surface)", border: "1px solid var(--border)", padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(8,218,244,0.1)", border: "1px solid rgba(8,218,244,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>
+                  📍
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{c.venueName}</div>
+                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                    {c.venueType} · In {fmtTime(c.startAt)}{c.endAt ? ` · Out ${fmtTime(c.endAt)}` : " · Active now"}
+                  </div>
+                </div>
+                {!c.endAt && (
+                  <span style={{ fontSize: 10, padding: "3px 8px", borderRadius: 6, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: "#22c55e", fontWeight: 700 }}>Active</span>
+                )}
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
 
-      {data.checkins.length === 0 && data.orders.length === 0 && (
-        <p className="muted" style={{ marginTop: 20 }}>No activity recorded yet tonight. Go check in at a venue!</p>
+      {data.checkins.length === 0 && data.orders.length === 0 && !ghostMode && (
+        <div style={{ textAlign: "center", padding: "32px 16px" }}>
+          <div style={{ fontSize: 36, marginBottom: 10 }}>🌃</div>
+          <p className="muted" style={{ marginBottom: 16 }}>No activity yet tonight. Head out and check in!</p>
+          <a href="/u/zones"><button className="btn" style={{ fontWeight: 700, padding: "10px 24px" }}>Find a Venue</button></a>
+        </div>
+      )}
+
+      {/* Friend detail bottom sheet */}
+      {selectedFriend && (
+        <FriendSheet friend={selectedFriend} onClose={() => setSelectedFriend(null)} />
       )}
     </div>
   );

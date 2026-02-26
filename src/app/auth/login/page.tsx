@@ -178,6 +178,11 @@ export default function Login() {
               <button type="submit" className="auth-submit-btn" disabled={loading}>
                 {loading ? "Logging in…" : "Log in"}
               </button>
+              <div style={{ textAlign: "right", marginTop: 6 }}>
+                <a href="/auth/forgot-password" style={{ fontSize: 12, color: "#08daf4", opacity: 0.8 }}>
+                  Forgot password?
+                </a>
+              </div>
               {msg && <p className="auth-error">{msg}</p>}
             </form>
 

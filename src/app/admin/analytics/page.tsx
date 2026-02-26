@@ -75,29 +75,6 @@ export default function AdminAnalytics() {
       </div>
       <Nav role="admin" />
 
-      {/* Time range selector */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 4,
-        background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: 12, padding: 4, marginBottom: 20, width: "fit-content",
-        flexWrap: "wrap",
-      }}>
-        {[1, 7, 14, 30, 90, 0].map(d => (
-          <button key={d}
-            onClick={() => changeRange(d)}
-            disabled={loading}
-            style={{
-              padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-              border: "none", cursor: loading ? "default" : "pointer",
-              background: days === d ? "var(--accent)" : "transparent",
-              color: days === d ? "#000" : "var(--muted-text)",
-              transition: "background 0.15s, color 0.15s",
-            }}>
-            {d === 0 ? "All" : d === 1 ? "24h" : `${d}d`}
-          </button>
-        ))}
-      </div>
-
       {!data && <p className="muted">Loading…</p>}
       {data && (
         <>
@@ -109,6 +86,29 @@ export default function AdminAnalytics() {
             <Stat label="PRO venues"     value={data.totals.proVenues} sub="active subscriptions" />
             <Stat label="Total orders"   value={data.totals.orders} />
             <Stat label="Active now"     value={data.totals.activeNow} sub="checked-in last 2h" />
+          </div>
+
+          {/* Time range selector — controls Revenue and everything below */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 4,
+            background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: 12, padding: 4, marginBottom: 16, marginTop: 8, width: "fit-content",
+            flexWrap: "wrap",
+          }}>
+            {[1, 7, 14, 30, 90, 0].map(d => (
+              <button key={d}
+                onClick={() => changeRange(d)}
+                disabled={loading}
+                style={{
+                  padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                  border: "none", cursor: loading ? "default" : "pointer",
+                  background: days === d ? "var(--accent)" : "transparent",
+                  color: days === d ? "#000" : "var(--muted-text)",
+                  transition: "background 0.15s, color 0.15s",
+                }}>
+                {d === 0 ? "All" : d === 1 ? "24h" : `${d}d`}
+              </button>
+            ))}
           </div>
 
           <h3>Revenue &mdash; {days === 0 ? "all-time" : days === 1 ? "last 24h" : `last ${days}d`}</h3>

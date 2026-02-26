@@ -199,9 +199,18 @@ export default function VenueOrders() {
               <span className={`badge st-${o.status}`}>{o.status}</span>
             </div>
             <p className="muted" style={{ margin: "6px 0 2px" }}>
-              {o.items.map((i: any) => `${i.qty}× ${i.name}`).join(", ")}
+              {o.items.map((i: any) => `${i.qty}× ${i.name}${i.mixerName ? ` + ${i.mixerName}` : ""}`).join(", ")}
             </p>
             <p className="muted" style={{ margin: "2px 0 10px" }}>${(o.totalCents / 100).toFixed(2)}</p>
+            {o.note && (
+              <div style={{
+                margin: "0 0 10px", padding: "6px 10px", borderRadius: 8,
+                background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
+                fontSize: 12, color: "#f59e0b", fontWeight: 600,
+              }}>
+                📝 {o.note}
+              </div>
+            )}
 
             {/* PLACED → Accept or Reject */}
             {o.status === "PLACED" && (
@@ -368,7 +377,7 @@ export default function VenueOrders() {
                       <td style={{ padding: "8px 8px", fontFamily: "monospace", color: "var(--brand)", fontWeight: 700, fontSize: 12 }}>{o.orderNumber || "—"}</td>
                       <td style={{ padding: "8px 8px", fontWeight: 600 }}>@{o.user.username}</td>
                       <td style={{ padding: "8px 8px", color: "var(--muted-text)", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {o.items.map((i: any) => `${i.qty}× ${i.name}`).join(", ")}
+                        {o.items.map((i: any) => `${i.qty}× ${i.name}${i.mixerName ? ` + ${i.mixerName}` : ""}`).join(", ")}
                       </td>
                       <td style={{ padding: "8px 8px", textAlign: "right", fontWeight: 700 }}>{fmt$(o.totalCents)}</td>
                       <td style={{ padding: "8px 8px", textAlign: "center" }}>
