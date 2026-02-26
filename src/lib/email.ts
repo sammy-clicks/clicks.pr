@@ -1,11 +1,13 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM = "Clicks <noreply@clickspr.com>";
 
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
+
 export async function sendOtpEmail(to: string, otp: string) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Your Clicks verification code",
@@ -22,7 +24,7 @@ export async function sendOtpEmail(to: string, otp: string) {
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Reset your Clicks password",
