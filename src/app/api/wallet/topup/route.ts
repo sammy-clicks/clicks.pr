@@ -1,33 +1,40 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/app/api/_utils";
+import stripe from "@/lib/stripe";
 
 export const dynamic = 'force-dynamic';
 
-const Schema = z.object({ dollars: z.number().int().min(10) });
+const MIN_DOLLARS = 10;
+const MAX_DOLLARS = 5000;
+
+const Schema = z.object({
+  dollars: z.number().min(MIN_DOLLARS).max(MAX_DOLLARS),
+});
 
 export async function POST(req: Request) {
   const session = await getSession();
-  if (!session || session.role !== "USER") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session || session.role !== "USER")
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { dollars } = Schema.parse(await req.json());
-  const amountCents = dollars * 100;
+  const body = await req.json();
+  const parsed = Schema.safeParse(body);
+  if (!parsed.success)
+    return NextResponse.json(
+      { error: `Amount must be between $${MIN_DOLLARS} and $${MAX_DOLLARS}.` },
+      { status: 400 }
+    );
 
-  const wallet = await prisma.walletAccount.upsert({
-    where: { userId: session.sub },
-    create: { userId: session.sub, balanceCents: 0 },
-    update: {},
+  const amountCents = Math.round(parsed.data.dollars * 100);
+
+  const intent = await stripe.paymentIntents.create({
+    amount: amountCents,
+    currency: "usd",
+    description: "Clicks Credits",
+    metadata: { userId: session.sub, amountCents: String(amountCents) },
+    // Allow cards; no redirects (keeps the user in-app)
+    automatic_payment_methods: { enabled: true, allow_redirects: "never" },
   });
 
-  await prisma.walletTxn.create({
-    data: { walletId: wallet.id, type: "TOPUP", amountCents, memo: "Transfer" },
-  });
-
-  await prisma.walletAccount.update({
-    where: { id: wallet.id },
-    data: { balanceCents: { increment: amountCents } },
-  });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ clientSecret: intent.client_secret });
 }

@@ -22,6 +22,37 @@ export async function POST(req: Request) {
   const obj = event.data.object as any;
 
   switch (event.type) {
+    // ── Wallet top-up via PaymentIntent ──────────────────────────────────────
+    case "payment_intent.succeeded": {
+      const userId      = obj.metadata?.userId as string | undefined;
+      const amountCents = parseInt(obj.metadata?.amountCents ?? "0", 10);
+      const piId        = obj.id as string;
+      if (!userId || !amountCents || !piId) break;
+
+      const wallet = await prisma.walletAccount.upsert({
+        where: { userId },
+        create: { userId, balanceCents: 0 },
+        update: {},
+      });
+
+      // Idempotency — skip if this PaymentIntent was already credited
+      const existing = await prisma.walletTxn.findFirst({
+        where: { walletId: wallet.id, memo: `stripe_pi:${piId}` },
+      });
+      if (existing) break;
+
+      await prisma.$transaction([
+        prisma.walletTxn.create({
+          data: { walletId: wallet.id, type: "TOPUP", amountCents, memo: `stripe_pi:${piId}` },
+        }),
+        prisma.walletAccount.update({
+          where: { id: wallet.id },
+          data: { balanceCents: { increment: amountCents } },
+        }),
+      ]);
+      break;
+    }
+
     // Subscription activated or renewed successfully
     case "invoice.payment_succeeded": {
       const venueId = obj.metadata?.venueId ?? obj.subscription_details?.metadata?.venueId;

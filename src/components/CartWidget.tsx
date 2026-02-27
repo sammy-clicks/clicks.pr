@@ -20,7 +20,7 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 
 export function CartWidget() {
   const { cart, setQty, removeItem, clearCart, totalItems, totalCents } = useCart();
-  const { addActiveOrder, bannerShowing } = useOrderTracker();
+  const { addActiveOrder } = useOrderTracker();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [distanceWarning, setDistanceWarning] = useState(false);
@@ -221,8 +221,7 @@ export function CartWidget() {
       <button
         onClick={() => setOpen(true)}
         style={{
-          position: "fixed", bottom: bannerShowing ? 88 : 24, right: 20, zIndex: 1080,
-          transition: "bottom 0.25s",
+          position: "fixed", bottom: 24, right: 20, zIndex: 1080,
           background: "#08daf4", border: "none", borderRadius: 20,
           padding: "12px 18px 12px 14px",
           display: "flex", alignItems: "center", gap: 10,

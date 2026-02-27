@@ -1,6 +1,10 @@
 ﻿"use client";
 import { useEffect, useState, useRef } from "react";
 import { Nav } from "@/components/Nav";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 function fmt(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 
@@ -100,6 +104,82 @@ function Avatar({ username, avatarUrl, size = 34 }: { username: string; avatarUr
 const TXN_ICON: Record<string, string> = { TOPUP: "", TRANSFER_OUT: "", TRANSFER_IN: "", REFUND: "", ADJUSTMENT: "" };
 const TXN_LABEL: Record<string, string> = { TOPUP: "Transfer", TRANSFER_OUT: "Sent", TRANSFER_IN: "Received", REFUND: "Refund", ADJUSTMENT: "Adjustment" };
 
+// ── Stripe checkout components ──────────────────────────────────────────────
+function CheckoutForm({ amount, onSuccess, onDismiss }: { amount: number; onSuccess: () => void; onDismiss: () => void }) {
+  const stripe   = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [payErr,  setPayErr]  = useState<string | null>(null);
+
+  async function pay() {
+    if (!stripe || !elements) return;
+    setLoading(true);
+    setPayErr(null);
+    const result = await stripe.confirmPayment({ elements, redirect: "if_required" });
+    setLoading(false);
+    if (result.error) {
+      setPayErr(result.error.message ?? "Payment failed. Please try again.");
+    } else {
+      onSuccess();
+    }
+  }
+
+  return (
+    <>
+      <div onClick={onDismiss} style={{ position: "fixed", inset: 0, zIndex: 1400,
+        background: "rgba(0,0,0,0.75)", backdropFilter: "blur(5px)" }} />
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1410,
+        background: "var(--surface)", borderRadius: "22px 22px 0 0",
+        boxShadow: "0 -8px 40px rgba(0,0,0,0.55)",
+        paddingBottom: "env(safe-area-inset-bottom,28px)" }}>
+        {/* Drag handle */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "14px 0 4px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)" }} />
+        </div>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 20px 16px" }}>
+          <h3 style={{ margin: 0 }}>Add {fmt(amount * 100)}</h3>
+          <button onClick={onDismiss} style={{ background: "none", border: "none", cursor: "pointer",
+            color: "var(--muted-text)", fontSize: 22, lineHeight: 1, padding: 4 }}>✕</button>
+        </div>
+        {/* Stripe Elements */}
+        <div style={{ padding: "0 20px" }}>
+          <PaymentElement options={{ layout: "tabs" }} />
+          {payErr && (
+            <p style={{ color: "#f66", marginTop: 10, fontSize: 13, fontWeight: 600 }}>{payErr}</p>
+          )}
+          <button
+            className="btn"
+            style={{ marginTop: 16, width: "100%", marginBottom: 4 }}
+            disabled={!stripe || loading}
+            onClick={pay}
+          >
+            {loading ? "Processing…" : `Pay ${fmt(amount * 100)}`}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function CheckoutSheet({ clientSecret, amount, onSuccess, onDismiss }: {
+  clientSecret: string; amount: number; onSuccess: () => void; onDismiss: () => void;
+}) {
+  return (
+    <Elements
+      stripe={stripePromise}
+      options={{
+        clientSecret,
+        appearance: { theme: "night", variables: { colorPrimary: "#08daf4", borderRadius: "10px" } },
+      }}
+    >
+      <CheckoutForm amount={amount} onSuccess={onSuccess} onDismiss={onDismiss} />
+    </Elements>
+  );
+}
+// ────────────────────────────────────────────────────────────
+
 export default function Wallet() {
   const [data, setData]           = useState<any>(null);
   const [buddyIds, setBuddyIds]   = useState<Set<string>>(new Set());
@@ -107,6 +187,9 @@ export default function Wallet() {
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
   const [topupAmt, setTopupAmt]   = useState(10);
   const [msg, setMsg]             = useState<{ text: string; ok: boolean } | null>(null);
+  const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
+  const [checkoutAmt,    setCheckoutAmt]    = useState(0);
+  const [topupLoading,   setTopupLoading]   = useState(false);
 
   // Pagination
   const [txnPage, setTxnPage]     = useState(1);
@@ -172,15 +255,18 @@ export default function Wallet() {
   }, [reqSearch, buddyIds]);
 
   async function topup() {
-    if (topupAmt < 10) { setMsg({ text: "Minimum transfer is $10.", ok: false }); return; }
+    if (topupAmt < 10)   { setMsg({ text: "Minimum is $10.", ok: false }); return; }
+    if (topupAmt > 5000) { setMsg({ text: "Maximum is $5,000.", ok: false }); return; }
+    setTopupLoading(true);
     const r = await fetch("/api/wallet/topup", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ dollars: topupAmt }),
     });
     const j = await r.json();
+    setTopupLoading(false);
     if (!r.ok) { setMsg({ text: j.error || "Failed", ok: false }); return; }
-    setMsg({ text: `+${fmt(topupAmt * 100)} transferred!`, ok: true });
-    load(txnPage);
+    setCheckoutAmt(topupAmt);
+    setCheckoutSecret(j.clientSecret);
   }
 
   async function confirmSend() {
@@ -267,9 +353,11 @@ export default function Wallet() {
               </button>
             ))}
           </div>
-          <input type="number" value={topupAmt} min={10} step={5}
+          <input type="number" value={topupAmt} min={10} max={5000} step={5}
             onChange={e => setTopupAmt(parseInt(e.target.value || "10", 10))} />
-          <button className="btn" style={{ marginTop: 12, width: "100%" }} onClick={topup}>Add Funds</button>
+          <button className="btn" style={{ marginTop: 12, width: "100%" }} onClick={topup} disabled={topupLoading}>
+            {topupLoading ? "Loading…" : "Add Funds"}
+          </button>
         </div>
 
         {/* Send / Request */}
@@ -528,6 +616,22 @@ export default function Wallet() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Stripe checkout sheet — appears after selecting amount */}
+      {checkoutSecret && (
+        <CheckoutSheet
+          clientSecret={checkoutSecret}
+          amount={checkoutAmt}
+          onSuccess={() => {
+            setCheckoutSecret(null);
+            setMsg({ text: "Funds are on the way! Balance updates in a moment.", ok: true });
+            // Webhook credits wallet asynchronously — poll a couple times
+            setTimeout(() => load(1), 3000);
+            setTimeout(() => load(1), 8000);
+          }}
+          onDismiss={() => setCheckoutSecret(null)}
+        />
       )}
     </div>
   );
