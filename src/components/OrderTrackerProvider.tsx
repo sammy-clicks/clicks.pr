@@ -84,7 +84,9 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
     });
   }
 
-  // Restore from localStorage on mount, then validate against current user via API
+  // Restore from localStorage on mount, then validate against current user via API.
+  // Also recovers any active orders from the API that aren't in localStorage
+  // (e.g. placed on another tab/device, or after localStorage was cleared).
   useEffect(() => {
     async function restoreAndValidate() {
       let stored: ActiveOrder[] = [];
@@ -96,37 +98,52 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
         }
       } catch { stored = []; }
 
-      if (stored.length === 0) return;
-
       try {
         const r = await fetch("/api/orders");
         if (!r.ok) {
           // Not authenticated (e.g. just logged out) — leave localStorage intact
           // so orders can be restored after the user logs back in.
-          // Cross-account orders are filtered out below on a successful 200.
+          if (stored.length > 0) {
+            const nonFinal = stored.filter(o => !FINAL.includes(o.status));
+            nonFinal.forEach(o => { prevStatusRef.current[o.orderId] = o.status; });
+            setActiveOrdersState(nonFinal);
+          }
           return;
         }
         const j = await r.json();
         const apiOrders: any[] = j.orders ?? [];
-        // Only keep stored orders that exist in the API response (belong to current user)
-        // and are not in a final state
-        const validated = stored
-          .filter(o => {
-            const found = apiOrders.find((a: any) => a.id === o.orderId);
-            return found && !FINAL.includes(found.status);
-          })
-          .map(o => {
-            const found = apiOrders.find((a: any) => a.id === o.orderId);
-            return { ...o, status: found?.status ?? o.status };
-          });
-        saveToStorage(validated);
-        validated.forEach(o => { prevStatusRef.current[o.orderId] = o.status; });
-        setActiveOrdersState(validated);
+
+        // Build a map of stored orders for quick lookup
+        const storedMap = new Map(stored.map(o => [o.orderId, o]));
+
+        // All non-final API orders that belong to this user
+        const activeApiOrders = apiOrders.filter(o => !FINAL.includes(o.status));
+
+        const merged: ActiveOrder[] = activeApiOrders.map(apiOrder => {
+          const existing = storedMap.get(apiOrder.id);
+          // Prefer API status (source of truth); keep other display fields from
+          // localStorage if available, otherwise reconstruct from the API response.
+          return {
+            orderId:     apiOrder.id,
+            orderCode:   existing?.orderCode   ?? apiOrder.orderCode   ?? "----",
+            orderNumber: existing?.orderNumber ?? apiOrder.orderNumber ?? "",
+            venueName:   existing?.venueName   ?? apiOrder.venue?.name ?? "",
+            venueId:     existing?.venueId     ?? apiOrder.venueId     ?? "",
+            status:      apiOrder.status,
+            totalCents:  existing?.totalCents  ?? apiOrder.totalCents  ?? 0,
+          };
+        });
+
+        saveToStorage(merged);
+        merged.forEach(o => { prevStatusRef.current[o.orderId] = o.status; });
+        setActiveOrdersState(merged);
       } catch {
-        // Network issue — use stored orders filtered to non-final
-        const nonFinal = stored.filter(o => !FINAL.includes(o.status));
-        nonFinal.forEach(o => { prevStatusRef.current[o.orderId] = o.status; });
-        setActiveOrdersState(nonFinal);
+        // Network issue — fall back to stored orders filtered to non-final
+        if (stored.length > 0) {
+          const nonFinal = stored.filter(o => !FINAL.includes(o.status));
+          nonFinal.forEach(o => { prevStatusRef.current[o.orderId] = o.status; });
+          setActiveOrdersState(nonFinal);
+        }
       }
     }
     restoreAndValidate();

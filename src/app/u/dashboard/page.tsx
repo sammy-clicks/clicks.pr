@@ -133,6 +133,20 @@ export default function DashboardPage() {
 
   const hot: any[] = feed?.hot ?? [];
 
+  // Client-side sort: ≤0.5 mi first → crowd desc → clicks desc → name asc
+  const sortedVenues = [...hot].sort((a, b) => {
+    const distA = (userLat !== null && userLng !== null && a.lat != null && a.lng != null)
+      ? haversineMi(userLat, userLng, a.lat, a.lng) : Infinity;
+    const distB = (userLat !== null && userLng !== null && b.lat != null && b.lng != null)
+      ? haversineMi(userLat, userLng, b.lat, b.lng) : Infinity;
+    const aNear = distA <= 0.5;
+    const bNear = distB <= 0.5;
+    if (aNear !== bNear) return aNear ? -1 : 1;
+    if (b.crowdLevel !== a.crowdLevel) return b.crowdLevel - a.crowdLevel;
+    if (b.recentClicks !== a.recentClicks) return b.recentClicks - a.recentClicks;
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <div data-role="user">
       <style>{`@keyframes cooldownBar { from { width: 100%; } to { width: 0%; } }`}</style>
@@ -165,14 +179,14 @@ export default function DashboardPage() {
             <Link href="/u/zones" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>See all </Link>
           </div>
 
-          {hot.length === 0 ? (
+          {sortedVenues.length === 0 ? (
             <div style={{ padding: "24px 0", textAlign: "center" }}>
               <p className="muted" style={{ margin: 0 }}>Nothing trending yet  check back tonight </p>
             </div>
           ) : (
             <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8,
               scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
-              {hot.map((v: any) => {
+              {sortedVenues.map((v: any) => {
                 const crowd = CROWD[v.crowdLevel] ?? CROWD[0];
                 const emoji = VENUE_EMOJI[v.type?.toLowerCase()] ?? VENUE_EMOJI.default;
                 const isClicked = clicked[v.id];
@@ -318,8 +332,22 @@ export default function DashboardPage() {
                         onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 2px rgba(139,92,246,0.5)"}
                         onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.boxShadow = "none"}
                       >
-                        <div style={{ position: "relative", height: 100, background: p.imageUrl ? undefined : "linear-gradient(135deg,#1a0a2e,#2a1a44)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {p.imageUrl ? (
+                        <div style={{ position: "relative", height: 100, background: (p.itemImages?.length > 0 || p.imageUrl) ? undefined : "linear-gradient(135deg,#1a0a2e,#2a1a44)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {p.itemImages?.length > 0 ? (
+                            <div style={{ position: "absolute", inset: 0, display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gridTemplateRows: p.itemImages.length > 2 ? "1fr 1fr" : "1fr",
+                              gap: 1 }}>
+                              {(p.itemImages as string[]).slice(0, 4).map((img, idx) => (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img key={idx} src={img} alt="" style={{
+                                  width: "100%", height: "100%", objectFit: "cover",
+                                  ...(p.itemImages.length === 1 ? { gridColumn: "1 / span 2" } :
+                                    p.itemImages.length === 3 && idx === 2 ? { gridColumn: "1 / span 2" } : {}),
+                                }} />
+                              ))}
+                            </div>
+                          ) : p.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={p.imageUrl} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
                           ) : p.venue.venueImageUrl ? (

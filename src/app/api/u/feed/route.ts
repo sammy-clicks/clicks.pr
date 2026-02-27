@@ -43,20 +43,14 @@ export async function GET() {
   const clickMap   = new Map(clickCounts.map(c => [c.venueId, c._count._all]));
   const now        = new Date();
 
-  const enriched = venues.map(v => {
+  const hot = venues.map(v => {
     const liveCheckins = checkInMap.get(v.id) ?? 0;
     const recentClicks = clickMap.get(v.id) ?? 0;
     const isBoosted    = v.boostActiveUntil ? v.boostActiveUntil > now : false;
     const boostBonus   = isBoosted ? 2 : 0;
-    // Compute crowdLevel dynamically from live check-ins (same formula as /api/venues/[id])
     const crowdLevel   = Math.min(10, Math.max(0, Math.ceil(liveCheckins / 2) + boostBonus));
-    const hotness      = liveCheckins * 4 + recentClicks * 2 + crowdLevel + (isBoosted ? 10 : 0);
-    return { ...v, crowdLevel, liveCheckins, recentClicks, isBoosted, hotness };
+    return { ...v, crowdLevel, liveCheckins, recentClicks, isBoosted };
   });
-
-  // Sort by hotness, take top 12
-  enriched.sort((a, b) => b.hotness - a.hotness);
-  const hot    = enriched.slice(0, 12);
 
   // Also return user's last check-in zone for "Your Zone" section
   const lastCheckin = await prisma.checkIn.findFirst({

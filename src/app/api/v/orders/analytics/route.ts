@@ -26,6 +26,9 @@ export async function GET(req: Request) {
   const venue = await prisma.venue.findUnique({ where: { managerId: session.sub } });
   if (!venue) return NextResponse.json({ error: "No venue linked." }, { status: 404 });
 
+  if (venue.plan !== "PRO")
+    return NextResponse.json({ error: "Analytics is a PRO feature. Upgrade to access order analytics." }, { status: 403 });
+
   const url    = new URL(req.url);
   const period = url.searchParams.get("period") ?? "24h";
   const page   = Math.max(1, parseInt(url.searchParams.get("page") ?? "1"));
