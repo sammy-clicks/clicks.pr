@@ -58,7 +58,7 @@ export default function VenuePage({ params }: { params: { id: string } }) {
   const [orderNote,   setOrderNote]   = useState("");
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { cart, addItem, setQty: ctxSetQty, clearCart, totalCents } = useCart();
-  const { addActiveOrder } = useOrderTracker();
+  const { addActiveOrder, bannerShowing } = useOrderTracker();
 
   const reload = () =>
     fetch(`/api/venues/${params.id}`)
@@ -221,7 +221,7 @@ export default function VenuePage({ params }: { params: { id: string } }) {
   const hasOrder = cartTotal > 0 || Object.keys(selectedPromos).length > 0;
 
   return (
-    <div data-role="user" style={{ paddingBottom: hasOrder ? 100 : 24 }}>
+    <div data-role="user" style={{ paddingBottom: hasOrder ? (bannerShowing ? 340 : 100) : (bannerShowing ? 240 : 24) }}>
       <style>{`
         @keyframes fadeInUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
         .venue-tab { padding:8px 18px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer;
@@ -536,11 +536,12 @@ export default function VenuePage({ params }: { params: { id: string } }) {
       {/* Sticky cart/order footer */}
       {hasOrder && (
         <div style={{
-          position:"fixed", bottom:0, left:0, right:0, zIndex:100,
+          position:"fixed", bottom: bannerShowing ? 220 : 0, left:0, right:0, zIndex:100,
           padding:"12px 16px env(safe-area-inset-bottom,12px)",
           background:"rgba(8,10,18,0.97)", backdropFilter:"blur(12px)",
           borderTop:"1px solid rgba(8,218,244,0.22)",
           boxShadow:"0 -8px 32px rgba(8,218,244,0.1)",
+          transition:"bottom 0.25s",
         }}>
           <div style={{ maxWidth:640, margin:"0 auto" }}>
             {/* Order note input */}

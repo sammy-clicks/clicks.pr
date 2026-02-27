@@ -101,10 +101,9 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
       try {
         const r = await fetch("/api/orders");
         if (!r.ok) {
-          // 401 = different user or logged out — wipe stored orders
-          if (r.status === 401) {
-            localStorage.removeItem(STORAGE_KEY);
-          }
+          // Not authenticated (e.g. just logged out) — leave localStorage intact
+          // so orders can be restored after the user logs back in.
+          // Cross-account orders are filtered out below on a successful 200.
           return;
         }
         const j = await r.json();
@@ -231,7 +230,7 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
   const showBanner = activeOrders.length > 0 && activeOrders.some(o => !FINAL.includes(o.status)) && popup === "none" && isUserRoute;
 
   return (
-    <OrderTrackerContext.Provider value={{ activeOrders, addActiveOrder, removeActiveOrder, updateActiveOrder }}>
+    <OrderTrackerContext.Provider value={{ activeOrders, addActiveOrder, removeActiveOrder, updateActiveOrder, bannerShowing: showBanner }}>
       {children}
 
       {/* ── Floating order tracker banner ── */}

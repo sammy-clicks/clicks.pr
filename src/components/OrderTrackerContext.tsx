@@ -16,6 +16,7 @@ export type OrderTrackerCtx = {
   addActiveOrder: (o: ActiveOrder) => void;
   removeActiveOrder: (orderId: string) => void;
   updateActiveOrder: (orderId: string, updates: Partial<ActiveOrder>) => void;
+  bannerShowing: boolean;
 };
 
 export const OrderTrackerContext = createContext<OrderTrackerCtx>({
@@ -23,6 +24,7 @@ export const OrderTrackerContext = createContext<OrderTrackerCtx>({
   addActiveOrder: () => {},
   removeActiveOrder: () => {},
   updateActiveOrder: () => {},
+  bannerShowing: false,
 });
 
 export function useOrderTracker() {
