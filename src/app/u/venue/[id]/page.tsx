@@ -58,7 +58,7 @@ export default function VenuePage({ params }: { params: { id: string } }) {
   const [orderNote,   setOrderNote]   = useState("");
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { cart, addItem, setQty: ctxSetQty, clearCart, totalCents } = useCart();
-  const { setActiveOrder } = useOrderTracker();
+  const { addActiveOrder } = useOrderTracker();
 
   const reload = () =>
     fetch(`/api/venues/${params.id}`)
@@ -177,7 +177,7 @@ export default function VenuePage({ params }: { params: { id: string } }) {
     setSelectedPromos({});
     setOrderNote("");
     reload();
-    setActiveOrder({
+    addActiveOrder({
       orderId: j.orderId,
       orderCode: j.orderCode ?? "----",
       orderNumber: j.orderNumber ?? "",

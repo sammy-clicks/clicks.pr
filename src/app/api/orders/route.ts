@@ -108,10 +108,9 @@ export async function POST(req: Request) {
   if (menuItems.length !== menuItemIds.length)
     return NextResponse.json({ error: "One or more items are unavailable." }, { status: 400 });
 
-  // Alcohol window check — block if ordered outside the municipality's serving window
-  const wantsAlcohol = menuItems.some(m => m.isAlcohol && body.items.find(i => i.menuItemId === m.id));
-  if (wantsAlcohol && !isAlcoholAllowed(startMins, cutoffMins))
-    return NextResponse.json({ error: "Alcohol service is not available at this time." }, { status: 403 });
+  // Service window check — block all orders outside the municipality's serving window
+  if (!isAlcoholAllowed(startMins, cutoffMins))
+    return NextResponse.json({ error: "Orders are not available at this time. Please check back during service hours." }, { status: 403 });
 
   // Resolve mixers for items that requested one
   const mixerIds = body.items.map(i => i.mixerId).filter(Boolean) as string[];
@@ -148,19 +147,7 @@ export async function POST(req: Request) {
     if (promos.length !== promotionIds.length)
       return NextResponse.json({ error: "One or more promotions are unavailable." }, { status: 400 });
 
-    // Alcohol check for promotions — look up all menuItemIds referenced in promo items
-    const promoItemMenuIds: string[] = promos.flatMap(p => {
-      try { return (JSON.parse((p.items as string) ?? "[]") as Array<{ menuItemId: string }>).map(x => x.menuItemId); }
-      catch { return []; }
-    });
-    if (promoItemMenuIds.length > 0 && !isAlcoholAllowed(startMins, cutoffMins)) {
-      const alcoholPromoItems = await prisma.menuItem.findMany({
-        where: { id: { in: promoItemMenuIds }, isAlcohol: true },
-        select: { id: true },
-      });
-      if (alcoholPromoItems.length > 0)
-        return NextResponse.json({ error: "Alcohol service is not available at this time." }, { status: 403 });
-    }
+    // No check needed here — service window already checked above for all orders
 
     const promoMap = new Map(promos.map(p => [p.id, p]));
     for (const pi of body.promotions) {
@@ -183,6 +170,16 @@ export async function POST(req: Request) {
   });
   if ((todaySpend._sum.amountCents ?? 0) + totalCents > SEND_LIMIT_CENTS)
     return NextResponse.json({ error: "Daily spending limit ($500) reached." }, { status: 403 });
+
+  // Max 2 active orders check
+  const activeOrderCount = await prisma.order.count({
+    where: {
+      userId: session.sub,
+      status: { notIn: ["COMPLETED", "CANCELLED", "PICKED_UP"] },
+    },
+  });
+  if (activeOrderCount >= 2)
+    return NextResponse.json({ error: "You already have 2 active orders. Please wait for them to complete before placing a new one." }, { status: 400 });
 
   // Wallet check
   const wallet = await prisma.walletAccount.findUnique({ where: { userId: session.sub } });

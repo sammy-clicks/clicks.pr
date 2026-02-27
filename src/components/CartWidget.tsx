@@ -20,7 +20,7 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 
 export function CartWidget() {
   const { cart, setQty, removeItem, clearCart, totalItems, totalCents } = useCart();
-  const { setActiveOrder } = useOrderTracker();
+  const { addActiveOrder } = useOrderTracker();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [distanceWarning, setDistanceWarning] = useState(false);
@@ -80,7 +80,7 @@ export function CartWidget() {
     if (!res.ok) { setMsg(j.error || "Order failed"); return; }
     clearCart();
     setOpen(false);
-    setActiveOrder({
+    addActiveOrder({
       orderId: j.orderId,
       orderCode: j.orderCode ?? "----",
       orderNumber: j.orderNumber ?? "",

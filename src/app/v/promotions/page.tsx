@@ -454,8 +454,9 @@ export default function VenuePromotions() {
             {/* Max redeems */}
             <label htmlFor="promo-redeems" style={{ display: "block", margin: "12px 0 4px", fontSize: 13 }}>Max redeems per user per night</label>
             <input id="promo-redeems" type="number" className="input" min={1} max={99}
-              value={form.maxRedeemsPerNightPerUser}
-              onChange={e => setForm(f => ({ ...f, maxRedeemsPerNightPerUser: parseInt(e.target.value) || 1 }))} />
+              value={form.maxRedeemsPerNightPerUser === 0 ? "" : form.maxRedeemsPerNightPerUser}
+              onChange={e => setForm(f => ({ ...f, maxRedeemsPerNightPerUser: parseInt(e.target.value, 10) || 0 }))}
+              onBlur={() => setForm(f => ({ ...f, maxRedeemsPerNightPerUser: Math.max(1, f.maxRedeemsPerNightPerUser || 1) }))} />
 
             <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
               <button className="btn" onClick={requestPublish} disabled={saving || !form.title || form.items.length === 0}>

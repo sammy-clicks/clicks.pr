@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { OrderTrackerContext, ActiveOrder } from "./OrderTrackerContext";
 
-const STORAGE_KEY = "clicks_active_order";
+const STORAGE_KEY = "clicks_active_orders";
 const FINAL = ["COMPLETED", "CANCELLED", "PICKED_UP"];
 const PHASES = [
   { key: "PLACED",    label: "Sent" },
@@ -19,71 +19,163 @@ function fmt(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 export function OrderTrackerProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isUserRoute = !pathname || pathname.startsWith("/u/") || pathname === "/u";
-  const [activeOrder, setActiveOrderState] = useState<ActiveOrder | null>(null);
+  const [activeOrders, setActiveOrdersState] = useState<ActiveOrder[]>([]);
+  const [viewIdx, setViewIdx] = useState(0);
   const [expanded, setExpanded] = useState(true);
   const [codeVisible, setCodeVisible] = useState(false);
   const [popup, setPopup] = useState<Popup>("none");
+  const [popupOrder, setPopupOrder] = useState<ActiveOrder | null>(null);
   const [issueText, setIssueText] = useState("");
   const [issueSending, setIssueSending] = useState(false);
   const [caseNumber, setCaseNumber] = useState("");
   const [cancelledInfo, setCancelledInfo] = useState<{ venueName: string; refundCents: number } | null>(null);
   const [cancellingId, setCancellingId] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const prevStatus = useRef<string>("");
+  const prevStatusRef = useRef<Record<string, string>>({});
+  const activeOrdersRef = useRef<ActiveOrder[]>([]);
+  activeOrdersRef.current = activeOrders;
 
-  function setActiveOrder(o: ActiveOrder | null) {
-    setActiveOrderState(o);
-    if (o) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(o));
-      prevStatus.current = o.status;
+  // Clamp viewIdx when orders list shrinks
+  useEffect(() => {
+    setViewIdx(prev => (activeOrders.length === 0 ? 0 : Math.min(prev, activeOrders.length - 1)));
+  }, [activeOrders.length]);
+
+  // Reset code visibility when switching viewed order
+  useEffect(() => { setCodeVisible(false); }, [viewIdx]);
+
+  function saveToStorage(orders: ActiveOrder[]) {
+    if (orders.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
   }
 
-  // Restore from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const o: ActiveOrder = JSON.parse(saved);
-        setActiveOrderState(o);
-        prevStatus.current = o.status;
+  function addActiveOrder(o: ActiveOrder) {
+    setActiveOrdersState(prev => {
+      const exists = prev.findIndex(x => x.orderId === o.orderId);
+      let next: ActiveOrder[];
+      if (exists >= 0) {
+        next = prev.map((x, i) => (i === exists ? o : x));
+      } else {
+        next = [...prev, o];
+        setViewIdx(next.length - 1);
       }
-    } catch { /* ignore */ }
+      saveToStorage(next);
+      prevStatusRef.current[o.orderId] = o.status;
+      return next;
+    });
+  }
+
+  function removeActiveOrder(orderId: string) {
+    setActiveOrdersState(prev => {
+      const next = prev.filter(x => x.orderId !== orderId);
+      saveToStorage(next);
+      delete prevStatusRef.current[orderId];
+      return next;
+    });
+  }
+
+  function updateActiveOrder(orderId: string, updates: Partial<ActiveOrder>) {
+    setActiveOrdersState(prev => {
+      const next = prev.map(x => (x.orderId === orderId ? { ...x, ...updates } : x));
+      saveToStorage(next);
+      return next;
+    });
+  }
+
+  // Restore from localStorage on mount, then validate against current user via API
+  useEffect(() => {
+    async function restoreAndValidate() {
+      let stored: ActiveOrder[] = [];
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          stored = Array.isArray(parsed) ? parsed : [];
+        }
+      } catch { stored = []; }
+
+      if (stored.length === 0) return;
+
+      try {
+        const r = await fetch("/api/orders");
+        if (!r.ok) {
+          // 401 = different user or logged out — wipe stored orders
+          if (r.status === 401) {
+            localStorage.removeItem(STORAGE_KEY);
+          }
+          return;
+        }
+        const j = await r.json();
+        const apiOrders: any[] = j.orders ?? [];
+        // Only keep stored orders that exist in the API response (belong to current user)
+        // and are not in a final state
+        const validated = stored
+          .filter(o => {
+            const found = apiOrders.find((a: any) => a.id === o.orderId);
+            return found && !FINAL.includes(found.status);
+          })
+          .map(o => {
+            const found = apiOrders.find((a: any) => a.id === o.orderId);
+            return { ...o, status: found?.status ?? o.status };
+          });
+        saveToStorage(validated);
+        validated.forEach(o => { prevStatusRef.current[o.orderId] = o.status; });
+        setActiveOrdersState(validated);
+      } catch {
+        // Network issue — use stored orders filtered to non-final
+        const nonFinal = stored.filter(o => !FINAL.includes(o.status));
+        nonFinal.forEach(o => { prevStatusRef.current[o.orderId] = o.status; });
+        setActiveOrdersState(nonFinal);
+      }
+    }
+    restoreAndValidate();
   }, []);
 
-  // Poll every 5s when order is active
+  const hasNonFinalOrders = activeOrders.some(o => !FINAL.includes(o.status));
+
+  // Single polling interval for all active orders
   useEffect(() => {
-    if (!activeOrder || FINAL.includes(activeOrder.status)) {
+    if (!hasNonFinalOrders) {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
 
     async function poll() {
       const r = await fetch("/api/orders");
+      if (!r.ok) return;
       const j = await r.json();
-      const found = (j.orders ?? []).find((o: any) => o.id === activeOrder!.orderId);
-      if (!found) return;
+      const apiMap = new Map<string, any>((j.orders ?? []).map((o: any) => [o.id, o]));
 
-      const newStatus: string = found.status;
-      const oldStatus = prevStatus.current;
+      for (const order of activeOrdersRef.current) {
+        if (FINAL.includes(order.status)) continue;
+        const found = apiMap.get(order.orderId);
+        if (!found) continue;
 
-      if (newStatus !== oldStatus) {
-        prevStatus.current = newStatus;
-        const updated = { ...activeOrder!, status: newStatus };
-        setActiveOrderState(updated);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        const newStatus: string = found.status;
+        const oldStatus = prevStatusRef.current[order.orderId];
 
-        if (newStatus === "COMPLETED" || newStatus === "PICKED_UP") {
-          setPopup("completed");
-          return;
-        }
-        if (newStatus === "CANCELLED") {
-          // Cancelled by venue
-          setCancelledInfo({ venueName: activeOrder!.venueName, refundCents: activeOrder!.totalCents });
-          setPopup("cancelled");
-          return;
+        if (newStatus !== oldStatus) {
+          prevStatusRef.current[order.orderId] = newStatus;
+
+          if (FINAL.includes(newStatus)) {
+            setActiveOrdersState(prev => {
+              const next = prev.filter(x => x.orderId !== order.orderId);
+              saveToStorage(next);
+              delete prevStatusRef.current[order.orderId];
+              return next;
+            });
+            if (newStatus === "COMPLETED" || newStatus === "PICKED_UP") {
+              setPopupOrder({ ...order, status: newStatus });
+              setPopup("completed");
+            } else if (newStatus === "CANCELLED") {
+              setCancelledInfo({ venueName: order.venueName, refundCents: order.totalCents });
+              setPopup("cancelled");
+            }
+          } else {
+            updateActiveOrder(order.orderId, { status: newStatus });
+          }
         }
       }
     }
@@ -92,26 +184,25 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
     pollRef.current = setInterval(poll, 5000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrder?.orderId, activeOrder?.status]);
+  }, [hasNonFinalOrders]);
 
   async function handleCancel() {
-    if (!activeOrder) return;
-    setCancellingId(activeOrder.orderId);
-    const r = await fetch(`/api/orders/${activeOrder.orderId}/cancel`, { method: "POST" });
+    const order = activeOrders[viewIdx];
+    if (!order) return;
+    setCancellingId(order.orderId);
+    const r = await fetch(`/api/orders/${order.orderId}/cancel`, { method: "POST" });
     const j = await r.json();
     setCancellingId("");
     if (!r.ok) { alert(j.error || "Could not cancel."); return; }
     setCancelledInfo({ venueName: j.venueName, refundCents: j.refundCents });
     setPopup("cancelled");
-    setActiveOrderState(null);
-    localStorage.removeItem(STORAGE_KEY);
-    if (pollRef.current) clearInterval(pollRef.current);
+    removeActiveOrder(order.orderId);
   }
 
   async function submitIssue() {
-    if (!activeOrder || !issueText.trim()) return;
+    if (!popupOrder || !issueText.trim()) return;
     setIssueSending(true);
-    const r = await fetch(`/api/orders/${activeOrder.orderId}/issue`, {
+    const r = await fetch(`/api/orders/${popupOrder.orderId}/issue`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ description: issueText.trim() }),
@@ -121,30 +212,30 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
     if (!r.ok) { alert(j.error || "Failed to submit."); return; }
     setCaseNumber(j.caseNumber);
     setPopup("issue_submitted");
-    setActiveOrder(null);
+    setPopupOrder(null);
   }
 
   function dismissCompleted() {
     setPopup("none");
-    setActiveOrder(null);
+    setPopupOrder(null);
   }
 
   function dismissCancelled() {
     setPopup("none");
     setCancelledInfo(null);
-    setActiveOrder(null);
   }
 
-  const phaseIdx = PHASES.findIndex(p => p.key === (activeOrder?.status ?? "PLACED"));
+  const viewedOrder = activeOrders[viewIdx] ?? null;
+  const phaseIdx = PHASES.findIndex(p => p.key === (viewedOrder?.status ?? "PLACED"));
   const current = phaseIdx === -1 ? 0 : phaseIdx;
-  const showBanner = !!activeOrder && !FINAL.includes(activeOrder.status) && popup === "none" && isUserRoute;
+  const showBanner = activeOrders.length > 0 && activeOrders.some(o => !FINAL.includes(o.status)) && popup === "none" && isUserRoute;
 
   return (
-    <OrderTrackerContext.Provider value={{ activeOrder, setActiveOrder }}>
+    <OrderTrackerContext.Provider value={{ activeOrders, addActiveOrder, removeActiveOrder, updateActiveOrder }}>
       {children}
 
       {/* ── Floating order tracker banner ── */}
-      {showBanner && (
+      {showBanner && viewedOrder && (
         <div style={{
           position: "fixed", bottom: 0, left: 0, right: 0,
           zIndex: 1000, padding: "0 12px 12px", pointerEvents: "none",
@@ -173,7 +264,12 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
                   <strong style={{ fontSize: 14, color: "var(--ink, #e2e8f0)" }}>Order Tracking</strong>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 13, color: "#08daf4", fontWeight: 600 }}>{activeOrder.status}</span>
+                  {activeOrders.length > 1 && (
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", background: "rgba(8,218,244,0.12)", borderRadius: 8, padding: "2px 7px" }}>
+                      {viewIdx + 1}/{activeOrders.length}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 13, color: "#08daf4", fontWeight: 600 }}>{viewedOrder.status}</span>
                   <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Tap to expand</span>
                 </div>
               </div>
@@ -186,7 +282,7 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
                 <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
                   <div>
                     <p style={{ margin: "0 0 2px", fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                      {activeOrder.venueName}
+                      {viewedOrder.venueName}
                     </p>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{
@@ -197,7 +293,7 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
                         borderRadius: 6, padding: codeVisible ? 0 : "1px 6px",
                         transition: "all 0.2s", userSelect: codeVisible ? "auto" : "none",
                         textShadow: codeVisible ? "0 0 20px rgba(8,218,244,0.5)" : "none",
-                      }}>{activeOrder.orderCode}</span>
+                      }}>{viewedOrder.orderCode}</span>
                       <button onClick={() => setCodeVisible(v => !v)} style={{
                         background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.18)",
                         borderRadius: 6, color: "rgba(255,255,255,0.8)", fontSize: 10,
@@ -205,14 +301,39 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
                       }}>{codeVisible ? "Hide" : "Show"}</button>
                     </div>
                     <p style={{ margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
-                      Show this code to venue staff · {activeOrder.orderNumber}
+                      Show this code to venue staff · {viewedOrder.orderNumber}
                     </p>
                   </div>
-                  <button onClick={() => setExpanded(false)} style={{
-                    background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
-                    borderRadius: 8, color: "#fff", fontSize: 11, padding: "6px 11px", cursor: "pointer",
-                    flexShrink: 0,
-                  }}>Minimize</button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    {/* Multi-order navigation */}
+                    {activeOrders.length > 1 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <button
+                          onClick={() => setViewIdx(v => Math.max(0, v - 1))}
+                          disabled={viewIdx === 0}
+                          style={{
+                            background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+                            borderRadius: 6, color: viewIdx === 0 ? "rgba(255,255,255,0.2)" : "#fff",
+                            fontSize: 14, padding: "4px 8px", cursor: viewIdx === 0 ? "default" : "pointer",
+                          }}>‹</button>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", minWidth: 28, textAlign: "center" }}>
+                          {viewIdx + 1}/{activeOrders.length}
+                        </span>
+                        <button
+                          onClick={() => setViewIdx(v => Math.min(activeOrders.length - 1, v + 1))}
+                          disabled={viewIdx === activeOrders.length - 1}
+                          style={{
+                            background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+                            borderRadius: 6, color: viewIdx === activeOrders.length - 1 ? "rgba(255,255,255,0.2)" : "#fff",
+                            fontSize: 14, padding: "4px 8px", cursor: viewIdx === activeOrders.length - 1 ? "default" : "pointer",
+                          }}>›</button>
+                      </div>
+                    )}
+                    <button onClick={() => setExpanded(false)} style={{
+                      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+                      borderRadius: 8, color: "#fff", fontSize: 11, padding: "6px 11px", cursor: "pointer",
+                    }}>Minimize</button>
+                  </div>
                 </div>
 
                 {/* Progress track */}
@@ -247,7 +368,7 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
                   ))}
                 </div>
 
-                {activeOrder.status === "READY" && (
+                {viewedOrder.status === "READY" && (
                   <div style={{
                     background: "rgba(8,218,244,0.08)", border: "1px solid rgba(8,218,244,0.3)",
                     borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#fff", marginBottom: 12,
@@ -257,13 +378,13 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
                 )}
 
                 {/* Cancel button — only while PLACED */}
-                {activeOrder.status === "PLACED" && (
+                {viewedOrder.status === "PLACED" && (
                   <button onClick={handleCancel} disabled={!!cancellingId} style={{
                     background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)",
                     borderRadius: 8, color: "#f87171", fontSize: 12, padding: "7px 14px",
                     cursor: "pointer", width: "100%",
                   }}>
-                    {cancellingId ? "Cancelling…" : "Cancel order"}
+                    {cancellingId === viewedOrder.orderId ? "Cancelling…" : "Cancel order"}
                   </button>
                 )}
 
@@ -302,7 +423,7 @@ export function OrderTrackerProvider({ children }: { children: React.ReactNode }
                     Order Complete
                   </h2>
                   <p style={{ color: "var(--muted-text, #64748b)", margin: 0, fontSize: 14, lineHeight: 1.5 }}>
-                    Your order at <strong style={{ color: "var(--ink, #e2e8f0)" }}>{activeOrder?.venueName || cancelledInfo?.venueName}</strong> is complete. Please ensure your order was issued properly before accepting.
+                    Your order at <strong style={{ color: "var(--ink, #e2e8f0)" }}>{popupOrder?.venueName}</strong> is complete. Please ensure your order was issued properly before accepting.
                   </p>
                 </div>
                 <button onClick={dismissCompleted} style={{

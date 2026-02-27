@@ -143,6 +143,11 @@ export default function VenueDashboard() {
               <span className={`badge st-${o.status}`}>{o.status}</span>
             </div>
             <p className="muted" style={{ margin: "6px 0 2px", fontSize: 13 }}>{o.items.map((i: any) => `${i.qty}× ${i.name}`).join(", ")}</p>
+            {o.note && (
+              <p style={{ margin: "2px 0 4px", fontSize: 12, color: "var(--ink)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 8px" }}>
+                <span style={{ fontWeight: 600, color: "var(--muted-text)" }}>Note: </span>{o.note}
+              </p>
+            )}
             <p className="muted" style={{ margin: "2px 0 10px", fontWeight: 700 }}>${(o.totalCents / 100).toFixed(2)}</p>
 
             {o.status === "PLACED" && (

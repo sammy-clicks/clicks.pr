@@ -12,13 +12,17 @@ export type ActiveOrder = {
 };
 
 export type OrderTrackerCtx = {
-  activeOrder: ActiveOrder | null;
-  setActiveOrder: (o: ActiveOrder | null) => void;
+  activeOrders: ActiveOrder[];
+  addActiveOrder: (o: ActiveOrder) => void;
+  removeActiveOrder: (orderId: string) => void;
+  updateActiveOrder: (orderId: string, updates: Partial<ActiveOrder>) => void;
 };
 
 export const OrderTrackerContext = createContext<OrderTrackerCtx>({
-  activeOrder: null,
-  setActiveOrder: () => {},
+  activeOrders: [],
+  addActiveOrder: () => {},
+  removeActiveOrder: () => {},
+  updateActiveOrder: () => {},
 });
 
 export function useOrderTracker() {
