@@ -73,6 +73,7 @@ export default function VenueAccount() {
             if (cj?.plan === "PRO") {
               venue = { ...venue, plan: "PRO" };
               localStorage.removeItem("clicks_pending_upgrade_sid");
+              localStorage.setItem("clicks_pro_confirmed", "1");
             }
           }
         }
@@ -84,6 +85,15 @@ export default function VenueAccount() {
   }
   useEffect(() => { load(); }, []);
 
+  // Re-fetch when app becomes visible again (user returning from Stripe in-app browser)
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") load();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("upgraded") === "1" && !sessionStorage.getItem("welcome_dismissed")) setShowWelcome(true);
@@ -92,6 +102,7 @@ export default function VenueAccount() {
   function dismissWelcome() {
     sessionStorage.setItem("welcome_dismissed", "1"); setShowWelcome(false);
     window.history.replaceState({}, "", "/v/account");
+    load(); // re-fetch so PRO state is always current after dismissing
   }
   function setMsg2(text: string, ok = true) { setMsg({ text, ok }); }
 

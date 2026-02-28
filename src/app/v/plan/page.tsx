@@ -89,9 +89,25 @@ function PlanContent() {
   const [retryMsg, setRetryMsg] = useState("");
 
   useEffect(() => {
-    fetch("/api/v/plan").then(r => r.json()).then(j => {
-      if (!j.error) setData(j); else setError(j.error);
-    });
+    function fetchPlan() {
+      fetch("/api/v/plan").then(r => r.json()).then(j => {
+        if (!j.error) {
+          setData(j);
+          // If plan is now PRO, clear the confirmed flag
+          if (j.plan === "PRO") localStorage.removeItem("clicks_pro_confirmed");
+        } else {
+          setError(j.error);
+        }
+      });
+    }
+    fetchPlan();
+
+    // Re-fetch when app becomes visible again (user returning from Stripe in-app browser)
+    function onVisible() {
+      if (document.visibilityState === "visible") fetchPlan();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   const isPro = data?.plan === "PRO";
@@ -155,6 +171,7 @@ function PlanContent() {
     const j = await r.json().catch(() => ({}));
     if (r.ok && j.plan === "PRO") {
       localStorage.removeItem("clicks_pending_upgrade_sid");
+      localStorage.removeItem("clicks_pro_confirmed");
       setData((d: any) => ({ ...d, plan: "PRO" }));
     } else {
       setRetryMsg(j.error || "No confirmed payment found. Contact support if you were charged.");
