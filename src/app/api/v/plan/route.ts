@@ -119,7 +119,7 @@ export async function POST(req: Request) {
       payment_method_types: ["card"],
       customer_email: user.email ?? undefined,
       line_items: [{ price: PRO_MONTHLY_PRICE_ID, quantity: 1 }],
-      success_url: `${appUrl}/v/account?upgraded=1&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${appUrl}/api/v/plan/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/v/plan?cancelled=1`,
       metadata: { venueId: venue.id },
       // Propagate venueId to the Subscription and all its Invoices so webhooks can find it
