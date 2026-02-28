@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 
+// Fire-and-forget server warm-up — prevents cold-start delays on first button click
+if (typeof window !== "undefined") {
+  void fetch("/api/ping").catch(() => {});
+}
+import { ThemeToggle } from "./ThemeToggle";
+
 const FULL_W = 260;
 
 /*  Nav link definition  */

@@ -15,10 +15,20 @@ export async function GET() {
     select: {
       id: true, username: true, firstName: true, lastName: true,
       email: true, role: true, avatarUrl: true, ghostMode: true,
-      pausedAt: true, createdAt: true,
+      pausedAt: true, createdAt: true, lastActiveAt: true,
     },
   });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Update lastActiveAt in the background — at most once every 5 minutes to avoid excess writes
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+  if (!user.lastActiveAt || user.lastActiveAt < fiveMinAgo) {
+    void prisma.user.update({
+      where: { id: session.sub },
+      data: { lastActiveAt: new Date() },
+    }).catch(() => {/* non-critical */ });
+  }
+
   return NextResponse.json({ user });
 }
 
