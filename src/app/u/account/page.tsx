@@ -247,7 +247,7 @@ export default function AccountPage() {
       {/* ── Log out ─────────────────────────────────────────── */}
       <div className="card" style={{ marginBottom: 20 }}>
         <h3 style={{ margin: "0 0 8px" }}>Log out</h3>
-        <p className="muted">You'll be returned to the login screen.</p>
+        <p className="muted">You&apos;ll be returned to the login screen.</p>
         <a className="btn secondary" href="/api/auth/logout">Log out</a>
       </div>
     </div>

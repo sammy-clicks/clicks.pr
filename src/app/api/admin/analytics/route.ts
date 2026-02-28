@@ -150,10 +150,6 @@ export async function GET(req: Request) {
 
   // Gross orders revenue (window-based)
   const grossOrdersCents = completedOrders.reduce((s, o) => s + (o.totalCents ?? 0), 0);
-  const grossOrdersTodayCents = completedOrders
-    .filter(o => o.completedAt && o.completedAt >= dayAgo)
-    .reduce((s, o) => s + (o.totalCents ?? 0), 0);
-
   // Commission revenue breakdown (all-time, Clicks' earnings)
   const orderCommissionCents    = Math.round(grossOrdersCents * 0.15);
   const promoCommissionCents    = Math.round(paidRedemptions.reduce((s, r) => s + r.paidCents, 0) * 0.15);

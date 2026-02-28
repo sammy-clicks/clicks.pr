@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Nav } from "@/components/Nav";
 
 type Venue = {
@@ -18,8 +18,8 @@ function DeleteVenueModal({ name, onCancel, onConfirm }: { name: string; onCance
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
       <div style={{ background: "var(--surface,#1a1a2e)", borderRadius: 14, padding: 28, maxWidth: 440, width: "100%" }}>
-        <h3 style={{ margin: "0 0 10px", color: "#f66" }}>Delete "{name}"?</h3>
-        <p className="muted" style={{ marginBottom: 16 }}>The venue will be moved to "Deleted Venues" and hidden from all users. Historical data is preserved.</p>
+        <h3 style={{ margin: "0 0 10px", color: "#f66" }}>Delete &quot;{name}&quot;?</h3>
+        <p className="muted" style={{ marginBottom: 16 }}>The venue will be moved to &quot;Deleted Venues&quot; and hidden from all users. Historical data is preserved.</p>
         <p className="muted" style={{ fontSize: 13 }}>Type <strong>{required}</strong> to confirm:</p>
         <input value={confirm} onChange={e => setConfirm(e.target.value)} style={{ marginTop: 6 }} autoFocus />
         <div className="row" style={{ marginTop: 14, gap: 8 }}>
@@ -112,15 +112,6 @@ export default function VenuesAdmin() {
     const j = await r.json();
     if (!r.ok) { setMsg(j.error || "Delete failed"); return; }
     setDeleteTarget(null); setEditId(null); setMsg("Venue deleted."); load();
-  }
-
-  async function setPlan(id: string, plan: string) {
-    await fetch("/api/admin/venues", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, plan }),
-    });
-    load();
   }
 
   if (!data) return <div className="container"><Nav role="admin" /><p className="muted">Loading…</p></div>;

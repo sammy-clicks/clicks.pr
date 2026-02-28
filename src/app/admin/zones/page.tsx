@@ -28,7 +28,7 @@ function DeleteModal({ zone, onCancel, onDeleted }: { zone: Zone; onCancel: () =
       alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16,
     }}>
       <div style={{ background: "var(--surface,#1a1a2e)", borderRadius: 14, padding: 28, maxWidth: 460, width: "100%" }}>
-        <h3 style={{ margin: "0 0 8px", color: "#f66" }}>Delete zone "{zone.name}"?</h3>
+        <h3 style={{ margin: "0 0 8px", color: "#f66" }}>Delete zone &quot;{zone.name}&quot;?</h3>
         {zone.venues.length > 0 ? (
           <>
             <p className="muted">This zone contains <strong>{zone.venues.length}</strong> venue(s). Move them to another zone before deleting:</p>

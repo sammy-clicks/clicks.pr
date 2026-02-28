@@ -138,7 +138,7 @@ export async function POST(req: Request) {
   });
 
   // Compute total — promotions
-  let promoOrderItems: any[] = [];
+  const promoOrderItems: any[] = [];
   if (body.promotions.length > 0) {
     const promotionIds = body.promotions.map(p => p.promotionId);
     const promos = await prisma.promotion.findMany({

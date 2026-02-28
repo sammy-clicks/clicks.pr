@@ -96,6 +96,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       completedOrderCount: completedOrders.length,
       orderRevenueCents: orderRevCents,
       redemptionCount: redemptions.length,
+      paidRedemptionCount: paidRedemptions.length,
       subscriptionCount: paidSubs.length,
     },
   });
