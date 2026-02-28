@@ -8,7 +8,6 @@ import { ThemeToggle } from "./ThemeToggle";
 if (typeof window !== "undefined") {
   void fetch("/api/ping").catch(() => {});
 }
-import { ThemeToggle } from "./ThemeToggle";
 
 const FULL_W = 260;
 
