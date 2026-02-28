@@ -122,6 +122,8 @@ export async function POST(req: Request) {
       success_url: `${appUrl}/v/account?upgraded=1`,
       cancel_url: `${appUrl}/v/plan?cancelled=1`,
       metadata: { venueId: venue.id },
+      // Propagate venueId to the Subscription and all its Invoices so webhooks can find it
+      subscription_data: { metadata: { venueId: venue.id } },
     });
 
     return NextResponse.json({ ok: true, checkoutUrl: checkoutSession.url });

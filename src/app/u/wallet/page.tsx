@@ -105,7 +105,7 @@ const TXN_ICON: Record<string, string> = { TOPUP: "", TRANSFER_OUT: "", TRANSFER
 const TXN_LABEL: Record<string, string> = { TOPUP: "Transfer", TRANSFER_OUT: "Sent", TRANSFER_IN: "Received", REFUND: "Refund", ADJUSTMENT: "Adjustment" };
 
 // ── Stripe checkout components ──────────────────────────────────────────────
-function CheckoutForm({ amount, onSuccess, onDismiss }: { amount: number; onSuccess: () => void; onDismiss: () => void }) {
+function CheckoutForm({ amount, onSuccess, onDismiss }: { amount: number; onSuccess: (piId: string) => void; onDismiss: () => void }) {
   const stripe   = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -120,7 +120,7 @@ function CheckoutForm({ amount, onSuccess, onDismiss }: { amount: number; onSucc
     if (result.error) {
       setPayErr(result.error.message ?? "Payment failed. Please try again.");
     } else {
-      onSuccess();
+      onSuccess(result.paymentIntent?.id ?? "");
     }
   }
 
@@ -164,10 +164,11 @@ function CheckoutForm({ amount, onSuccess, onDismiss }: { amount: number; onSucc
 }
 
 function CheckoutSheet({ clientSecret, amount, onSuccess, onDismiss }: {
-  clientSecret: string; amount: number; onSuccess: () => void; onDismiss: () => void;
+  clientSecret: string; amount: number; onSuccess: (piId: string) => void; onDismiss: () => void;
 }) {
   return (
     <Elements
+      key={clientSecret}
       stripe={stripePromise}
       options={{
         clientSecret,
@@ -187,9 +188,10 @@ export default function Wallet() {
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
   const [topupAmt, setTopupAmt]   = useState(10);
   const [msg, setMsg]             = useState<{ text: string; ok: boolean } | null>(null);
-  const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
-  const [checkoutAmt,    setCheckoutAmt]    = useState(0);
-  const [topupLoading,   setTopupLoading]   = useState(false);
+  const [checkoutSecret,    setCheckoutSecret]    = useState<string | null>(null);
+  const [checkoutAmt,       setCheckoutAmt]       = useState(0);
+  const [topupLoading,      setTopupLoading]       = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
 
   // Pagination
   const [txnPage, setTxnPage]     = useState(1);
@@ -619,16 +621,49 @@ export default function Wallet() {
       )}
 
       {/* Stripe checkout sheet — appears after selecting amount */}
-      {checkoutSecret && (
+      {confirmingPayment && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 1500, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(5px)",
+            display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+            <div style={{ width: 44, height: 44, border: "4px solid #08daf4", borderTopColor: "transparent",
+              borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            <p style={{ color: "#08daf4", fontWeight: 700, fontSize: 15, margin: 0 }}>Confirming payment…</p>
+          </div>
+          <style>{"@keyframes spin { to { transform: rotate(360deg); } }"}</style>
+        </>
+      )}
+
+      {checkoutSecret && !confirmingPayment && (
         <CheckoutSheet
           clientSecret={checkoutSecret}
           amount={checkoutAmt}
-          onSuccess={() => {
+          onSuccess={async (piId) => {
             setCheckoutSecret(null);
-            setMsg({ text: "Funds are on the way! Balance updates in a moment.", ok: true });
-            // Webhook credits wallet asynchronously — poll a couple times
-            setTimeout(() => load(1), 3000);
-            setTimeout(() => load(1), 8000);
+            setConfirmingPayment(true);
+            try {
+              // Directly confirm with Stripe and credit wallet — no webhook polling needed
+              const r = await fetch("/api/wallet/confirm", {
+                method: "POST", headers: { "content-type": "application/json" },
+                body: JSON.stringify({ piId }),
+              });
+              const j = await r.json();
+              if (r.ok) {
+                // Update balance instantly from the server response
+                setData((prev: any) => prev ? { ...prev, balanceCents: j.balanceCents } : prev);
+                setMsg({ text: `$${(j.balanceCents / 100).toFixed(2)} — Balance updated!`, ok: true });
+                load(1); // refresh full txn list
+              } else {
+                setMsg({ text: j.error || "Payment confirmed but balance update failed. Refresh to see new balance.", ok: false });
+                // Fall back to timed polling just in case
+                setTimeout(() => load(1), 3000);
+                setTimeout(() => load(1), 8000);
+              }
+            } catch {
+              setMsg({ text: "Payment confirmed. Refresh to see updated balance.", ok: true });
+              setTimeout(() => load(1), 3000);
+            } finally {
+              setConfirmingPayment(false);
+            }
           }}
           onDismiss={() => setCheckoutSecret(null)}
         />
