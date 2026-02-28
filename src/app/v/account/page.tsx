@@ -348,6 +348,34 @@ export default function VenueAccount() {
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.6rem" }}>Account</h2>
         <span className="muted" style={{ fontSize: 13 }}>{venue?.name ?? user.username}</span>
       </div>
+
+      {/* Setup checklist banner */}
+      {venue && (!venueImageUrl || !venue.stripeOnboarded) && (
+        <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#f59e0b" }}>Complete your setup to go live</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+              <span style={{ fontSize: 16 }}>{venueImageUrl ? "\u2705" : "\u26a0\ufe0f"}</span>
+              <span style={{ color: venueImageUrl ? "var(--muted-text)" : "var(--ink)", textDecoration: venueImageUrl ? "line-through" : undefined }}>
+                {venueImageUrl ? "Venue photo uploaded" : "Upload a venue photo"}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+              <span style={{ fontSize: 16 }}>{venue.stripeOnboarded ? "\u2705" : "\u26a0\ufe0f"}</span>
+              {venue.stripeOnboarded ? (
+                <span style={{ color: "var(--muted-text)", textDecoration: "line-through" }}>Payouts connected</span>
+              ) : (
+                <button
+                  onClick={startStripeConnect}
+                  disabled={stripeConnecting}
+                  style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#f59e0b", fontWeight: 700, fontSize: 13, textDecoration: "underline" }}>
+                  {stripeConnecting ? "Redirecting\u2026" : "Set up payouts to receive your earnings"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <Nav role="v" />
 
       {msg.text && (
@@ -450,7 +478,10 @@ export default function VenueAccount() {
       {venue && (
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em" }}>Venue Photo</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em" }}>Venue Photo</div>
+              {!venue.venueImageUrl && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>Required</span>}
+            </div>
             <button className="btn sm secondary" style={{ fontSize: 11 }} onClick={() => setShowPreview(p => !p)}>
               {showPreview ? "Hide preview" : "Customer view"}
             </button>
@@ -509,6 +540,44 @@ export default function VenueAccount() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Payouts (Stripe Connect) */}
+      {venue && (
+        <div className="card" style={{ marginBottom: 20, border: venue.stripeOnboarded ? undefined : "1px solid rgba(245,158,11,0.35)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em" }}>Payouts</div>
+            {!venue.stripeOnboarded && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>Required</span>}
+          </div>
+          {venue.stripeOnboarded ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#2ecc71" }} />
+                <span style={{ fontSize: 14 }}>Payouts active — you receive <strong>85%</strong> of each order</span>
+              </div>
+              <button className="btn secondary" style={{ fontSize: 13 }} onClick={openStripeDashboard} disabled={stripeConnecting}>
+                {stripeConnecting ? "Opening…" : "Stripe Dashboard"}
+              </button>
+            </div>
+          ) : venue.stripeAccountId ? (
+            <div>
+              <p className="muted" style={{ marginBottom: 12, fontSize: 14 }}>Your Stripe account setup is incomplete. Finish it to start receiving payouts.</p>
+              <button className="btn" style={{ background: "#f59e0b", color: "#080c12", fontWeight: 700 }} onClick={startStripeConnect} disabled={stripeConnecting}>
+                {stripeConnecting ? "Redirecting…" : "Resume payout setup"}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p className="muted" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.6 }}>
+                Connect your bank account to receive <strong>85%</strong> of every order placed at your venue. Clicks keeps 15%.
+              </p>
+              <button className="btn" style={{ background: "#f59e0b", color: "#080c12", fontWeight: 700 }}
+                onClick={startStripeConnect} disabled={stripeConnecting}>
+                {stripeConnecting ? "Redirecting…" : "Set up payouts"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -601,39 +670,6 @@ export default function VenueAccount() {
             {venue?.plan === "PRO" ? "Manage Plan" : "See Plans"}
           </button>
         </a>
-      </div>
-
-      {/* Payouts (Stripe Connect) */}
-      <div className="card" style={{ marginBottom: 40 }}>
-        <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Payouts</div>
-        {venue?.stripeOnboarded ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#2ecc71" }} />
-              <span style={{ fontSize: 14 }}>Payouts active — you receive <strong>85%</strong> of each order</span>
-            </div>
-            <button className="btn secondary" style={{ fontSize: 13 }} onClick={openStripeDashboard} disabled={stripeConnecting}>
-              {stripeConnecting ? "Opening…" : "Stripe Dashboard"}
-            </button>
-          </div>
-        ) : venue?.stripeAccountId ? (
-          <div>
-            <p className="muted" style={{ marginBottom: 12, fontSize: 14 }}>Your Stripe account setup is incomplete. Finish it to start receiving payouts.</p>
-            <button className="btn" onClick={startStripeConnect} disabled={stripeConnecting}>
-              {stripeConnecting ? "Redirecting…" : "Resume payout setup"}
-            </button>
-          </div>
-        ) : (
-          <div>
-            <p className="muted" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.6 }}>
-              Connect a Stripe account to receive <strong>85%</strong> of every order placed at your venue directly to your bank.
-            </p>
-            <button className="btn" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }}
-              onClick={startStripeConnect} disabled={stripeConnecting}>
-              {stripeConnecting ? "Redirecting…" : "Set up payouts"}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Modals */}
