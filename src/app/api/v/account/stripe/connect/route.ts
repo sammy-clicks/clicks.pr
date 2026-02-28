@@ -30,7 +30,7 @@ export async function POST() {
   if (!accountId) {
     const account = await stripe.accounts.create({
       type: "express",
-      country: "PR",
+      country: "US", // Puerto Rico is a US territory — Stripe uses "US"
       email: venue.manager?.email ?? undefined,
       capabilities: {
         transfers: { requested: true },
