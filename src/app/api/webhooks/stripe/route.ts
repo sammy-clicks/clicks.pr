@@ -202,6 +202,18 @@ export async function POST(req: Request) {
     default:
       // Ignore unknown events
       break;
+
+    // ─── Stripe Connect: venue account onboarded ──────────────────────────
+    case "account.updated": {
+      const acct = obj as any;
+      if (!acct.charges_enabled) break; // not fully onboarded yet
+      // Find the venue associated with this connected account
+      await prisma.venue.updateMany({
+        where: { stripeAccountId: acct.id, stripeOnboarded: false },
+        data:  { stripeOnboarded: true },
+      });
+      break;
+    }
   }
 
   return NextResponse.json({ ok: true });

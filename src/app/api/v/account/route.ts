@@ -20,6 +20,7 @@ export async function GET() {
           id: true, name: true, type: true, description: true, address: true,
           venueImageUrl: true, crowdLevel: true, isEnabled: true, pausedAt: true, plan: true,
           subscriptionStartedAt: true, subscriptionEndsAt: true, boostActiveUntil: true,
+          stripeAccountId: true, stripeOnboarded: true,
         },
       },
     },

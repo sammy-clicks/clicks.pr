@@ -163,6 +163,10 @@ model Venue {
 
   createdAt     DateTime @default(now())
 
+  // Stripe Connect (marketplace payouts)
+  stripeAccountId   String?    // acct_xxx — Express connected account
+  stripeOnboarded   Boolean    @default(false) // true once charges_enabled
+
   menuItems     MenuItem[]
   orders        Order[] @relation("VenueOrders")
   checkins      CheckIn[]
@@ -171,6 +175,7 @@ model Venue {
   votes         Vote[]
   weeklyPicks   WeeklyPick[]
   subscriptionPayments SubscriptionPayment[]
+  payouts       VenuePayout[]
 }
 
 model MenuItem {
@@ -313,6 +318,7 @@ model Order {
 
   items        OrderItem[]
   supportCases SupportCase[] @relation("OrderCase")
+  payout       VenuePayout?
 
   @@index([venueId, createdAt])
 }
@@ -369,6 +375,23 @@ model WeeklyPick {
   createdAt DateTime @default(now())
 
   @@unique([weekId, rank])
+}
+
+// ─── Venue Payouts (Stripe Connect marketplace) ───────────────────────────
+
+model VenuePayout {
+  id               String   @id @default(cuid())
+  venueId          String
+  venue            Venue    @relation(fields: [venueId], references: [id])
+  orderId          String   @unique
+  order            Order    @relation(fields: [orderId], references: [id])
+  amountCents      Int                     // 85% of order total
+  stripeTransferId String?                 // tr_xxx
+  status           String   @default("PENDING") // PENDING | SENT | FAILED | SKIPPED
+  failReason       String?
+  createdAt        DateTime @default(now())
+
+  @@index([venueId, createdAt])
 }
 
 model SubscriptionPayment {

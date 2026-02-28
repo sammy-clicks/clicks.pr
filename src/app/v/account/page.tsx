@@ -48,6 +48,36 @@ export default function VenueAccount() {
   const [showBoostConfirm, setShowBoostConfirm] = useState(false);
   const [showWelcome, setShowWelcome]           = useState(false);
   const [showPreview, setShowPreview]           = useState(false);
+
+  const [stripeConnecting, setStripeConnecting] = useState(false);
+
+  async function startStripeConnect() {
+    setStripeConnecting(true);
+    try {
+      const r = await fetch("/api/v/account/stripe/connect", { method: "POST" });
+      const j = await r.json();
+      if (j.url) window.location.href = j.url;
+      else setMsg({ text: "Could not start Stripe setup — try again", ok: false });
+    } catch {
+      setMsg({ text: "Could not start Stripe setup — check your connection", ok: false });
+    } finally {
+      setStripeConnecting(false);
+    }
+  }
+
+  async function openStripeDashboard() {
+    setStripeConnecting(true);
+    try {
+      const r = await fetch("/api/v/account/stripe/connect");
+      const j = await r.json();
+      if (j.dashboardUrl) window.open(j.dashboardUrl, "_blank");
+      else setMsg({ text: "Could not open Stripe dashboard — try again", ok: false });
+    } catch {
+      setMsg({ text: "Could not open Stripe dashboard", ok: false });
+    } finally {
+      setStripeConnecting(false);
+    }
+  }
   const [avatarFileName, setAvatarFileName] = useState("");
   const [venueFileName, setVenueFileName]   = useState("");
   const [cropState, setCropState] = useState<{
@@ -97,6 +127,14 @@ export default function VenueAccount() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("upgraded") === "1" && !sessionStorage.getItem("welcome_dismissed")) setShowWelcome(true);
+    if (params.get("stripe_return") === "1") {
+      setMsg({ text: "Stripe setup complete! Your payout account is being verified — this can take a few minutes.", ok: true });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (params.get("stripe_refresh") === "1") {
+      setMsg({ text: "Your Stripe session expired — click 'Resume payout setup' to continue.", ok: false });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   function dismissWelcome() {
@@ -563,6 +601,39 @@ export default function VenueAccount() {
             {venue?.plan === "PRO" ? "Manage Plan" : "See Plans"}
           </button>
         </a>
+      </div>
+
+      {/* Payouts (Stripe Connect) */}
+      <div className="card" style={{ marginBottom: 40 }}>
+        <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 12 }}>Payouts</div>
+        {venue?.stripeOnboarded ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "#2ecc71" }} />
+              <span style={{ fontSize: 14 }}>Payouts active — you receive <strong>85%</strong> of each order</span>
+            </div>
+            <button className="btn secondary" style={{ fontSize: 13 }} onClick={openStripeDashboard} disabled={stripeConnecting}>
+              {stripeConnecting ? "Opening…" : "Stripe Dashboard"}
+            </button>
+          </div>
+        ) : venue?.stripeAccountId ? (
+          <div>
+            <p className="muted" style={{ marginBottom: 12, fontSize: 14 }}>Your Stripe account setup is incomplete. Finish it to start receiving payouts.</p>
+            <button className="btn" onClick={startStripeConnect} disabled={stripeConnecting}>
+              {stripeConnecting ? "Redirecting…" : "Resume payout setup"}
+            </button>
+          </div>
+        ) : (
+          <div>
+            <p className="muted" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.6 }}>
+              Connect a Stripe account to receive <strong>85%</strong> of every order placed at your venue directly to your bank.
+            </p>
+            <button className="btn" style={{ background: "var(--venue-brand)", color: "#080c12", fontWeight: 700 }}
+              onClick={startStripeConnect} disabled={stripeConnecting}>
+              {stripeConnecting ? "Redirecting…" : "Set up payouts"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
