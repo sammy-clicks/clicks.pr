@@ -59,7 +59,22 @@ export default function VenueAccount() {
     const r = await fetch("/api/v/account");
     const j = await r.json();
     if (j.user)  { setUser(j.user);  setAvatarUrl(j.user.avatarUrl ?? ""); }
-    if (j.venue) { setVenue(j.venue); setVenueImageUrl(j.venue.venueImageUrl ?? ""); }
+    if (j.venue) {
+      let venue = j.venue;
+      // If we just returned from Stripe checkout and plan is still FREE, confirm via Stripe
+      if (venue.plan !== "PRO") {
+        const params = new URLSearchParams(window.location.search);
+        const sid = params.get("session_id");
+        if (params.get("upgraded") === "1" && sid) {
+          const cr = await fetch(`/api/v/plan/confirm?session_id=${encodeURIComponent(sid)}`).catch(() => null);
+          if (cr?.ok) {
+            const cj = await cr.json().catch(() => null);
+            if (cj?.plan === "PRO") venue = { ...venue, plan: "PRO" };
+          }
+        }
+      }
+      setVenue(venue); setVenueImageUrl(venue.venueImageUrl ?? "");
+    }
     if (typeof j.liveCrowd    === "number") setLiveCrowd(j.liveCrowd);
     if (typeof j.activeCheckins === "number") setActiveCheckins(j.activeCheckins);
   }

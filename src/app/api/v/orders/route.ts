@@ -22,5 +22,5 @@ export async function GET() {
     take: 50,
   });
 
-  return NextResponse.json({ venueName: venue.name, orders });
+  return NextResponse.json({ venueName: venue.name, venuePlan: venue.plan, venueBoostUntil: venue.boostActiveUntil, orders });
 }

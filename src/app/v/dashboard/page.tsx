@@ -24,11 +24,16 @@ export default function VenueDashboard() {
   const [completing,    setCompleting]    = useState<string | null>(null);
   const prevOpenCount = useRef(0);
 
+  const [boostUntil, setBoostUntil] = useState<Date | null>(null);
+  const [boosting,   setBoosting]   = useState(false);
+  const [boostMsg,   setBoostMsg]   = useState("");
+
   async function load() {
     const r = await fetch("/api/v/orders");
     const j = await r.json();
     if (!r.ok) { setError(j.error || "Unauthorized"); return; }
     setData(j);
+    if (j.venueBoostUntil) setBoostUntil(new Date(j.venueBoostUntil));
     const openNow = (j.orders ?? []).filter((o: any) => OPEN_STATUSES.includes(o.status)).length;
     if (openNow > prevOpenCount.current) {
       const orig = document.title;
@@ -68,6 +73,19 @@ export default function VenueDashboard() {
     }
   }
 
+  async function activateBoost() {
+    setBoosting(true);
+    setBoostMsg("");
+    const r = await fetch("/api/v/boost", { method: "POST" });
+    const j = await r.json();
+    setBoosting(false);
+    if (r.ok) {
+      setBoostUntil(new Date(j.boostActiveUntil));
+    } else {
+      setBoostMsg(j.error || "Failed to activate Boost Hour.");
+    }
+  }
+
   if (error) return <div className="container"><Nav role="v" /><p className="muted">{error}</p></div>;
   if (!data) return <div className="container"><Nav role="v" /><p className="muted">Loading…</p></div>;
 
@@ -77,11 +95,6 @@ export default function VenueDashboard() {
 
   return (
     <div className="container">
-      {/* Big logo hero */}
-      <div style={{ textAlign: "center", padding: "18px 0 22px" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo_venues.png" alt="Clicks Venues" style={{ height: 72, width: "auto", objectFit: "contain" }} />
-      </div>
       <div className="header">
         <h2 style={{ color: "var(--venue-brand)", fontSize: "1.7rem" }}>Dashboard — {data.venueName}</h2>
         <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--venue-brand)" }}>
@@ -113,6 +126,35 @@ export default function VenueDashboard() {
           Active Orders
         </div>
       </div>
+
+      {/* ── Boost Hour (PRO only) ── */}
+      {data.venuePlan === "PRO" && (() => {
+        const now = new Date();
+        const active = boostUntil && boostUntil > now;
+        const remaining = active ? Math.ceil((boostUntil!.getTime() - now.getTime()) / 60000) : 0;
+        return (
+          <div style={{ marginBottom: 20, textAlign: "center" }}>
+            {active ? (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(231,168,255,0.1)", border: "1.5px solid var(--venue-brand)", borderRadius: 12, padding: "10px 18px" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--venue-brand)", display: "inline-block", boxShadow: "0 0 0 3px var(--venue-brand-glow)", animation: "pulse 1.4s ease-in-out infinite", flexShrink: 0 }} />
+                <span style={{ fontWeight: 700, fontSize: 14, color: "var(--venue-brand)" }}>Boost Hour active — {remaining} min remaining</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  className="btn"
+                  style={{ background: "linear-gradient(135deg,#e7a8ff,#c478f0)", color: "#0d0019", fontWeight: 700, fontSize: 14, padding: "10px 24px", borderRadius: 12, border: "none" }}
+                  disabled={boosting}
+                  onClick={activateBoost}
+                >
+                  {boosting ? "Activating…" : "Activate Boost Hour"}
+                </button>
+                {boostMsg && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--danger)", fontWeight: 600 }}>{boostMsg}</p>}
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Status breakdown ── */}
       <div className="row" style={{ marginBottom: 24 }}>
