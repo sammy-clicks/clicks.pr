@@ -57,6 +57,6 @@ export async function POST(req: Request) {
 
   const token = await signToken({ sub: user.id, role: "USER" });
   const res = NextResponse.json({ ok: true });
-  res.cookies.set("clicks_token", token, { httpOnly: true, sameSite: "lax", path: "/" });
+  res.cookies.set("clicks_token", token, { httpOnly: true, sameSite: "lax", path: "/", secure: process.env.NODE_ENV === "production" });
   return res;
 }

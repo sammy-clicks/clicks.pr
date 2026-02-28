@@ -28,7 +28,45 @@ export async function POST(req: Request) {
 
   const obj = event.data.object as any;
 
-  switch (event.type) {
+  switch (event.type) {    // ── Stripe Checkout completed (subscription upgrade) ─────────────────────
+    case "checkout.session.completed": {
+      // Only handle subscription checkouts (not one-time payments)
+      if (obj.mode !== "subscription") break;
+      const venueId = obj.metadata?.venueId as string | undefined;
+      if (!venueId) break;
+      const subscriptionId = obj.subscription as string;
+      if (!subscriptionId) break;
+
+      // Fetch the subscription to get the billing period
+      let sub: any;
+      try { sub = await stripe.subscriptions.retrieve(subscriptionId); } catch { break; }
+      const periodStart = new Date(sub.current_period_start * 1000);
+      const periodEnd   = new Date(sub.current_period_end   * 1000);
+
+      await prisma.venue.update({
+        where: { id: venueId },
+        data: { plan: "PRO", subscriptionStartedAt: periodStart, subscriptionEndsAt: periodEnd, subscriptionCancelledAt: null },
+      });
+
+      // Create payment record (idempotent — skip if already exists for this subscription period)
+      const existing = await prisma.subscriptionPayment.findFirst({
+        where: { venueId, stripeId: subscriptionId, periodStart },
+      });
+      if (!existing) {
+        await prisma.subscriptionPayment.create({
+          data: {
+            venueId,
+            amountCents: PRO_PRICE_CENTS,
+            paidAt: new Date(),
+            periodStart,
+            periodEnd,
+            stripeId: subscriptionId,
+            status: "PAID",
+          },
+        });
+      }
+      break;
+    }
     // ── Wallet top-up via PaymentIntent ──────────────────────────────────────
     case "payment_intent.succeeded": {
       const userId      = obj.metadata?.userId as string | undefined;
