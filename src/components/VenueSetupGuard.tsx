@@ -10,8 +10,8 @@ export function VenueSetupGuard() {
   const [hasPayout, setHasPayout] = useState(true);
 
   useEffect(() => {
-    // Only block on venue pages other than /v/account
-    if (!pathname.startsWith("/v/") || pathname === "/v/account") return;
+    // Only block on venue pages other than /v/account (and its subpaths)
+    if (!pathname.startsWith("/v/") || pathname.startsWith("/v/account")) return;
 
     fetch("/api/v/account")
       .then(r => r.json())
