@@ -64,12 +64,16 @@ export default function VenueAccount() {
       // If we just returned from Stripe checkout and plan is still FREE, confirm via Stripe
       if (venue.plan !== "PRO") {
         const params = new URLSearchParams(window.location.search);
-        const sid = params.get("session_id");
-        if (params.get("upgraded") === "1" && sid) {
+        // session_id from URL (new purchases) OR localStorage (saved before redirect)
+        const sid = params.get("session_id") || localStorage.getItem("clicks_pending_upgrade_sid");
+        if (sid) {
           const cr = await fetch(`/api/v/plan/confirm?session_id=${encodeURIComponent(sid)}`).catch(() => null);
           if (cr?.ok) {
             const cj = await cr.json().catch(() => null);
-            if (cj?.plan === "PRO") venue = { ...venue, plan: "PRO" };
+            if (cj?.plan === "PRO") {
+              venue = { ...venue, plan: "PRO" };
+              localStorage.removeItem("clicks_pending_upgrade_sid");
+            }
           }
         }
       }

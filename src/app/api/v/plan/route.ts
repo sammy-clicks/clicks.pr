@@ -126,7 +126,7 @@ export async function POST(req: Request) {
       subscription_data: { metadata: { venueId: venue.id } },
     });
 
-    return NextResponse.json({ ok: true, checkoutUrl: checkoutSession.url });
+    return NextResponse.json({ ok: true, checkoutUrl: checkoutSession.url, sessionId: checkoutSession.id });
   }
 
   // ── action: cancel (schedule downgrade to FREE at period end) ─────────────

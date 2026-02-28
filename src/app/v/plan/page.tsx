@@ -85,6 +85,8 @@ function PlanContent() {
   const [tab, setTab] = useState<"plan" | "history">("plan");
   const [showCompare, setShowCompare] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryMsg, setRetryMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/v/plan").then(r => r.json()).then(j => {
@@ -105,7 +107,11 @@ function PlanContent() {
     const j = await r.json();
     setUpgrading(false);
     if (!r.ok) { alert(j.error || "Failed to start checkout."); return; }
-    if (j.checkoutUrl) { window.location.href = j.checkoutUrl; return; }
+    if (j.checkoutUrl) {
+      if (j.sessionId) localStorage.setItem("clicks_pending_upgrade_sid", j.sessionId);
+      window.location.href = j.checkoutUrl;
+      return;
+    }
     if (j.simulated) { window.location.href = j.redirectUrl; return; }
   }
 
@@ -134,6 +140,25 @@ function PlanContent() {
     setReactivating(false);
     if (!r.ok) { alert(j.error || "Failed to reactivate."); return; }
     setData((d: any) => ({ ...d, subscriptionCancelledAt: null }));
+  }
+
+  async function retryActivation() {
+    setRetrying(true);
+    setRetryMsg("");
+    // Try url param first, then localStorage, then server scan
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("session_id") || localStorage.getItem("clicks_pending_upgrade_sid") || "";
+    const url = sid ? `/api/v/plan/confirm?session_id=${encodeURIComponent(sid)}` : "/api/v/plan/confirm";
+    const r = await fetch(url).catch(() => null);
+    setRetrying(false);
+    if (!r) { setRetryMsg("Network error. Try again."); return; }
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.plan === "PRO") {
+      localStorage.removeItem("clicks_pending_upgrade_sid");
+      setData((d: any) => ({ ...d, plan: "PRO" }));
+    } else {
+      setRetryMsg(j.error || "No confirmed payment found. Contact support if you were charged.");
+    }
   }
 
   if (error) return (
@@ -211,6 +236,17 @@ function PlanContent() {
                   style={{ background: "transparent", border: "1.5px solid var(--venue-brand)", color: "var(--venue-brand)", fontWeight: 700, fontSize: 14, padding: "11px 24px", borderRadius: 12, cursor: "pointer", width: "100%" }}>
                   {upgrading ? "Redirecting…" : "Upgrade to PRO"}
                 </button>
+              </div>
+              {/* Retry for users who paid but didn't get PRO */}
+              <div style={{ textAlign: "center", marginTop: 12 }}>
+                <button
+                  onClick={retryActivation}
+                  disabled={retrying}
+                  style={{ background: "none", border: "none", color: "var(--muted-text)", fontSize: 12, cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                >
+                  {retrying ? "Checking…" : "Already paid? Activate PRO"}
+                </button>
+                {retryMsg && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--danger)" }}>{retryMsg}</p>}
               </div>
             </div>
           )}
