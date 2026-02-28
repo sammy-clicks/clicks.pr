@@ -94,6 +94,7 @@ export default function Login() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [banned, setBanned] = useState<BanInfo | null>(null);
+  const [staySignedIn, setStaySignedIn] = useState(false);
 
   async function submit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -103,7 +104,7 @@ export default function Login() {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier, password, staySignedIn }),
     });
     const data = await res.json();
     setLoading(false);
@@ -175,7 +176,49 @@ export default function Login() {
                 autoComplete="current-password"
                 placeholder=""
               />
-              <button type="submit" className="auth-submit-btn" disabled={loading}>
+              {/* Stay signed in toggle */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  margin: "14px 0 4px",
+                }}
+              >
+                <span style={{ fontSize: 13, opacity: 0.75 }}>Stay signed in</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={staySignedIn}
+                  onClick={() => setStaySignedIn(v => !v)}
+                  style={{
+                    width: 42,
+                    height: 24,
+                    borderRadius: 12,
+                    border: "none",
+                    cursor: "pointer",
+                    background: staySignedIn ? "#08daf4" : "rgba(255,255,255,0.15)",
+                    position: "relative",
+                    transition: "background 0.2s",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 3,
+                      left: staySignedIn ? 21 : 3,
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      background: "#fff",
+                      transition: "left 0.2s",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                    }}
+                  />
+                </button>
+              </div>
+              <button type="submit" className="auth-submit-btn" disabled={loading} style={{ marginTop: 14 }}>
                 {loading ? "Logging in…" : "Log in"}
               </button>
               <div style={{ textAlign: "right", marginTop: 6 }}>

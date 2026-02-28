@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 const Schema = z.object({
   identifier: z.string().min(1), // email or username
   password: z.string().min(1),
+  staySignedIn: z.boolean().optional().default(false),
 });
 
 export async function POST(req: Request) {
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
   try { body = Schema.parse(await req.json()); }
   catch { return NextResponse.json({ error: "Invalid credentials" }, { status: 401 }); }
 
-  const { identifier, password } = body;
+  const { identifier, password, staySignedIn } = body;
 
   // Determine lookup: email contains @, username does not (strip leading @ if typed)
   const cleaned = identifier.startsWith("@") ? identifier.slice(1) : identifier;
@@ -43,6 +44,11 @@ export async function POST(req: Request) {
 
   const token = await signToken({ sub: user.id, role: user.role as TokenPayload["role"] });
   const res = NextResponse.json({ ok: true, role: user.role });
-  res.cookies.set("clicks_token", token, { httpOnly: true, sameSite: "lax", path: "/" });
+  res.cookies.set("clicks_token", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    ...(staySignedIn ? { maxAge: 30 * 24 * 60 * 60 } : {}),
+  });
   return res;
 }
