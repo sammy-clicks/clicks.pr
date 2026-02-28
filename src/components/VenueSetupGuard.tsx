@@ -3,18 +3,23 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 export function VenueSetupGuard() {
-  const pathname  = usePathname();
-  const router    = useRouter();
-  const [show, setShow]       = useState(false);
-  const [hasPhoto, setHasPhoto] = useState(true);
-  const [hasPayout, setHasPayout] = useState(true);
+  const pathname = usePathname();
+  const router   = useRouter();
+
+  // null = checking, false = all good, true = blocked
+  const [blocked, setBlocked]     = useState<boolean | null>(null);
+  const [hasPhoto, setHasPhoto]   = useState(false);
+  const [hasPayout, setHasPayout] = useState(false);
+
+  const isAccountPage = !pathname.startsWith("/v/") || pathname.startsWith("/v/account");
 
   useEffect(() => {
-    // Never block /v/account (or its subpaths)
-    if (!pathname.startsWith("/v/") || pathname.startsWith("/v/account")) {
-      setShow(false);
+    if (isAccountPage) {
+      setBlocked(false);
       return;
     }
+
+    setBlocked(null); // show spinner while checking
 
     fetch("/api/v/account")
       .then(r => r.json())
@@ -23,12 +28,25 @@ export function VenueSetupGuard() {
         const payout = !!j.venue?.stripeOnboarded;
         setHasPhoto(photo);
         setHasPayout(payout);
-        if (!photo || !payout) setShow(true);
+        setBlocked(!photo || !payout);
       })
-      .catch(() => {}); // silently ignore if not logged in
+      .catch(() => setBlocked(false)); // if not logged in, don't block
   }, [pathname]);
 
-  if (!show) return null;
+  // Still checking — show a blank blocker so nothing is clickable underneath
+  if (blocked === null && !isAccountPage) {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "var(--bg, #0d0d1a)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <div className="muted" style={{ fontSize: 14 }}>Loading…</div>
+      </div>
+    );
+  }
+
+  if (!blocked) return null;
 
   return (
     <div style={{
