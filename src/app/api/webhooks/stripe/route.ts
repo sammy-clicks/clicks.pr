@@ -4,18 +4,25 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Stripe sends raw body — Next.js body parsing must be off
+// Stripe sends raw body — must read as text to preserve bytes for signature check
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature") ?? "";
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET ?? "";
-  const raw = await req.arrayBuffer();
-  const buf = Buffer.from(raw);
+
+  if (!webhookSecret) {
+    console.error("[stripe webhook] STRIPE_WEBHOOK_SECRET is not set.");
+    return NextResponse.json({ error: "Server misconfigured." }, { status: 500 });
+  }
+
+  const rawBody = await req.text();
 
   let event: any;
   try {
-    event = stripe.webhooks.constructEvent(buf, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
     console.error("[stripe webhook] signature check failed:", err.message);
+    console.error("[stripe webhook] secret prefix:", webhookSecret.slice(0, 12));
+    console.error("[stripe webhook] sig header present:", !!sig);
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
