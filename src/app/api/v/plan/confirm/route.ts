@@ -18,7 +18,7 @@ async function confirmBySessionId(sessionId: string, venue: VenueInfo): Promise<
     return NextResponse.json({ error: "Payment not confirmed." }, { status: 400 });
   }
 
-  // Verify this session is for this venue
+  // If session has an explicit venueId and it doesn't match, reject
   const csVenueId = cs.metadata?.venueId;
   if (csVenueId && csVenueId !== venue.id) {
     return NextResponse.json({ error: "Session does not belong to this venue." }, { status: 403 });
@@ -86,13 +86,17 @@ export async function GET(req: Request) {
 
   // ── No session_id — scan recent Stripe checkout sessions for this venue ──
   try {
-    const sessions = await stripe.checkout.sessions.list({ limit: 10 });
+    const sessions = await stripe.checkout.sessions.list({ limit: 20 });
     for (const cs of sessions.data) {
-      if (cs.metadata?.venueId === venue.id && cs.payment_status === "paid" && cs.mode === "subscription") {
-        const result = await confirmBySessionId(cs.id, venue);
-        const body = await result.json();
-        return NextResponse.json(body, { status: result.status });
-      }
+      // Match either by explicit venueId metadata OR by lack of venueId (single-venue accounts)
+      // Always verify payment is confirmed subscription
+      if (cs.payment_status !== "paid" || cs.mode !== "subscription") continue;
+      const csVenueId = cs.metadata?.venueId;
+      // Skip sessions explicitly assigned to a different venue
+      if (csVenueId && csVenueId !== venue.id) continue;
+      const result = await confirmBySessionId(cs.id, venue);
+      const body = await result.json();
+      return NextResponse.json(body, { status: result.status });
     }
   } catch {
     // ignore Stripe errors on scan
