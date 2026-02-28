@@ -4,6 +4,19 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+/** Look up venueId from metadata, or fall back to our payment records by Stripe subscription ID. */
+async function resolveVenueId(metadata: Record<string, string> | null, subscriptionId?: string): Promise<string | null> {
+  const fromMeta = metadata?.venueId;
+  if (fromMeta) return fromMeta;
+  if (!subscriptionId) return null;
+  const pmt = await prisma.subscriptionPayment.findFirst({
+    where: { stripeId: subscriptionId },
+    select: { venueId: true },
+    orderBy: { paidAt: "desc" },
+  });
+  return pmt?.venueId ?? null;
+}
+
 // Stripe sends raw body — must read as text to preserve bytes for signature check
 export async function POST(req: Request) {
   const sig = req.headers.get("stripe-signature") ?? "";
@@ -100,10 +113,19 @@ export async function POST(req: Request) {
 
     // Subscription activated or renewed successfully
     case "invoice.payment_succeeded": {
-      const venueId = obj.metadata?.venueId ?? obj.subscription_details?.metadata?.venueId;
+      const subId = obj.subscription as string | undefined;
+      const venueId = await resolveVenueId(
+        obj.metadata ?? obj.subscription_details?.metadata ?? null,
+        subId,
+      );
       if (!venueId) break;
       const periodStart = new Date((obj.period_start ?? obj.lines?.data?.[0]?.period?.start ?? 0) * 1000);
       const periodEnd   = new Date((obj.period_end   ?? obj.lines?.data?.[0]?.period?.end   ?? 0) * 1000);
+      // Idempotency — skip if we already have this invoice period
+      const existing = await prisma.subscriptionPayment.findFirst({
+        where: { venueId, stripeId: subId, periodStart },
+      });
+      if (existing) break;
       await prisma.venue.update({
         where: { id: venueId },
         data: { plan: "PRO", subscriptionStartedAt: periodStart, subscriptionEndsAt: periodEnd },
@@ -115,7 +137,7 @@ export async function POST(req: Request) {
           paidAt: new Date(),
           periodStart,
           periodEnd,
-          stripeId: obj.subscription as string,
+          stripeId: subId ?? "",
           status: "PAID",
         },
       });
@@ -124,8 +146,22 @@ export async function POST(req: Request) {
 
     // Subscription cancelled or payment failed past grace period
     case "customer.subscription.deleted": {
-      const venueId = obj.metadata?.venueId;
+      const deletedSubId = obj.id as string;
+      const venueId = await resolveVenueId(obj.metadata ?? null, deletedSubId);
       if (!venueId) break;
+
+      // Only downgrade if the cancelled subscription is the one we have on record.
+      // Cancelling old duplicate test subscriptions must not trigger a downgrade.
+      const currentPmt = await prisma.subscriptionPayment.findFirst({
+        where: { venueId },
+        orderBy: { paidAt: "desc" },
+        select: { stripeId: true },
+      });
+      if (currentPmt?.stripeId !== deletedSubId) {
+        console.log(`[webhook] subscription.deleted for old/dupe sub ${deletedSubId} — skipping downgrade`);
+        break;
+      }
+
       await prisma.venue.update({
         where: { id: venueId },
         data: { plan: "FREE", subscriptionEndsAt: new Date(), subscriptionCancelledAt: null },
@@ -140,7 +176,11 @@ export async function POST(req: Request) {
 
     // Payment attempt failed
     case "invoice.payment_failed": {
-      const venueId = obj.metadata?.venueId ?? obj.subscription_details?.metadata?.venueId;
+      const subIdFailed = obj.subscription as string | undefined;
+      const venueId = await resolveVenueId(
+        obj.metadata ?? obj.subscription_details?.metadata ?? null,
+        subIdFailed,
+      );
       if (!venueId) break;
       // Log a failed payment row for transparency
       const periodStart = new Date((obj.period_start ?? 0) * 1000);
@@ -152,7 +192,7 @@ export async function POST(req: Request) {
           paidAt: new Date(),
           periodStart,
           periodEnd,
-          stripeId: obj.subscription as string,
+          stripeId: subIdFailed ?? "",
           status: "FAILED",
         },
       });
