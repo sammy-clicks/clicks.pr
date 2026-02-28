@@ -139,19 +139,26 @@ export default function VenueAccount() {
     }
   }, []);
 
-  async function syncStripeStatus() {
+  async function syncStripeStatus(attemptsLeft = 5) {
     try {
       const r = await fetch("/api/v/account/stripe/connect");
       const j = await r.json();
       if (j.onboarded) {
-        setMsg({ text: "Payouts connected! You'll receive 85% of every order automatically.", ok: true });
+        setMsg({ text: "✅ Payouts connected! You'll receive 85% of every order automatically.", ok: true });
+        load();
+        return;
+      }
+      // Not yet approved — retry up to 5 times, 3 seconds apart
+      if (attemptsLeft > 1) {
+        setMsg({ text: `Waiting for Stripe to verify your account… (${6 - attemptsLeft}/5)`, ok: true });
+        setTimeout(() => syncStripeStatus(attemptsLeft - 1), 3000);
       } else {
-        setMsg({ text: "Almost there — Stripe is still verifying your account. Check back in a few minutes.", ok: true });
+        setMsg({ text: "Stripe is still reviewing your account. This page will update automatically once approved — usually within minutes.", ok: true });
+        load();
       }
     } catch {
-      // ignore
+      load();
     }
-    load();
   }
 
   function dismissWelcome() {
