@@ -118,7 +118,8 @@ export default function VenueAccount() {
   // Re-fetch when app becomes visible again (user returning from Stripe in-app browser)
   useEffect(() => {
     function onVisible() {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState !== "visible") return;
+      load();
     }
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -128,14 +129,30 @@ export default function VenueAccount() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("upgraded") === "1" && !sessionStorage.getItem("welcome_dismissed")) setShowWelcome(true);
     if (params.get("stripe_return") === "1") {
-      setMsg({ text: "Stripe setup complete! Your payout account is being verified — this can take a few minutes.", ok: true });
       window.history.replaceState({}, "", window.location.pathname);
+      // Sync live Stripe status then reload venue data
+      syncStripeStatus();
     }
     if (params.get("stripe_refresh") === "1") {
       setMsg({ text: "Your Stripe session expired — click 'Resume payout setup' to continue.", ok: false });
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
+
+  async function syncStripeStatus() {
+    try {
+      const r = await fetch("/api/v/account/stripe/connect");
+      const j = await r.json();
+      if (j.onboarded) {
+        setMsg({ text: "Payouts connected! You'll receive 85% of every order automatically.", ok: true });
+      } else {
+        setMsg({ text: "Almost there — Stripe is still verifying your account. Check back in a few minutes.", ok: true });
+      }
+    } catch {
+      // ignore
+    }
+    load();
+  }
 
   function dismissWelcome() {
     sessionStorage.setItem("welcome_dismissed", "1"); setShowWelcome(false);
